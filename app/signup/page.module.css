@@ -1,0 +1,168 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background-color: var(--bg);
+}
+
+.formCard {
+  width: 100%;
+  max-width: 400px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-2);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--space-2);
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.error {
+  background-color: var(--danger);
+  color: white;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: var(--text-base);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--brand);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+.submitButton {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin: var(--space-6) 0;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.dividerText {
+  background: var(--surface);
+  color: var(--muted);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  position: relative;
+}
+
+.microsoftButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border: 2px solid #0078d4;
+  background: white;
+  color: #0078d4;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.microsoftButton:hover {
+  background: #0078d4;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 120, 212, 0.2);
+}
+
+.microsoftIcon {
+  flex-shrink: 0;
+}
+
+.footer {
+  margin-top: var(--space-6);
+  text-align: center;
+}
+
+.footerText {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin: 0;
+}
+
+.footerLink {
+  color: var(--brand);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    transition: none;
+  }
+}

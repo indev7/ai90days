@@ -1,0 +1,219 @@
+.header {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(252, 252, 253, 0.98) 100%
+  );
+  border-bottom: 1px solid rgba(248, 250, 252, 0.8);
+  height: 72px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 var(--space-8);
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.04), 
+    0 1px 1px rgba(0, 0, 0, 0.02);
+  backdrop-filter: blur(20px) saturate(120%);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: flex-start;
+  flex: 0 0 auto;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--text);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logoLink:hover {
+  transform: scale(1.05);
+}
+
+.logoText {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logoNumber {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, 
+    var(--brand-primary) 0%, 
+    var(--brand-secondary) 50%, 
+    var(--brand-accent) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 900;
+  position: relative;
+}
+
+.logoWord {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, 
+    var(--brand-primary) 0%, 
+    var(--brand-secondary) 50%, 
+    var(--brand-accent) 100%
+  );
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 3s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-left: auto;
+}
+
+.userMenu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.greeting {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, 
+    var(--brand-primary) 0%, 
+    var(--brand-secondary) 50%,
+    var(--brand-accent) 100%
+  );
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-brand);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-glow), var(--shadow-brand);
+}
+
+.authLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.authLink {
+  color: var(--brand);
+  font-weight: 500;
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.authLink:hover {
+  background-color: var(--brand-200);
+}
+
+.hamburger {
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  color: var(--text);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.hamburger:hover {
+  background-color: var(--card);
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .logoNumber {
+    font-size: 1.75rem;
+  }
+  
+  .logoWord {
+    font-size: 1.25rem;
+  }
+  
+  .greeting {
+    display: none;
+  }
+  
+  .avatar {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Hide hamburger on tablet+ */
+@media (min-width: 768px) {
+  .hamburger {
+    display: none;
+  }
+}
+
+/* Desktop adjustments */
+@media (min-width: 1024px) {
+  
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logoLink,
+  .authLink,
+  .hamburger {
+    transition: none;
+  }
+}

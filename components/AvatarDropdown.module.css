@@ -1,0 +1,152 @@
+.dropdown {
+  position: relative;
+}
+
+.avatarButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.avatarButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, 
+    var(--brand-primary) 0%, 
+    var(--brand-secondary) 50%,
+    var(--brand-accent) 100%
+  );
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid rgba(248, 250, 252, 0.8);
+  border-radius: 12px;
+  min-width: 200px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+  z-index: 50;
+  overflow: hidden;
+  animation: dropdownAppear 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header {
+  padding: var(--space-4);
+  background: linear-gradient(135deg, 
+    rgba(124, 58, 237, 0.03) 0%, 
+    rgba(168, 85, 247, 0.02) 100%
+  );
+  border-bottom: 1px solid rgba(248, 250, 252, 0.8);
+}
+
+.userInfo {
+  text-align: center;
+}
+
+.name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: var(--space-1);
+}
+
+.email {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.menuItems {
+  padding: var(--space-2);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 40px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.menuItem:hover {
+  background: linear-gradient(135deg, 
+    rgba(124, 58, 237, 0.06) 0%, 
+    rgba(168, 85, 247, 0.04) 100%
+  );
+  color: var(--brand-primary);
+  transform: translateX(2px);
+}
+
+.logoutItem {
+  color: var(--danger);
+  margin-top: var(--space-2);
+  border-top: 1px solid rgba(248, 250, 252, 0.8);
+  padding-top: var(--space-3);
+}
+
+.logoutItem:hover {
+  background: linear-gradient(135deg, 
+    rgba(220, 38, 38, 0.06) 0%, 
+    rgba(239, 68, 68, 0.04) 100%
+  );
+  color: var(--danger);
+}
+
+@keyframes dropdownAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu {
+    animation: none;
+  }
+  
+  .avatarButton,
+  .menuItem {
+    transition: none;
+  }
+}

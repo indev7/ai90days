@@ -1,95 +1,90 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+import styles from './page.module.css';
+
+export default function HomePage() {
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/me');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className={styles.loading}>
+        <div className={styles.spinner}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={styles.landingContainer}>
+        <div className={styles.landingContent}>
+          <div className={styles.logoSection}>
+            <div className={styles.landingLogo}>
+              <span className={styles.landingLogoNumber}>90</span>
+              <span className={styles.landingLogoWord}>Days</span>
+            </div>
+          </div>
+          <h1 className={styles.landingTitle}>Transform your goals into achievements</h1>
+          <p className={styles.landingSubtitle}>
+            Join thousands who have successfully completed their 90-day goal cycles
+          </p>
+          <div className={styles.landingActions}>
+            <Link href="/signup" className="btn btn-primary">
+              Get Started
+            </Link>
+            <Link href="/login" className="btn btn-secondary">
+              Sign In
+            </Link>
+          </div>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.dashboard}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Welcome back, {user.displayName}!</h1>
+          <p className={styles.subtitle}>Ready to tackle your goals?</p>
+        </div>
+        
+        <div className={styles.placeholder}>
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Dashboard Coming Soon</h2>
+            <p className={styles.cardText}>
+              Your personal goal tracking dashboard will be available in Phase 2. 
+              For now, you can access your profile through the navigation menu.
+            </p>
+            <Link href="/dashboard" className="btn btn-primary">
+              View Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

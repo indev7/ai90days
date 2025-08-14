@@ -1,0 +1,218 @@
+.leftMenu {
+  background: linear-gradient(180deg, var(--surface) 0%, rgba(255,255,255,0.99) 100%);
+  border-right: 1px solid rgba(248, 250, 252, 0.6);
+  height: 100vh;
+  width: 260px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  padding-top: 72px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(12px);
+}
+
+.leftMenu.collapsed {
+  width: 80px;
+}
+
+
+
+.menuContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.bottomMenu {
+  padding: var(--space-5) 0 var(--space-8) 0;
+  border-top: 1px solid rgba(248, 250, 252, 0.8);
+  margin-top: auto;
+  background: linear-gradient(135deg, 
+    rgba(124, 58, 237, 0.02) 0%, 
+    rgba(168, 85, 247, 0.02) 50%, 
+    rgba(34, 211, 238, 0.02) 100%
+  );
+  position: relative;
+}
+
+.bottomMenu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(124, 58, 237, 0.1), 
+    rgba(168, 85, 247, 0.1), 
+    rgba(34, 211, 238, 0.1), 
+    transparent
+  );
+}
+
+.menuList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menuItem {
+  margin: 0;
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  margin: 0 var(--space-2);
+  color: var(--text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 48px;
+  position: relative;
+  border-radius: var(--radius-lg);
+}
+
+.menuLink:hover {
+  background: linear-gradient(135deg, 
+    rgba(124, 58, 237, 0.06) 0%, 
+    rgba(168, 85, 247, 0.04) 100%
+  );
+  color: var(--brand-primary);
+  transform: translateX(2px) scale(1.01);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.08);
+}
+
+.menuLink.active {
+  background: rgba(124, 58, 237, 0.08);
+  color: var(--brand-primary);
+  box-shadow: none;
+  font-weight: 600;
+  transform: translateX(2px);
+}
+
+.menuLink.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: var(--brand-primary);
+  border-radius: 0 2px 2px 0;
+}
+
+.menuLink.disabled {
+  color: var(--muted-light);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.menuLink.disabled:hover {
+  background-color: transparent;
+  color: var(--muted-light);
+  transform: none;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.collapsed .label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.toggleButton {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  margin: var(--space-4);
+  color: var(--muted);
+  transition: all 0.2s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
+}
+
+.toggleButton:hover {
+  background-color: var(--card);
+  color: var(--text);
+}
+
+/* Hide on mobile - only show on tablet+ */
+@media (max-width: 767px) {
+  .leftMenu {
+    display: none;
+  }
+}
+
+/* Tablet portrait - collapsible behavior */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .leftMenu {
+    z-index: 40;
+  }
+  
+  .leftMenu.collapsed {
+    width: 80px;
+  }
+  
+  .collapsed .menuLink {
+    justify-content: center;
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+}
+
+/* Desktop - always expanded */
+@media (min-width: 1024px) {
+  .leftMenu {
+    position: fixed;
+    width: 240px;
+  }
+  
+  .leftMenu .label {
+    opacity: 1 !important;
+    width: auto !important;
+    overflow: visible !important;
+  }
+  
+  .toggleButton {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leftMenu,
+  .menuLink,
+  .label,
+  .toggleButton {
+    transition: none;
+  }
+}
