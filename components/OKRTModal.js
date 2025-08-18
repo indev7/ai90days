@@ -1,0 +1,500 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import styles from './OKRTModal.module.css';
+
+const AREAS = ['Life', 'Work', 'Health', 'Finance', 'Education', 'Relationships'];
+const KR_UNITS = ['%', '$', 'count', 'hrs', 'days', 'points', 'users'];
+const VISIBILITY_OPTIONS = [
+  { value: 'private', label: 'Private' },
+  { value: 'team', label: 'Team' },
+  { value: 'org', label: 'Organization' }
+];
+
+// Generate quarter options for current and next 2 years
+const generateQuarterOptions = () => {
+  const quarters = [];
+  const currentYear = new Date().getFullYear();
+  
+  for (let year = currentYear; year <= currentYear + 2; year++) {
+    for (let quarter = 1; quarter <= 4; quarter++) {
+      quarters.push(`${year}-Q${quarter}`);
+    }
+  }
+  
+  return quarters;
+};
+
+export default function OKRTModal({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  okrt = null, 
+  parentOkrt = null,
+  mode = 'create' // 'create' or 'edit'
+}) {
+  const [formData, setFormData] = useState({
+    type: 'O',
+    title: '',
+    description: '',
+    area: '',
+    cycle_qtr: '',
+    visibility: 'private',
+    objective_kind: 'committed',
+    kr_target_number: '',
+    kr_unit: '%',
+    kr_baseline_number: '',
+    weight: 1.0,
+    task_status: 'todo',
+    due_date: '',
+    progress: 0
+  });
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const quarterOptions = generateQuarterOptions();
+
+  // Initialize form data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (mode === 'edit' && okrt) {
+        setFormData({
+          type: okrt.type,
+          title: okrt.title || '',
+          description: okrt.description || '',
+          area: okrt.area || '',
+          cycle_qtr: okrt.cycle_qtr || '',
+          visibility: okrt.visibility || 'private',
+          objective_kind: okrt.objective_kind || 'committed',
+          kr_target_number: okrt.kr_target_number || '',
+          kr_unit: okrt.kr_unit || '%',
+          kr_baseline_number: okrt.kr_baseline_number || '',
+          weight: okrt.weight || 1.0,
+          task_status: okrt.task_status || 'todo',
+          due_date: okrt.due_date || '',
+          progress: okrt.progress || 0
+        });
+      } else {
+        // Create mode - reset form and set parent if provided
+        const defaultType = parentOkrt ? 
+          (parentOkrt.type === 'O' ? 'K' : 'T') : 'O';
+          
+        setFormData({
+          type: defaultType,
+          title: '',
+          description: '',
+          area: parentOkrt?.area || '',
+          cycle_qtr: parentOkrt?.cycle_qtr || '',
+          visibility: 'private',
+          objective_kind: 'committed',
+          kr_target_number: '',
+          kr_unit: '%',
+          kr_baseline_number: '',
+          weight: 1.0,
+          task_status: 'todo',
+          due_date: '',
+          progress: 0
+        });
+      }
+      setErrors({});
+    }
+  }, [isOpen, mode, okrt, parentOkrt]);
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Common validations
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    }
+    
+    // Type-specific validations
+    if (formData.type === 'O') {
+      if (!formData.title.trim()) {
+        newErrors.title = 'Title is required for Objectives';
+      }
+    }
+    
+    if (formData.type === 'K') {
+      if (!formData.kr_target_number || formData.kr_target_number <= 0) {
+        newErrors.kr_target_number = 'Target number must be greater than 0';
+      }
+      if (!formData.kr_unit) {
+        newErrors.kr_unit = 'Unit is required for Key Results';
+      }
+    }
+    
+    if (formData.type === 'T' && formData.due_date) {
+      const dueDate = new Date(formData.due_date);
+      if (dueDate < new Date()) {
+        newErrors.due_date = 'Due date cannot be in the past';
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+    
+    setSaving(true);
+    
+    try {
+      const saveData = { ...formData };
+      
+      // Clean up type-specific fields
+      if (formData.type === 'O') {
+        delete saveData.kr_target_number;
+        delete saveData.kr_unit;
+        delete saveData.kr_baseline_number;
+        delete saveData.weight;
+        delete saveData.task_status;
+        delete saveData.due_date;
+      } else if (formData.type === 'K') {
+        delete saveData.objective_kind;
+        delete saveData.task_status;
+        delete saveData.due_date;
+      } else if (formData.type === 'T') {
+        delete saveData.objective_kind;
+        delete saveData.kr_target_number;
+        delete saveData.kr_unit;
+        delete saveData.kr_baseline_number;
+      }
+      
+      // Add parent ID if creating under a parent
+      if (mode === 'create' && parentOkrt) {
+        saveData.parent_id = parentOkrt.id;
+      }
+      
+      await onSave(saveData);
+      onClose();
+    } catch (error) {
+      console.error('Error saving OKRT:', error);
+      setErrors({ general: 'Failed to save OKRT. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getTypeLabel = (type) => {
+    switch (type) {
+      case 'O': return 'Objective';
+      case 'K': return 'Key Result';
+      case 'T': return 'Task';
+      default: return '';
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2>
+            {mode === 'edit' ? 'Edit' : 'Create'} {getTypeLabel(formData.type)}
+          </h2>
+          <button 
+            className={styles.closeButton}
+            onClick={onClose}
+            disabled={saving}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className={styles.modalBody}>
+          {errors.general && (
+            <div className={styles.errorMessage}>{errors.general}</div>
+          )}
+
+          {/* Type Selection (only for create mode) */}
+          {mode === 'create' && !parentOkrt && (
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Type</label>
+              <div className={styles.typeSelector}>
+                {['O', 'K', 'T'].map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`${styles.typeButton} ${
+                      formData.type === type ? styles.typeButtonActive : ''
+                    }`}
+                    onClick={() => handleInputChange('type', type)}
+                  >
+                    {type === 'O' && '🏆'} {type === 'K' && '📍'} {type === 'T' && '⛳'}
+                    {getTypeLabel(type)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Title (for Objectives) */}
+          {formData.type === 'O' && (
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                Title <span className={styles.required}>*</span>
+              </label>
+              <input
+                type="text"
+                className={`${styles.input} ${errors.title ? styles.inputError : ''}`}
+                value={formData.title}
+                onChange={e => handleInputChange('title', e.target.value)}
+                placeholder="Enter objective title"
+              />
+              {errors.title && <span className={styles.errorText}>{errors.title}</span>}
+            </div>
+          )}
+
+          {/* Description */}
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Description <span className={styles.required}>*</span>
+            </label>
+            <textarea
+              className={`${styles.textarea} ${errors.description ? styles.inputError : ''}`}
+              value={formData.description}
+              onChange={e => handleInputChange('description', e.target.value)}
+              placeholder="Enter detailed description"
+              rows={3}
+            />
+            {errors.description && <span className={styles.errorText}>{errors.description}</span>}
+          </div>
+
+          {/* Area and Cycle */}
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Area</label>
+              <select
+                className={styles.select}
+                value={formData.area}
+                onChange={e => handleInputChange('area', e.target.value)}
+              >
+                <option value="">Select area</option>
+                {AREAS.map(area => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Cycle Quarter</label>
+              <select
+                className={styles.select}
+                value={formData.cycle_qtr}
+                onChange={e => handleInputChange('cycle_qtr', e.target.value)}
+              >
+                <option value="">Select quarter</option>
+                {quarterOptions.map(quarter => (
+                  <option key={quarter} value={quarter}>{quarter}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Visibility and Progress */}
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Visibility</label>
+              <select
+                className={styles.select}
+                value={formData.visibility}
+                onChange={e => handleInputChange('visibility', e.target.value)}
+              >
+                {VISIBILITY_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Progress (%)</label>
+              <input
+                type="number"
+                className={styles.input}
+                value={formData.progress}
+                onChange={e => handleInputChange('progress', Number(e.target.value))}
+                min={0}
+                max={100}
+              />
+            </div>
+          </div>
+
+          {/* Type-specific fields */}
+          
+          {/* Objective-specific fields */}
+          {formData.type === 'O' && (
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Objective Kind</label>
+              <div className={styles.radioGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="objective_kind"
+                    value="committed"
+                    checked={formData.objective_kind === 'committed'}
+                    onChange={e => handleInputChange('objective_kind', e.target.value)}
+                  />
+                  Committed
+                </label>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="objective_kind"
+                    value="stretch"
+                    checked={formData.objective_kind === 'stretch'}
+                    onChange={e => handleInputChange('objective_kind', e.target.value)}
+                  />
+                  Stretch
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Key Result-specific fields */}
+          {formData.type === 'K' && (
+            <>
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>
+                    Target Number <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    className={`${styles.input} ${errors.kr_target_number ? styles.inputError : ''}`}
+                    value={formData.kr_target_number}
+                    onChange={e => handleInputChange('kr_target_number', Number(e.target.value))}
+                    min={0}
+                  />
+                  {errors.kr_target_number && (
+                    <span className={styles.errorText}>{errors.kr_target_number}</span>
+                  )}
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Unit</label>
+                  <select
+                    className={styles.select}
+                    value={formData.kr_unit}
+                    onChange={e => handleInputChange('kr_unit', e.target.value)}
+                  >
+                    {KR_UNITS.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Baseline Number</label>
+                  <input
+                    type="number"
+                    className={styles.input}
+                    value={formData.kr_baseline_number}
+                    onChange={e => handleInputChange('kr_baseline_number', Number(e.target.value))}
+                    min={0}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Weight</label>
+                  <input
+                    type="number"
+                    className={styles.input}
+                    value={formData.weight}
+                    onChange={e => handleInputChange('weight', Number(e.target.value))}
+                    min={0.1}
+                    max={5}
+                    step={0.1}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Task-specific fields */}
+          {formData.type === 'T' && (
+            <>
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Task Status</label>
+                  <select
+                    className={styles.select}
+                    value={formData.task_status}
+                    onChange={e => handleInputChange('task_status', e.target.value)}
+                  >
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="done">Done</option>
+                    <option value="blocked">Blocked</option>
+                  </select>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Weight</label>
+                  <input
+                    type="number"
+                    className={styles.input}
+                    value={formData.weight}
+                    onChange={e => handleInputChange('weight', Number(e.target.value))}
+                    min={0.1}
+                    max={5}
+                    step={0.1}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Due Date</label>
+                <input
+                  type="date"
+                  className={`${styles.input} ${errors.due_date ? styles.inputError : ''}`}
+                  value={formData.due_date}
+                  onChange={e => handleInputChange('due_date', e.target.value)}
+                />
+                {errors.due_date && <span className={styles.errorText}>{errors.due_date}</span>}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className={styles.modalFooter}>
+          <button 
+            className={styles.cancelButton}
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button 
+            className={styles.saveButton}
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

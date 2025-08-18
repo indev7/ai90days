@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { SessionProvider } from 'next-auth/react';
 import HeaderBar from '@/components/HeaderBar';
 import LeftMenu from '@/components/LeftMenu';
+import { CoachProvider } from '@/contexts/CoachContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import '@/styles/theme.css';
 import '@/styles/app.css';
@@ -119,19 +120,21 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <SessionProvider>
-          <HeaderBar user={user} />
-          <LeftMenu 
-            isCollapsed={isDesktop ? false : isMenuCollapsed} 
-            onToggle={isDesktop ? undefined : handleMenuToggle}
-          />
-          <main style={{
-            paddingTop: '72px',
-            paddingLeft: isDesktop ? '260px' : 
-                        isTablet && !isMenuCollapsed ? '260px' :
-                        isTablet ? '80px' : '0'
-          }}>
-            {children}
-          </main>
+          <CoachProvider>
+            <HeaderBar user={user} />
+            <LeftMenu 
+              isCollapsed={isDesktop ? false : isMenuCollapsed} 
+              onToggle={isDesktop ? undefined : handleMenuToggle}
+            />
+            <main style={{
+              paddingTop: '72px',
+              paddingLeft: isDesktop ? '260px' : 
+                          isTablet && !isMenuCollapsed ? '260px' :
+                          isTablet ? '80px' : '0'
+            }}>
+              {children}
+            </main>
+          </CoachProvider>
         </SessionProvider>
       </body>
     </html>

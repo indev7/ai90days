@@ -1,0 +1,121 @@
+import { NextResponse } from 'next/server';
+import { getSession } from '../../../../lib/auth';
+import { getOKRTById, updateOKRT, deleteOKRT } from '../../../../lib/db';
+
+// GET /api/okrt/[id] - Get a specific OKRT by ID
+export async function GET(request, { params }) {
+  try {
+    const session = await getSession();
+    if (!session?.sub) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const okrt = await getOKRTById(id);
+
+    if (!okrt) {
+      return NextResponse.json({ error: 'OKRT not found' }, { status: 404 });
+    }
+
+    // Check if user owns the OKRT or if it's publicly visible
+    if (okrt.owner_id.toString() !== session.sub.toString() && okrt.visibility === 'private') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    return NextResponse.json({ okrt });
+  } catch (error) {
+    console.error('Error fetching OKRT:', error);
+    return NextResponse.json({ error: 'Failed to fetch OKRT' }, { status: 500 });
+  }
+}
+
+// PUT /api/okrt/[id] - Update a specific OKRT
+export async function PUT(request, { params }) {
+  try {
+    const session = await getSession();
+    if (!session?.sub) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const okrt = await getOKRTById(id);
+
+    if (!okrt) {
+      return NextResponse.json({ error: 'OKRT not found' }, { status: 404 });
+    }
+
+    // Check if user owns the OKRT
+    if (okrt.owner_id.toString() !== session.sub.toString()) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const updateData = await request.json();
+    
+    // Validate type-specific fields
+    if (updateData.type && !['O', 'K', 'T'].includes(updateData.type)) {
+      return NextResponse.json({ error: 'Invalid type. Must be O, K, or T' }, { status: 400 });
+    }
+
+    // Clean up type-specific fields based on the OKRT type
+    const type = updateData.type || okrt.type;
+    
+    if (type === 'O') {
+      // Objectives don't have KR or Task specific fields
+      delete updateData.kr_target_number;
+      delete updateData.kr_unit;
+      delete updateData.kr_baseline_number;
+      delete updateData.weight;
+      delete updateData.task_status;
+      delete updateData.due_date;
+      delete updateData.recurrence_json;
+      delete updateData.blocked_by;
+    } else if (type === 'K') {
+      // Key Results don't have Objective or Task specific fields
+      delete updateData.objective_kind;
+      delete updateData.task_status;
+      delete updateData.due_date;
+      delete updateData.recurrence_json;
+      delete updateData.blocked_by;
+    } else if (type === 'T') {
+      // Tasks don't have Objective or KR specific fields
+      delete updateData.objective_kind;
+      delete updateData.kr_target_number;
+      delete updateData.kr_unit;
+      delete updateData.kr_baseline_number;
+    }
+
+    const updatedOKRT = await updateOKRT(id, updateData);
+    return NextResponse.json({ okrt: updatedOKRT });
+  } catch (error) {
+    console.error('Error updating OKRT:', error);
+    return NextResponse.json({ error: 'Failed to update OKRT' }, { status: 500 });
+  }
+}
+
+// DELETE /api/okrt/[id] - Delete a specific OKRT
+export async function DELETE(request, { params }) {
+  try {
+    const session = await getSession();
+    if (!session?.sub) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const okrt = await getOKRTById(id);
+
+    if (!okrt) {
+      return NextResponse.json({ error: 'OKRT not found' }, { status: 404 });
+    }
+
+    // Check if user owns the OKRT
+    if (okrt.owner_id.toString() !== session.sub.toString()) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await deleteOKRT(id);
+    return NextResponse.json({ message: 'OKRT deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting OKRT:', error);
+    return NextResponse.json({ error: 'Failed to delete OKRT' }, { status: 500 });
+  }
+}
