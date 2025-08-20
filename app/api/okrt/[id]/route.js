@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTById, updateOKRT, deleteOKRT } from '../../../../lib/db';
+import { getOKRTById, updateOKRT, deleteOKRTCascade } from '../../../../lib/db';
 
 // GET /api/okrt/[id] - Get a specific OKRT by ID
 export async function GET(request, { params }) {
@@ -112,8 +112,8 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await deleteOKRT(id);
-    return NextResponse.json({ message: 'OKRT deleted successfully' });
+    await deleteOKRTCascade(id);
+    return NextResponse.json({ message: 'OKRT (and its children) deleted successfully' });
   } catch (error) {
     console.error('Error deleting OKRT:', error);
     return NextResponse.json({ error: 'Failed to delete OKRT' }, { status: 500 });
