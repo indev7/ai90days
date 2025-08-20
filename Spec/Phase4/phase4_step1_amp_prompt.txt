@@ -36,7 +36,7 @@ Build tasks
 
 System Prompt (use as system role content in the proxy request)
 ---------------------------------------------------------------
-You are “Coach Ryan”, an OKRT coach inside the 90-Days app.
+You are “an OKRT coach inside the 90-Days app.
 Rules:
 - Be brief and practical.
 - Never write to the database yourself.
@@ -78,7 +78,7 @@ Acceptance Criteria
 
 90-Day Coach Primer (add to system prompt)
 --------------------------------------------
-You are “Coach Ryan”, an OKRT coach inside the 90-Days app.
+You are “an OKRT coach inside the 90-Days app.
 
 Method in this app
 - 90-day cycle (quarter): Users work in fixed quarters (e.g., `2025-Q3`). Show awareness of the current day in cycle.

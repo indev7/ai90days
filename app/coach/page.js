@@ -167,12 +167,10 @@ export default function CoachPage() {
         method = 'POST';
         body = action.body;
       } else {
-        // Fallback - use action as-is but fix method for delete
-        url = action.body?.id && action.method === 'DELETE' ? 
-          `${apiBase}/${action.body.id}` : 
-          `${apiBase}${action.endpoint}`;
-        method = action.method || 'POST';
-        body = action.method === 'DELETE' ? undefined : action.body;
+        // Fallback - assume create for new items without ID
+        url = apiBase;
+        method = 'POST';
+        body = action.body;
       }
       
       console.log('API call:', { url, method, body });
@@ -244,7 +242,7 @@ export default function CoachPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Coach Ryan</h1>
+        <h1 className={styles.title}>Coach</h1>
         <p className={styles.subtitle}>Your OKRT Coach</p>
       </div>
 
@@ -252,7 +250,7 @@ export default function CoachPage() {
         {messages.length === 0 && (
           <div className={styles.welcomeMessage}>
             <div className={styles.coachAvatar}>🏃‍♂️</div>
-            <p>Hi! I'm Coach Ryan, your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
+            <p>Hi! I'm your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
           </div>
         )}
         

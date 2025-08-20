@@ -80,7 +80,7 @@ async function getOKRTContext(userId) {
       
       // Get KRs for this objective (limit 3)
       const krs = await db.all(`
-        SELECT id, type, title, kr_target_number, kr_unit, progress
+        SELECT id, type, description, kr_target_number, kr_unit, progress
         FROM okrt 
         WHERE owner_id = ? AND parent_id = ? AND type = 'K'
         ORDER BY created_at DESC
@@ -93,14 +93,14 @@ async function getOKRTContext(userId) {
         const krData = {
           id: kr.id,
           type: 'K',
-          title: kr.title,
+          description: kr.description,
           target: `${kr.kr_target_number} ${kr.kr_unit}`,
           progress: kr.progress
         };
         
         // Get tasks for this KR (limit 3)
         const tasks = await db.all(`
-          SELECT id, type, title, task_status, due_date, progress
+          SELECT id, type, description, task_status, due_date, progress
           FROM okrt 
           WHERE owner_id = ? AND parent_id = ? AND type = 'T'
           ORDER BY task_status = 'in_progress' DESC, created_at DESC
@@ -110,7 +110,7 @@ async function getOKRTContext(userId) {
         krData.tasks = tasks.map(task => ({
           id: task.id,
           type: 'T',
-          title: task.title,
+          description: task.description,
           status: task.task_status,
           due_date: task.due_date,
           progress: task.progress
@@ -144,20 +144,27 @@ function getSystemPrompt(okrtContext) {
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
 
-  return `You are "Coach Ryan", an OKRT coach inside the 90-Days app.
+  return `You are "an OKRT coach inside the 90-Days app.
 
 Method in this app:
 - 90-day cycle (quarter): Users work in fixed quarters (e.g., 2025-Q3). Current quarter: ${timeCtx.currentQuarter}.
 - Objective (O): Inspiring, directional outcome. Fields: title, description, area (Life/Work/Health), cycle_qtr, status (D/A/C), visibility (private/team/org), objective_kind (committed/stretch).
-- Key Result (K): Must be measurable. Fields: title, kr_target_number, kr_unit (%, $, count, hrs), optional kr_baseline_number, weight (default 1.0).
-- Task (T): Action step for a KR. Fields: title, optional due_date, task_status (todo/in_progress/done/blocked), optional recurrence_json, weight.
+- Key Result (K): Must be measurable. Fields: description, kr_target_number, kr_unit (%, $, count, hrs), optional kr_baseline_number, weight (default 1.0).
+- Task (T): Action step for a KR. Fields: description, optional due_date, task_status (todo/in_progress/done/blocked), optional recurrence_json, weight.
 - Progress: progress is 0–100. The coach may propose updates but never writes to DB.
 
 Rules:
+- Do not include mardown or back ticks in your response
 - Be brief and practical.
+- Be helpful and proactive - suggest specific titles, descriptions, and key results based on user input rather than just asking for them.
 - Never write to the database yourself.
 - IMPORTANT: When deleting a parent (Objective or KR), you MUST generate separate delete actions for ALL children first, then the parent last. The API only deletes single items, not cascades.
 - If the user's intent is to CREATE/UPDATE/DELETE an OKRT item, propose it and ALWAYS append exactly one fenced block:
+BLOCK FORMAT (must match exactly)
+- The block MUST start with "<ACTIONS_JSON>" on its own line and end with "</ACTIONS_JSON>" on its own line.
+- !!!VERY IMPORTANT!!!Do NOT wrap out put in backticks or markdown. No bold, no code fences, no extra braces.
+- The block MUST be the last thing in the reply (no text after it).
+- Do NOT print any other JSON outside this block.
 
 <ACTIONS_JSON>{
   "intent": "<CREATE_OBJECTIVE|ADD_KR|ADD_TASK|UPDATE_TASK_STATUS|UPDATE_KR_PROGRESS|RENAME|DELETE|GENERAL_CHAT>",
@@ -181,11 +188,12 @@ API Examples:
 - UPDATE: endpoint="/update", method="PUT", body={"id": 123, "title": "new title"}  
 - CREATE: endpoint="/create", method="POST", body={"type": "O", "title": "objective"}
 
-- CRITICAL: Only include action buttons when you have ALL required information to complete the action. If ANY information is missing, do NOT include action buttons.
-- If information is missing, ask ONE targeted question and set "status":"COLLECTING" with empty "actions":[] array.
-- Only set "status":"READY" and include action buttons when you have complete information to proceed.
+- When users provide vague requests, suggest specific titles and descriptions based on their input, then offer action buttons with your suggestions.
+- You should be proactive in filling in reasonable defaults and suggestions rather than asking users to provide every detail.
+- If you can reasonably infer missing information from context, suggest it and include action buttons.
 - If the user is not requesting OKRT changes, answer helpfully and set "intent":"GENERAL_CHAT".
-- Keep responses short. Use only information given in the conversation; do not invent IDs.${timeBlock}${contextBlock}`;
+- Keep responses short. Use only information given in the conversation; do not invent IDs.${timeBlock}${contextBlock}`
+;
 }
 
 export async function POST(request) {
@@ -199,6 +207,11 @@ export async function POST(request) {
     const userId = parseInt(session.sub);
 
     const { messages } = await request.json();
+
+    console.log('\n=== LLM Chat Request ===');
+    console.log('User ID:', userId);
+    console.log('Messages:', JSON.stringify(messages, null, 2));
+
     
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
@@ -208,6 +221,10 @@ export async function POST(request) {
     const okrtContext = await getOKRTContext(userId);
     const systemPrompt = getSystemPrompt(okrtContext);
 
+    console.log('\n=== System Prompt ===');
+    console.log(systemPrompt);
+
+   
     // Prepare messages for LLM
     const llmMessages = [
       { role: 'system', content: systemPrompt },
@@ -221,7 +238,7 @@ export async function POST(request) {
     
     if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-      const model = process.env.LLM_CHAT_MODEL || 'llama3:latest';
+      const model = process.env.LLM_CHAT_MODEL || 'llama3.2:latest';
       
       const response = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -240,6 +257,9 @@ export async function POST(request) {
       }
 
       const data = await response.json();
+            // Log raw LLM response
+      console.log('\n=== LLM Raw Response ===');
+      console.log(data.message?.content || '');
       const text = data.message?.content || '';
       
       // Parse ACTIONS_JSON block
