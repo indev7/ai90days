@@ -7,7 +7,6 @@ import styles from './page.module.css';
 
 // OKRT item component for hierarchical display
 function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild }) {
-  const [expanded, setExpanded] = useState(true);
   const getIcon = (type) => {
     switch (type) {
       case 'O': return '🏆';
@@ -89,8 +88,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
   const statusBadge = getStatusBadge(okrt.status);
   const taskStatus = okrt.type === 'T' ? getTaskStatus(okrt.task_status) : null;
 
-  const hasChildren = children && children.length > 0;
-
   return (
     <div className={styles.okrtItem}>
       <div className={`${styles.okrtHeader} ${(okrt.type === 'O' || okrt.type === 'K') ? styles.objectiveHeader : ''}`}>
@@ -103,53 +100,22 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               style={{ cursor: 'pointer' }}
             >
               {okrt.title && <h3 className={styles.okrtTitle}>{okrt.title}</h3>}
-              {okrt.description && (
-                <p className={`${styles.okrtDescription} ${styles.objectiveDesc}`}>{okrt.description}</p>
-              )}
             </div>
             <div className={styles.badges}>
               <span className={`${styles.statusBadge} ${statusBadge.className}`}>
                 {statusBadge.label}
               </span>
             </div>
-            <div className={styles.actionsRow}>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Key Result"
-              >
-                + Add KR
-              </button>
-              <button
-                className={styles.iconButton}
-                onClick={(e) => { e.stopPropagation(); onEdit(okrt); }}
-                title="Edit"
-              >
-                ✎
-              </button>
-              <button
-                className={`${styles.iconButton} ${styles.deleteButton}`}
-                onClick={(e) => { e.stopPropagation(); onDelete(okrt); }}
-                title="Delete"
-              >
-                🗑
-              </button>
-              {hasChildren && (
-                <button 
-                  className={styles.toggleButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(prev => !prev);
-                  }}
-                  title={expanded ? 'Collapse' : 'Expand'}
-                >
-                  {expanded ? '▾' : '▸'}
-                </button>
-              )}
-            </div>
+            <button 
+              className={styles.addChildButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateChild(okrt);
+              }}
+              title="Add Key Result"
+            >
+              + Add KR
+            </button>
             <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
                 <div 
@@ -181,44 +147,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 )}
               </div>
             </div>
-            <div className={styles.actionsRow}>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Task"
-              >
-                + Add Task
-              </button>
-              <button
-                className={styles.iconButton}
-                onClick={(e) => { e.stopPropagation(); onEdit(okrt); }}
-                title="Edit"
-              >
-                ✎
-              </button>
-              <button
-                className={`${styles.iconButton} ${styles.deleteButton}`}
-                onClick={(e) => { e.stopPropagation(); onDelete(okrt); }}
-                title="Delete"
-              >
-                🗑
-              </button>
-              {hasChildren && (
-                <button 
-                  className={styles.toggleButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(prev => !prev);
-                  }}
-                  title={expanded ? 'Collapse' : 'Expand'}
-                >
-                  {expanded ? '▾' : '▸'}
-                </button>
-              )}
-            </div>
+            <button 
+              className={styles.addChildButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateChild(okrt);
+              }}
+              title="Add Task"
+            >
+              + Add Task
+            </button>
             <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
                 <div 
@@ -268,42 +206,26 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               {okrt.type !== 'T' && okrt.description && (
                 <p className={styles.okrtDescription}>{okrt.description}</p>
               )}
-
-              <div className={styles.actionsRow}>
-                <button
-                  className={styles.iconButton}
-                  onClick={(e) => { e.stopPropagation(); onEdit(okrt); }}
-                  title="Edit"
-                >
-                  ✎
-                </button>
-                <button
-                  className={`${styles.iconButton} ${styles.deleteButton}`}
-                  onClick={(e) => { e.stopPropagation(); onDelete(okrt); }}
-                  title="Delete"
-                >
-                  🗑
-                </button>
-                {hasChildren && (
-                  <button 
-                    className={styles.toggleButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpanded(prev => !prev);
-                    }}
-                    title={expanded ? 'Collapse' : 'Expand'}
-                  >
-                    {expanded ? '▾' : '▸'}
-                  </button>
-                )}
-              </div>
+              
 
             </div>
           </div>
         )}
       </div>
       
-      {expanded && children && children.length > 0 && (
+      {okrt.type === 'O' && okrt.description && (
+        <div className={styles.objectiveDescription}>
+          <p 
+            className={styles.okrtDescription} 
+            onClick={() => onEdit(okrt)} 
+            style={{ cursor: 'pointer' }}
+          >
+            {okrt.description}
+          </p>
+        </div>
+      )}
+      
+      {children && children.length > 0 && (
         <div className={styles.okrtChildren}>
           {children}
         </div>
@@ -505,7 +427,7 @@ export default function OKRTPage() {
           className={styles.createButton}
           onClick={handleCreateNew}
         >
-          + Add Objective
+          + Create New
         </button>
       </div>
 
