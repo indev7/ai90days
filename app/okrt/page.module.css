@@ -19,20 +19,19 @@
 }
 
 .createButton {
-  background: var(--accent-gradient);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
 }
 
 .createButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  background: var(--accent-color);
+  color: white;
 }
 
 .loading, .error {
@@ -225,6 +224,13 @@
   color: var(--text-secondary);
 }
 
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .taskMetaRow {
   display: -webkit-box;
   display: -ms-flexbox;
@@ -382,6 +388,47 @@
   color: white;
 }
 
+.toggleButton {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.iconButton {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.iconButton:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.deleteButton {
+  color: var(--error-color);
+  border-color: var(--error-color);
+}
+
+.deleteButton:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+.toggleButton:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
 .editButton {
   background: transparent;
   color: var(--accent-color);
@@ -448,4 +495,72 @@
     padding-left: 1rem;
     margin-left: 1.5rem;
   }
+
+  /* Mobile-first reflow: Title on first line, Status on second aligned with title, then progress/actions */
+  .objectiveLayout {
+    display: grid;
+    grid-template-columns: 2.75rem 1fr;
+    grid-template-areas:
+      "icon title"
+      "icon status"
+      "icon desc"
+      "icon progress"
+      "icon actions";
+    gap: 0.5rem 0.75rem;
+    align-items: start;
+  }
+  .objectiveLayout .okrtIcon { grid-area: icon; }
+  .objectiveLayout .okrtTitleSection { display: contents; }
+  .objectiveLayout .okrtTitle { grid-area: title; margin: 0; }
+  .objectiveLayout .objectiveDesc { grid-area: desc; }
+  .objectiveLayout .badges { grid-area: status; justify-content: flex-start; }
+  .objectiveLayout .progressContainer { grid-area: progress; width: 100%; }
+  .objectiveLayout .actionsRow { grid-area: actions; justify-self: end; }
+
+  .keyResultLayout {
+    display: grid;
+    grid-template-columns: 2.75rem 1fr;
+    grid-template-areas:
+      "icon title"
+      "icon desc"
+      "icon status"
+      "icon details"
+      "icon actions";
+    gap: 0.5rem 0.75rem;
+    align-items: start;
+  }
+  .keyResultLayout .okrtIcon { grid-area: icon; }
+  .keyResultLayout .okrtTitleSection { display: contents; }
+  .keyResultLayout .okrtTitle { grid-area: title; margin: 0; }
+  .keyResultLayout .okrtDescription { grid-area: desc; }
+  .keyResultLayout .krDetails { grid-area: details; }
+  .keyResultLayout .progressContainer { grid-area: status; width: 100%; }
+  .keyResultLayout .actionsRow { grid-area: actions; justify-self: end; }
+
+  .okrtMain {
+    display: grid;
+    grid-template-columns: 2.75rem 1fr;
+    grid-template-areas:
+      "icon title"
+      "icon desc"
+      "icon status"
+      "icon due";
+    gap: 0.5rem 0.75rem;
+    align-items: start;
+  }
+  .okrtMain .okrtIcon { grid-area: icon; }
+  .okrtMain .okrtContent { display: contents; }
+  .okrtMain .okrtTitleRow { grid-area: title; margin: 0; }
+  .okrtMain .taskMetaRow { display: contents; }
+  .okrtMain .taskMetaRow .progressContainer { grid-area: status; width: 100%; }
+  .okrtMain .okrtDescription { grid-area: desc; }
+  .okrtMain .dueDate { grid-area: due; }
+  .okrtMain .actionsRow { grid-area: actions; justify-self: end; }
+
+  .okrtTitle { font-size: 1.1rem; }
+  .progressContainer { margin-top: 0.1rem; width: 100%; }
+  .progressBar { width: 100%; }
+  .progressText { text-align: right; }
+  .objectiveDescription { margin-left: 0; margin-top: 0.25rem; }
+  .addChildButton { width: auto; padding: 0.35rem 0.7rem; }
 }
