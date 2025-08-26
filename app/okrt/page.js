@@ -123,20 +123,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               >
                 + Add KR
               </button>
-              <button
-                className={styles.iconButton}
-                onClick={(e) => { e.stopPropagation(); onEdit(okrt); }}
-                title="Edit"
-              >
-                ✎
-              </button>
-              <button
-                className={`${styles.iconButton} ${styles.deleteButton}`}
-                onClick={(e) => { e.stopPropagation(); onDelete(okrt); }}
-                title="Delete"
-              >
-                🗑
-              </button>
               {hasChildren && (
                 <button 
                   className={styles.toggleButton}
@@ -191,20 +177,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 title="Add Task"
               >
                 + Add Task
-              </button>
-              <button
-                className={styles.iconButton}
-                onClick={(e) => { e.stopPropagation(); onEdit(okrt); }}
-                title="Edit"
-              >
-                ✎
-              </button>
-              <button
-                className={`${styles.iconButton} ${styles.deleteButton}`}
-                onClick={(e) => { e.stopPropagation(); onDelete(okrt); }}
-                title="Delete"
-              >
-                🗑
               </button>
               {hasChildren && (
                 <button 
@@ -270,20 +242,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               )}
 
               <div className={styles.actionsRow}>
-                <button
-                  className={styles.iconButton}
-                  onClick={(e) => { e.stopPropagation(); onEdit(okrt); }}
-                  title="Edit"
-                >
-                  ✎
-                </button>
-                <button
-                  className={`${styles.iconButton} ${styles.deleteButton}`}
-                  onClick={(e) => { e.stopPropagation(); onDelete(okrt); }}
-                  title="Delete"
-                >
-                  🗑
-                </button>
                 {hasChildren && (
                   <button 
                     className={styles.toggleButton}
