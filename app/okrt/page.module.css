@@ -290,6 +290,70 @@
   flex-shrink: 0;
 }
 
+.progressDeleteButton {
+  background: transparent;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.progressDeleteButton:hover {
+  background: var(--surface-2);
+  color: var(--error-color);
+}
+
+/* Confirm modal */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirmModal {
+  background: var(--surface-0);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+.confirmTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.confirmText {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.confirmButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.deleteConfirmButton {
+  background: var(--error-color);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.deleteConfirmButton:hover { opacity: 0.9; }
+
 .progressBar {
   width: 80px;
   height: 6px;

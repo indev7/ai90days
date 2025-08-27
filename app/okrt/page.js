@@ -6,8 +6,7 @@ import OKRTModal from '@/components/OKRTModal';
 import styles from './page.module.css';
 
 // OKRT item component for hierarchical display
-function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild }) {
-  const [expanded, setExpanded] = useState(true);
+function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild, onRequestDelete }) {
   const getIcon = (type) => {
     switch (type) {
       case 'O': return '🏆';
@@ -89,8 +88,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
   const statusBadge = getStatusBadge(okrt.status);
   const taskStatus = okrt.type === 'T' ? getTaskStatus(okrt.task_status) : null;
 
-  const hasChildren = children && children.length > 0;
-
   return (
     <div className={styles.okrtItem}>
       <div className={`${styles.okrtHeader} ${(okrt.type === 'O' || okrt.type === 'K') ? styles.objectiveHeader : ''}`}>
@@ -123,16 +120,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               >
                 + Add KR
               </button>
-              {hasChildren && (
+              {children && children.length > 0 && (
                 <button 
                   className={styles.toggleButton}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setExpanded(prev => !prev);
+                    // parent handles expand via local state
                   }}
-                  title={expanded ? 'Collapse' : 'Expand'}
+                  title={'Collapse/Expand'}
                 >
-                  {expanded ? '▾' : '▸'}
+                  ▾
                 </button>
               )}
             </div>
@@ -144,6 +141,13 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 ></div>
               </div>
               <span className={styles.progressText}>{okrt.progress || 0}%</span>
+              <button
+                className={styles.progressDeleteButton}
+                title="Delete"
+                onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
+              >
+                🗑
+              </button>
             </div>
           </div>
         ) : okrt.type === 'K' ? (
@@ -178,16 +182,15 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               >
                 + Add Task
               </button>
-              {hasChildren && (
+              {children && children.length > 0 && (
                 <button 
                   className={styles.toggleButton}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setExpanded(prev => !prev);
                   }}
-                  title={expanded ? 'Collapse' : 'Expand'}
+                  title={'Collapse/Expand'}
                 >
-                  {expanded ? '▾' : '▸'}
+                  ▾
                 </button>
               )}
             </div>
@@ -199,6 +202,13 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 ></div>
               </div>
               <span className={styles.progressText}>{okrt.progress || 0}%</span>
+              <button
+                className={styles.progressDeleteButton}
+                title="Delete"
+                onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
+              >
+                🗑
+              </button>
             </div>
           </div>
         ) : (
@@ -233,6 +243,13 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                       ></div>
                     </div>
                     <span className={styles.progressText}>{okrt.progress || 0}%</span>
+                    <button
+                      className={styles.progressDeleteButton}
+                      title="Delete"
+                      onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
+                    >
+                      🗑
+                    </button>
                   </div>
                 </div>
               )}
@@ -240,28 +257,14 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               {okrt.type !== 'T' && okrt.description && (
                 <p className={styles.okrtDescription}>{okrt.description}</p>
               )}
-
-              <div className={styles.actionsRow}>
-                {hasChildren && (
-                  <button 
-                    className={styles.toggleButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpanded(prev => !prev);
-                    }}
-                    title={expanded ? 'Collapse' : 'Expand'}
-                  >
-                    {expanded ? '▾' : '▸'}
-                  </button>
-                )}
-              </div>
+              
 
             </div>
           </div>
         )}
       </div>
       
-      {expanded && children && children.length > 0 && (
+      {children && children.length > 0 && (
         <div className={styles.okrtChildren}>
           {children}
         </div>
@@ -280,6 +283,7 @@ export default function OKRTPage() {
   const [modalMode, setModalMode] = useState('create');
   const [editingOkrt, setEditingOkrt] = useState(null);
   const [parentOkrt, setParentOkrt] = useState(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -318,7 +322,6 @@ export default function OKRTPage() {
     }
   };
 
-  // Build hierarchical structure from flat array
   const buildHierarchy = (items) => {
     const itemMap = {};
     const rootItems = [];
@@ -349,6 +352,7 @@ export default function OKRTPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateChild={handleCreateChild}
+        onRequestDelete={openDeleteConfirm}
       >
         {item.children && item.children.length > 0 && renderOkrtTree(item.children)}
       </OKRTItem>
@@ -360,6 +364,29 @@ export default function OKRTPage() {
     setModalMode('edit');
     setParentOkrt(null);
     setShowModal(true);
+  };
+
+  const openDeleteConfirm = (okrt) => {
+    setDeleteConfirmItem(okrt);
+  };
+
+  const performDelete = async (okrt) => {
+    try {
+      const response = await fetch(`/api/okrt/${okrt.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        fetchOkrts();
+      } else {
+        const data = await response.json();
+        alert('Failed to delete OKRT: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Network error while deleting OKRT');
+    } finally {
+      setDeleteConfirmItem(null);
+    }
   };
 
   const handleDelete = async (okrt) => {
@@ -455,6 +482,9 @@ export default function OKRTPage() {
 
   const hierarchicalOkrts = buildHierarchy(okrts);
 
+  // Helper for type label
+  const typeLabel = (t) => (t === 'O' ? 'Objective' : t === 'K' ? 'Key Result' : 'Task');
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -493,6 +523,21 @@ export default function OKRTPage() {
         parentOkrt={parentOkrt}
         mode={modalMode}
       />
+
+      {deleteConfirmItem && (
+        <div className={styles.confirmOverlay} onClick={() => setDeleteConfirmItem(null)}>
+          <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.confirmTitle}>Confirm Delete</h3>
+            <p className={styles.confirmText}>
+              Do you want to delete this {typeLabel(deleteConfirmItem.type)}: {deleteConfirmItem.description || deleteConfirmItem.title || ''}?
+            </p>
+            <div className={styles.confirmButtons}>
+              <button className={styles.cancelButton} onClick={() => setDeleteConfirmItem(null)}>Cancel</button>
+              <button className={styles.deleteConfirmButton} onClick={() => performDelete(deleteConfirmItem)}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
