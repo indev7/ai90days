@@ -135,6 +135,35 @@
   box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
 }
 
+.actionForms {
+  margin-top: 1rem;
+}
+
+.actionForms form {
+  display: inline-block;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.actionForms button {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+}
+
+.actionForms button:hover {
+  background: var(--accent-color-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
+}
+
 .loadingMessage {
   display: flex;
   justify-content: flex-start;
