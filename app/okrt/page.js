@@ -6,7 +6,9 @@ import OKRTModal from '@/components/OKRTModal';
 import styles from './page.module.css';
 
 // OKRT item component for hierarchical display
-function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild, onRequestDelete }) {
+function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild, onRequestDelete, initialExpanded = false }) {
+  const [expanded, setExpanded] = useState(initialExpanded);
+  const hasChildren = Array.isArray(children) && children.length > 0;
   const getIcon = (type) => {
     switch (type) {
       case 'O': return '🏆';
@@ -109,30 +111,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 {statusBadge.label}
               </span>
             </div>
-            <div className={styles.actionsRow}>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Key Result"
-              >
-                + Add KR
-              </button>
-              {children && children.length > 0 && (
-                <button 
-                  className={styles.toggleButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // parent handles expand via local state
-                  }}
-                  title={'Collapse/Expand'}
-                >
-                  ▾
-                </button>
-              )}
-            </div>
             <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
                 <div 
@@ -145,9 +123,38 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 className={styles.progressDeleteButton}
                 title="Delete"
                 onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
+                aria-label="Delete"
               >
-                🗑
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
               </button>
+              <button 
+                className={styles.addChildButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChild(okrt);
+                }}
+                title="Add Key Result"
+              >
+                + Add KR
+              </button>
+              {hasChildren && (
+                <button 
+                  className={styles.toggleButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded(prev => !prev);
+                  }}
+                  title={expanded ? 'Collapse' : 'Expand'}
+                  aria-label="Toggle children"
+                >
+                  {expanded ? '▾' : '▸'}
+                </button>
+              )}
             </div>
           </div>
         ) : okrt.type === 'K' ? (
@@ -171,29 +178,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 )}
               </div>
             </div>
-            <div className={styles.actionsRow}>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Task"
-              >
-                + Add Task
-              </button>
-              {children && children.length > 0 && (
-                <button 
-                  className={styles.toggleButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  title={'Collapse/Expand'}
-                >
-                  ▾
-                </button>
-              )}
-            </div>
             <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
                 <div 
@@ -206,9 +190,38 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 className={styles.progressDeleteButton}
                 title="Delete"
                 onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
+                aria-label="Delete"
               >
-                🗑
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                  <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
               </button>
+              <button 
+                className={styles.addChildButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChild(okrt);
+                }}
+                title="Add Task"
+              >
+                + Add Task
+              </button>
+              {hasChildren && (
+                <button 
+                  className={styles.toggleButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded(prev => !prev);
+                  }}
+                  title={expanded ? 'Collapse' : 'Expand'}
+                  aria-label="Toggle children"
+                >
+                  {expanded ? '▾' : '▸'}
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -247,8 +260,14 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                       className={styles.progressDeleteButton}
                       title="Delete"
                       onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
+                      aria-label="Delete"
                     >
-                      🗑
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -264,7 +283,7 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
         )}
       </div>
       
-      {children && children.length > 0 && (
+      {hasChildren && expanded && (
         <div className={styles.okrtChildren}>
           {children}
         </div>
@@ -343,8 +362,8 @@ export default function OKRTPage() {
     return rootItems;
   };
 
-  const renderOkrtTree = (items) => {
-    return items.map(item => (
+  const renderOkrtTree = (items, isRoot = false) => {
+    return items.map((item, index) => (
       <OKRTItem
         key={item.id}
         okrt={item}
@@ -353,8 +372,9 @@ export default function OKRTPage() {
         onDelete={handleDelete}
         onCreateChild={handleCreateChild}
         onRequestDelete={openDeleteConfirm}
+        initialExpanded={isRoot && index === 0}
       >
-        {item.children && item.children.length > 0 && renderOkrtTree(item.children)}
+        {item.children && item.children.length > 0 && renderOkrtTree(item.children, false)}
       </OKRTItem>
     ));
   };
@@ -511,7 +531,7 @@ export default function OKRTPage() {
         </div>
       ) : (
         <div className={styles.okrtList}>
-          {renderOkrtTree(hierarchicalOkrts)}
+          {renderOkrtTree(hierarchicalOkrts, true)}
         </div>
       )}
 
