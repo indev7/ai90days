@@ -16,6 +16,14 @@ export function CoachProvider({ children }) {
     });
   };
 
+  const updateMessage = (messageId, updates) => {
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.id === messageId ? { ...msg, ...updates } : msg
+      )
+    );
+  };
+
   const clearMessages = () => {
     setMessages([]);
   };
@@ -28,6 +36,7 @@ export function CoachProvider({ children }) {
     <CoachContext.Provider value={{
       messages,
       addMessage,
+      updateMessage,
       clearMessages,
       isLoading,
       setLoading
