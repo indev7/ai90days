@@ -49,116 +49,93 @@ function getTimeContext() {
   };
 }
 
-// Clean object by removing null, undefined, empty strings, and empty arrays
-function cleanObject(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map(cleanObject).filter(item => {
-      if (typeof item === 'object' && item !== null) {
-        return Object.keys(item).length > 0;
-      }
-      return item !== null && item !== undefined && item !== '';
-    });
-  } else if (typeof obj === 'object' && obj !== null) {
-    return Object.entries(obj).reduce((acc, [key, value]) => {
-      if (
-        value !== null &&
-        value !== undefined &&
-        value !== '' &&
-        !(Array.isArray(value) && value.length === 0)
-      ) {
-        acc[key] = cleanObject(value);
-      }
-      return acc;
-    }, {});
-  }
-  return obj;
-}
-
-// Fetch user's OKRT context for the coach (include UUIDs and user info)
+// Fetch user's OKRT context for the coach (include UUIDs)
 async function getOKRTContext(userId) {
   try {
     const db = await getDatabase();
     const currentQuarter = getCurrentQuarter();
     
-    // Get user information
-    const user = await db.get(`
-      SELECT display_name 
-      FROM users 
-      WHERE id = ?
-    `, [userId]);
-    
-    const displayName = user?.display_name || 'User';
-    
     // Get objectives (prioritize current quarter, but include all)
     const objectives = await db.all(`
-      SELECT *
+      SELECT id, type, title, description, status, progress, cycle_qtr
       FROM okrt 
       WHERE owner_id = ? AND type = 'O'
       ORDER BY 
         CASE WHEN cycle_qtr = ? THEN 0 ELSE 1 END,
         status = 'A' DESC, 
         created_at DESC
-      LIMIT 3
+      
     `, [userId, currentQuarter]);
 
-    const context = {
-      user: {
-        displayName: displayName
-      },
-      objectives: []
-    };
+    const context = [];
     
     for (const obj of objectives) {
-      // Include all objective fields
-      const objData = { ...obj, krs: [] };
+      const objData = {
+        id: obj.id, // Include UUID for updates/deletes
+        type: 'O',
+        title: obj.title,
+        status: obj.status,
+        progress: obj.progress
+      };
       
-      // Get KRs for this objective (limit 3) - fetch all fields
+      // Get KRs for this objective (limit 3)
       const krs = await db.all(`
-        SELECT *
+        SELECT id, type, description, kr_target_number, kr_unit, progress
         FROM okrt 
         WHERE owner_id = ? AND parent_id = ? AND type = 'K'
         ORDER BY created_at DESC
-        LIMIT 3
+        
       `, [userId, obj.id]);
       
+      objData.krs = [];
+      
       for (const kr of krs) {
-        // Include all KR fields
-        const krData = { ...kr, tasks: [] };
+        const krData = {
+          id: kr.id, // Include UUID for updates/deletes
+          type: 'K',
+          description: kr.description,
+          target: `${kr.kr_target_number} ${kr.kr_unit}`,
+          progress: kr.progress
+        };
         
-        // Get tasks for this KR (limit 3) - fetch all fields
+        // Get tasks for this KR (limit 3)
         const tasks = await db.all(`
-          SELECT *
+          SELECT id, type, description, task_status, due_date, progress
           FROM okrt 
           WHERE owner_id = ? AND parent_id = ? AND type = 'T'
-          ORDER BY task_status = 'in_progress' DESC, created_at DESC
-          LIMIT 3
+          ORDER BY  created_at DESC
+          
         `, [userId, kr.id]);
         
-        // Include all task fields
-        krData.tasks = tasks;
+        krData.tasks = tasks.map(task => ({
+          id: task.id, // Include UUID for updates/deletes
+          type: 'T',
+          description: task.description,
+          status: task.task_status,
+          due_date: task.due_date,
+          progress: task.progress
+        }));
         
         objData.krs.push(krData);
       }
       
-      context.objectives.push(objData);
+      context.push(objData);
     }
     
-    return cleanObject(context);
+    return context;
   } catch (error) {
     console.error('Error fetching OKRT context:', error);
     return [];
   }
 }
 
-// System prompt for Coach Ryan (HTML forms with UUIDs for streaming)
+// System prompt for Coach Ryan
+// System prompt for Coach Ryan (HTML forms, hidden inputs only; KRs/Tasks use description; streaming-safe)
 function getSystemPrompt(okrtContext) {
   const timeCtx = getTimeContext();
-  const displayName = okrtContext.user?.displayName || 'User';
-  const objectives = okrtContext.objectives || [];
-  
-  const contextBlock = objectives.length > 0
-    ? `\n\nCONTEXT - Current User's Information and OKRTs:\nUser Display Name: ${displayName}\nNumber of Objectives: ${objectives.length}\nFull OKRT Data:\n${JSON.stringify(okrtContext, null, 2)}\nSummary: ${displayName} has ${objectives.length} objective(s) with ${objectives.reduce((total, obj) => total + obj.krs.length, 0)} key result(s).`
-    : `\n\nCONTEXT - Current User's Information and OKRTs:\nUser Display Name: ${displayName}\nNumber of Objectives: 0\nNo OKRTs found for this user in the current quarter.`;
+  const contextBlock = okrtContext.length > 0
+    ? `\n\nCONTEXT - Current User's OKRTs:\nNumber of Objectives: ${okrtContext.length}\nFull OKRT Data:\n${JSON.stringify(okrtContext, null, 2)}\nSummary: User has ${okrtContext.length} objective(s) with ${okrtContext.reduce((total, obj) => total + obj.krs.length, 0)} key result(s).`
+    : '\n\nCONTEXT - Current User\'s OKRTs:\nNumber of Objectives: 0\nNo OKRTs found for this user in the current quarter.';
 
   const timeBlock = `\n\nTIME CONTEXT:
 - Now (ISO): ${timeCtx.nowISO}
@@ -169,8 +146,6 @@ function getSystemPrompt(okrtContext) {
 - Quarter months: ${timeCtx.quarterMonths}`;
 
   return `You are "Coach Ryan", an OKRT coach inside the 90-Days app. You respond via STREAMING.
-
-You are currently coaching ${displayName}. Address them by their display name when appropriate and provide personalized guidance based on their specific OKRTs.
 
 CRITICAL SECURITY RULE: You must ONLY discuss data that appears in the CONTEXT section below. Do NOT make up, hallucinate, or reference any goals, objectives, key results, or tasks that are not explicitly listed in the CONTEXT section. If you mention data not in CONTEXT, it's a security breach.
 
@@ -317,7 +292,7 @@ CRITICAL: For CREATE operations, the data-endpoint must be "/api/okrt" (no UUID)
 </ACTION_HTML>
 
 Intent policy
-- Map user requests precisely (e.g., "add a KR" → ADD_KR; "update description" → UPDATE_DESCRIPTION).
+- Map user requests precisely (e.g., “add a KR” → ADD_KR; “update description” → UPDATE_DESCRIPTION).
 - If ANY required field is missing, ask ONE targeted question and DO NOT output ACTION_HTML yet.
 - Otherwise, output exactly one ACTION_HTML block as the LAST thing in the reply.
 - ALWAYS use actual UUIDs from CONTEXT, never placeholder text like "UUID_FROM_CONTEXT".
@@ -383,10 +358,12 @@ export async function POST(request) {
     
     if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
       
       console.log('Ollama URL:', ollamaUrl);
       console.log('Ollama Model:', model);
+
       
       const response = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -462,7 +439,7 @@ export async function POST(request) {
       
     } else if (provider === 'openai') {
       const apiKey = process.env.OPEN_AI_API_KEY;
-      const model = process.env.LLM_MODEL_NAME || 'gpt-4o';
+      const model = process.env.LLM_MODEL_NAME || 'gpt-4';
       
       console.log('OpenAI Model:', model);
       console.log('OpenAI API Key configured:', !!apiKey);
