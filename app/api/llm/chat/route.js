@@ -358,10 +358,12 @@ export async function POST(request) {
     
     if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
       
       console.log('Ollama URL:', ollamaUrl);
       console.log('Ollama Model:', model);
+
       
       const response = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',

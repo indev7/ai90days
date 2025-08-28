@@ -224,31 +224,11 @@ export default function OKRTModal({
             <div className={styles.errorMessage}>{errors.general}</div>
           )}
 
-          {/* Type Selection (only for create mode) */}
-          {mode === 'create' && !parentOkrt && (
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Type</label>
-              <div className={styles.typeSelector}>
-                {['O', 'K', 'T'].map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    className={`${styles.typeButton} ${
-                      formData.type === type ? styles.typeButtonActive : ''
-                    }`}
-                    onClick={() => handleInputChange('type', type)}
-                  >
-                    {type === 'O' && '🏆'} {type === 'K' && '📍'} {type === 'T' && '⛳'}
-                    {getTypeLabel(type)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Type selection removed - defaulting to Objective for create */}
 
           {/* Title (for Objectives) */}
           {formData.type === 'O' && (
-            <div className={styles.formGroup}>
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>
                 Title <span className={styles.required}>*</span>
               </label>
@@ -264,7 +244,7 @@ export default function OKRTModal({
           )}
 
           {/* Description */}
-          <div className={styles.formGroup}>
+          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
             <label className={styles.label}>
               Description <span className={styles.required}>*</span>
             </label>
@@ -343,7 +323,7 @@ export default function OKRTModal({
           
           {/* Objective-specific fields */}
           {formData.type === 'O' && (
-            <div className={styles.formGroup}>
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>Objective Kind</label>
               <div className={styles.radioGroup}>
                 <label className={styles.radioLabel}>
