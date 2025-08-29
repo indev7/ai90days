@@ -7,13 +7,13 @@ import styles from './MobileMenu.module.css';
 
 const topMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'profile' },
-  { href: '/goals', label: 'My Goals', icon: 'goals', disabled: true },
+  { href: '/okrt', label: 'My Goals', icon: 'goals'},
   { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: true },
   { href: '/new', label: 'New', icon: 'new', disabled: true },
 ];
 
 const bottomMenuItems = [
-  { href: '/coach', label: 'Coach', icon: 'coach', disabled: true },
+  { href: '/coach', label: 'Coach', icon: 'coach'},
   { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: true },
 ];
 
