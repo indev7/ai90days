@@ -313,14 +313,18 @@ export default function OKRTModal({
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Progress (%)</label>
-              <input
-                type="number"
-                className={styles.input}
-                value={formData.progress}
-                onChange={e => handleInputChange('progress', Number(e.target.value))}
-                min={0}
-                max={100}
-              />
+              <div>
+                <input
+                  type="range"
+                  className={styles.input}
+                  value={formData.progress}
+                  onChange={e => handleInputChange('progress', Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+                <div className={styles.helperText}>{formData.progress}%</div>
+              </div>
             </div>
           </div>
 
