@@ -62,13 +62,13 @@ export default function OKRTModal({
           type: okrt.type,
           title: okrt.title || '',
           description: okrt.description || '',
-          area: okrt.area || '',
-          cycle_qtr: okrt.cycle_qtr || '',
-          visibility: okrt.visibility || 'private',
+          area: okrt.type === 'O' ? (okrt.area || '') : '',
+          cycle_qtr: okrt.type === 'O' ? (okrt.cycle_qtr || '') : '',
+          visibility: okrt.type === 'O' ? (okrt.visibility || 'private') : 'private',
           objective_kind: okrt.objective_kind || 'committed',
           kr_target_number: okrt.kr_target_number || '',
           kr_unit: okrt.kr_unit || '%',
-          kr_baseline_number: okrt.kr_baseline_number || '',
+          kr_baseline_number: okrt.type === 'O' ? (okrt.kr_baseline_number || '') : '',
           weight: okrt.weight || 1.0,
           task_status: okrt.task_status || 'todo',
           due_date: okrt.due_date || '',
@@ -83,13 +83,13 @@ export default function OKRTModal({
           type: defaultType,
           title: '',
           description: '',
-          area: parentOkrt?.area || '',
-          cycle_qtr: parentOkrt?.cycle_qtr || '',
-          visibility: 'private',
+          area: defaultType === 'O' ? (parentOkrt?.area || '') : '',
+          cycle_qtr: defaultType === 'O' ? (parentOkrt?.cycle_qtr || '') : '',
+          visibility: defaultType === 'O' ? 'private' : 'private',
           objective_kind: 'committed',
           kr_target_number: '',
           kr_unit: '%',
-          kr_baseline_number: '',
+          kr_baseline_number: defaultType === 'O' ? '' : '',
           weight: 1.0,
           task_status: 'todo',
           due_date: '',
@@ -162,14 +162,15 @@ export default function OKRTModal({
       if (formData.type === 'O') {
         delete saveData.kr_target_number;
         delete saveData.kr_unit;
-        delete saveData.kr_baseline_number;
         delete saveData.weight;
         delete saveData.task_status;
         delete saveData.due_date;
+        // keep kr_baseline_number for Objectives
       } else if (formData.type === 'K') {
         delete saveData.objective_kind;
         delete saveData.task_status;
         delete saveData.due_date;
+        delete saveData.kr_baseline_number; // baseline only for Objectives
       } else if (formData.type === 'T') {
         delete saveData.objective_kind;
         delete saveData.kr_target_number;
@@ -258,53 +259,57 @@ export default function OKRTModal({
             {errors.description && <span className={styles.errorText}>{errors.description}</span>}
           </div>
 
-          {/* Area and Cycle */}
-          <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Area</label>
-              <select
-                className={styles.select}
-                value={formData.area}
-                onChange={e => handleInputChange('area', e.target.value)}
-              >
-                <option value="">Select area</option>
-                {AREAS.map(area => (
-                  <option key={area} value={area}>{area}</option>
-                ))}
-              </select>
-            </div>
+          {/* Area and Cycle (Objectives only) */}
+          {formData.type === 'O' && (
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Area</label>
+                <select
+                  className={styles.select}
+                  value={formData.area}
+                  onChange={e => handleInputChange('area', e.target.value)}
+                >
+                  <option value="">Select area</option>
+                  {AREAS.map(area => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </select>
+              </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Cycle Quarter</label>
-              <select
-                className={styles.select}
-                value={formData.cycle_qtr}
-                onChange={e => handleInputChange('cycle_qtr', e.target.value)}
-              >
-                <option value="">Select quarter</option>
-                {quarterOptions.map(quarter => (
-                  <option key={quarter} value={quarter}>{quarter}</option>
-                ))}
-              </select>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Cycle Quarter</label>
+                <select
+                  className={styles.select}
+                  value={formData.cycle_qtr}
+                  onChange={e => handleInputChange('cycle_qtr', e.target.value)}
+                >
+                  <option value="">Select quarter</option>
+                  {quarterOptions.map(quarter => (
+                    <option key={quarter} value={quarter}>{quarter}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Visibility and Progress */}
+          {/* Visibility (Objectives only) and Progress */}
           <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Visibility</label>
-              <select
-                className={styles.select}
-                value={formData.visibility}
-                onChange={e => handleInputChange('visibility', e.target.value)}
-              >
-                {VISIBILITY_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {formData.type === 'O' && (
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Visibility</label>
+                <select
+                  className={styles.select}
+                  value={formData.visibility}
+                  onChange={e => handleInputChange('visibility', e.target.value)}
+                >
+                  {VISIBILITY_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Progress (%)</label>
@@ -323,31 +328,33 @@ export default function OKRTModal({
           
           {/* Objective-specific fields */}
           {formData.type === 'O' && (
-            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>Objective Kind</label>
-              <div className={styles.radioGroup}>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="objective_kind"
-                    value="committed"
-                    checked={formData.objective_kind === 'committed'}
-                    onChange={e => handleInputChange('objective_kind', e.target.value)}
-                  />
-                  Committed
-                </label>
-                <label className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="objective_kind"
-                    value="stretch"
-                    checked={formData.objective_kind === 'stretch'}
-                    onChange={e => handleInputChange('objective_kind', e.target.value)}
-                  />
-                  Stretch
-                </label>
+            <>
+              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                <label className={styles.label}>Objective Kind</label>
+                <div className={styles.radioGroup}>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="objective_kind"
+                      value="committed"
+                      checked={formData.objective_kind === 'committed'}
+                      onChange={e => handleInputChange('objective_kind', e.target.value)}
+                    />
+                    Committed
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="objective_kind"
+                      value="stretch"
+                      checked={formData.objective_kind === 'stretch'}
+                      onChange={e => handleInputChange('objective_kind', e.target.value)}
+                    />
+                    Stretch
+                  </label>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Key Result-specific fields */}
@@ -385,17 +392,6 @@ export default function OKRTModal({
               </div>
 
               <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Baseline Number</label>
-                  <input
-                    type="number"
-                    className={styles.input}
-                    value={formData.kr_baseline_number}
-                    onChange={e => handleInputChange('kr_baseline_number', Number(e.target.value))}
-                    min={0}
-                  />
-                </div>
-
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Weight</label>
                   <input

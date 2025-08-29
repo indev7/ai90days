@@ -100,7 +100,6 @@
 /* OKRT Item */
 .okrtItem {
   background: var(--surface-1);
-  border: 2px solid var(--border-light);
   border-radius: 12px;
   margin-bottom: 1rem;
   transition: all 0.2s ease;
@@ -454,15 +453,25 @@
   color: white;
 }
 
-.toggleButton {
+.toggleSpan {
   background: transparent;
   color: var(--text-secondary);
-  border: 1px solid var(--border-light);
-  padding: 0.4rem 0.6rem;
+  /*border: 1px solid var(--border-light);*/
+  padding: 0;
   border-radius: 6px;
   font-size: 0.9rem;
-  cursor: pointer;
   transition: all 0.2s ease;
+  width: 30px;
+}
+.toggleButton{
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.expandImage{
+  margin-top: 5px;
+  width: 30px;
+  height: 30px;
 }
 .iconButton {
   background: transparent;
@@ -515,13 +524,12 @@
 /* Children */
 .okrtChildren {
   padding-left: 2rem;
-  border-left: 2px solid var(--border-light);
   margin-left: 2.75rem;
 }
 
 .okrtChildren .okrtItem {
   border-radius: 8px;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0rem;
 }
 
 .okrtChildren .okrtItem:last-child {

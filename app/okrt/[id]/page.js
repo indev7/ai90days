@@ -196,28 +196,30 @@ export default function OKRTDetailPage() {
 
         {/* Details Grid */}
         <div className={styles.detailsGrid}>
-          {/* Basic Info */}
-          <div className={styles.detailCard}>
-            <h3>Basic Information</h3>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Area:</span>
-              <span className={styles.detailValue}>{okrt.area || 'Not specified'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Cycle:</span>
-              <span className={styles.detailValue}>{okrt.cycle_qtr || 'Not specified'}</span>
-            </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Visibility:</span>
-              <span className={styles.detailValue}>{okrt.visibility}</span>
-            </div>
-            {okrt.weight !== null && (
+          {/* Basic Info (Objectives only) */}
+          {okrt.type === 'O' && (
+            <div className={styles.detailCard}>
+              <h3>Basic Information</h3>
               <div className={styles.detailRow}>
-                <span className={styles.detailLabel}>Weight:</span>
-                <span className={styles.detailValue}>{okrt.weight}</span>
+                <span className={styles.detailLabel}>Area:</span>
+                <span className={styles.detailValue}>{okrt.area || 'Not specified'}</span>
               </div>
-            )}
-          </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Cycle:</span>
+                <span className={styles.detailValue}>{okrt.cycle_qtr || 'Not specified'}</span>
+              </div>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Visibility:</span>
+                <span className={styles.detailValue}>{okrt.visibility}</span>
+              </div>
+              {okrt.weight !== null && (
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Weight:</span>
+                  <span className={styles.detailValue}>{okrt.weight}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Type-specific Details */}
           {okrt.type === 'O' && okrt.objective_kind && (
@@ -241,14 +243,6 @@ export default function OKRTDetailPage() {
                   {okrt.kr_target_number} {okrt.kr_unit}
                 </span>
               </div>
-              {okrt.kr_baseline_number !== null && (
-                <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>Baseline:</span>
-                  <span className={styles.detailValue}>
-                    {okrt.kr_baseline_number} {okrt.kr_unit}
-                  </span>
-                </div>
-              )}
             </div>
           )}
 

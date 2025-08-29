@@ -6,6 +6,7 @@
   --brand-secondary: #2b88d8; /* Lighter blue for secondary accents */
   --brand-accent: #00b7c3; /* Teal accent used across M365 visuals */
   --brand-success: #107c10; /* Fluent success green */
+  --brand-black: #000000; /* Fluent black */
 
   /* Extended Brand Palette (Fluent-style tints/shades) */
   --brand-50:  #eff6fc;  /* Lighter Alt */
@@ -80,7 +81,7 @@
   --accent-color: var(--brand-primary);
   --accent-color-dark: var(--brand-600);
   --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-  --success-color: var(--brand-success);
+  --success-color: var(--brand-black);
   --error-color: var(--danger);
   --text-primary: var(--text);
   --text-secondary: var(--text-secondary);

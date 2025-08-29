@@ -119,6 +119,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 ></div>
               </div>
               <span className={styles.progressText}>{okrt.progress || 0}%</span>
+              <button 
+                className={styles.addChildButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChild(okrt);
+                }}
+                title="Add Key Result"
+              >
+                + KR
+              </button>
               <button
                 className={styles.progressDeleteButton}
                 title="Delete"
@@ -132,17 +142,8 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
               </button>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Key Result"
-              >
-                + Add KR
-              </button>
-              {hasChildren && (
+              
+              <span className={styles.toggleSpan}>{hasChildren && (
                 <button 
                   className={styles.toggleButton}
                   onClick={(e) => {
@@ -152,9 +153,9 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   title={expanded ? 'Collapse' : 'Expand'}
                   aria-label="Toggle children"
                 >
-                  {expanded ? '▾' : '▸'}
+                  {expanded ? <img style={{width: '30px', height: '30px', alignSelf: 'center', marginTop: '5px'}} className="styles.expandImage" src="/expand-up-svgrepo-com.svg"/> : <img style={{width: '30px', height: '30px', alignSelf: 'center', marginTop: '5px'}} className="styles.toggleButton" src="/expand-down-svgrepo-com.svg"/>}
                 </button>
-              )}
+              )}</span>
             </div>
           </div>
         ) : okrt.type === 'K' ? (
@@ -169,14 +170,7 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               {okrt.description && (
                 <p className={styles.okrtDescription}>{okrt.description}</p>
               )}
-              <div className={styles.krDetails}>
-                
-                {okrt.kr_baseline_number && (
-                  <span className={styles.krBaseline}>
-                    | Baseline: {okrt.kr_baseline_number} {okrt.kr_unit}
-                  </span>
-                )}
-              </div>
+              <div className={styles.krDetails}></div>
             </div>
             <div className={styles.progressContainer}>
               <div className={styles.progressBar}>
@@ -186,6 +180,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 ></div>
               </div>
               <span className={styles.progressText}>{okrt.progress || 0}%</span>
+              <button 
+                className={styles.addChildButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChild(okrt);
+                }}
+                title="Add Task"
+              >
+                + Task
+              </button>
               <button
                 className={styles.progressDeleteButton}
                 title="Delete"
@@ -199,17 +203,8 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
               </button>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Task"
-              >
-                + Add Task
-              </button>
-              {hasChildren && (
+              
+              <span className={styles.toggleSpan}>{hasChildren && (
                 <button 
                   className={styles.toggleButton}
                   onClick={(e) => {
@@ -219,9 +214,9 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   title={expanded ? 'Collapse' : 'Expand'}
                   aria-label="Toggle children"
                 >
-                  {expanded ? '▾' : '▸'}
-                </button>
-              )}
+                  {expanded ? <img style={{width: '30px', height: '30px', alignSelf: 'center', marginTop: '5px'}} className="styles.expandImage" src="/expand-up-svgrepo-com.svg"/> : <img style={{width: '30px', height: '30px', alignSelf: 'center', marginTop: '5px'}} className="styles.toggleButton" src="/expand-down-svgrepo-com.svg"/>}
+                  </button>
+              )}</span>
             </div>
           </div>
         ) : (
@@ -513,7 +508,7 @@ export default function OKRTPage() {
           className={styles.createButton}
           onClick={handleCreateNew}
         >
-          + Add Objective
+          + Objective
         </button>
       </div>
 
