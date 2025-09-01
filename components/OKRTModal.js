@@ -45,6 +45,7 @@ export default function OKRTModal({
     kr_target_number: '',
     kr_unit: '%',
     kr_baseline_number: '',
+    header_image_url: '',
     weight: 1.0,
     task_status: 'todo',
     due_date: '',
@@ -52,6 +53,8 @@ export default function OKRTModal({
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageInputMode, setImageInputMode] = useState('url'); // 'url' or 'upload'
 
   const quarterOptions = generateQuarterOptions();
 
@@ -59,6 +62,7 @@ export default function OKRTModal({
   useEffect(() => {
     if (isOpen) {
       if (mode === 'edit' && okrt) {
+        const headerImageUrl = okrt.type === 'O' ? (okrt.header_image_url || '') : '';
         setFormData({
           type: okrt.type,
           title: okrt.title || '',
@@ -71,11 +75,14 @@ export default function OKRTModal({
           kr_target_number: okrt.kr_target_number || '',
           kr_unit: okrt.kr_unit || '%',
           kr_baseline_number: okrt.type === 'O' ? (okrt.kr_baseline_number || '') : '',
+          header_image_url: headerImageUrl,
           weight: okrt.weight || 1.0,
           task_status: okrt.task_status || 'todo',
           due_date: okrt.due_date || '',
           progress: okrt.progress || 0
         });
+        // Set input mode based on existing data
+        setImageInputMode(headerImageUrl ? 'url' : 'upload');
       } else {
         // Create mode - reset form and set parent if provided
         const defaultType = parentOkrt ? 
@@ -93,13 +100,17 @@ export default function OKRTModal({
           kr_target_number: '',
           kr_unit: '%',
           kr_baseline_number: defaultType === 'O' ? '' : '',
+          header_image_url: '',
           weight: 1.0,
           task_status: 'todo',
           due_date: '',
           progress: 0
         });
+        // Default to upload mode for new objectives
+        setImageInputMode('upload');
       }
       setErrors({});
+      setUploadingImage(false);
     }
   }, [isOpen, mode, okrt, parentOkrt]);
 
@@ -115,6 +126,63 @@ export default function OKRTModal({
         ...prev,
         [field]: undefined
       }));
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type on client side
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setErrors(prev => ({
+        ...prev,
+        header_image_url: 'Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.'
+      }));
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setErrors(prev => ({
+        ...prev,
+        header_image_url: 'File too large. Maximum size is 5MB.'
+      }));
+      return;
+    }
+
+    setUploadingImage(true);
+    setErrors(prev => ({ ...prev, header_image_url: undefined }));
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        handleInputChange('header_image_url', data.url);
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          header_image_url: data.error || 'Failed to upload image'
+        }));
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setErrors(prev => ({
+        ...prev,
+        header_image_url: 'Failed to upload image. Please try again.'
+      }));
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -169,16 +237,19 @@ export default function OKRTModal({
         delete saveData.task_status;
         delete saveData.due_date;
         // keep kr_baseline_number for Objectives
+        // keep header_image_url for Objectives
       } else if (formData.type === 'K') {
         delete saveData.objective_kind;
         delete saveData.task_status;
         delete saveData.due_date;
         delete saveData.kr_baseline_number; // baseline only for Objectives
+        delete saveData.header_image_url;
       } else if (formData.type === 'T') {
         delete saveData.objective_kind;
         delete saveData.kr_target_number;
         delete saveData.kr_unit;
         delete saveData.kr_baseline_number;
+        delete saveData.header_image_url;
       }
       
       // Add parent ID if creating under a parent
@@ -325,6 +396,98 @@ export default function OKRTModal({
                   <option value="C">Complete</option>
                 </select>
               </div>
+            </div>
+          )}
+
+          {/* Header image (Objectives only) */}
+          {formData.type === 'O' && (
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+              <label className={styles.label}>Header Image</label>
+              
+              {/* Input mode toggle */}
+              <div className={styles.imageInputToggle}>
+                <button
+                  type="button"
+                  className={`${styles.toggleButton} ${imageInputMode === 'url' ? styles.active : ''}`}
+                  onClick={() => setImageInputMode('url')}
+                >
+                  URL
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.toggleButton} ${imageInputMode === 'upload' ? styles.active : ''}`}
+                  onClick={() => setImageInputMode('upload')}
+                >
+                  Upload
+                </button>
+              </div>
+
+              {/* URL Input */}
+              {imageInputMode === 'url' && (
+                <input
+                  type="url"
+                  className={`${styles.input} ${errors.header_image_url ? styles.inputError : ''}`}
+                  value={formData.header_image_url}
+                  onChange={e => handleInputChange('header_image_url', e.target.value)}
+                  placeholder="https://..."
+                />
+              )}
+
+              {/* File Upload */}
+              {imageInputMode === 'upload' && (
+                <div className={styles.fileUploadArea}>
+                  <input
+                    type="file"
+                    id="headerImageUpload"
+                    className={styles.fileInput}
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploadingImage}
+                  />
+                  <label htmlFor="headerImageUpload" className={styles.fileUploadLabel}>
+                    {uploadingImage ? (
+                      'Uploading...'
+                    ) : (
+                      <>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <polyline points="7,10 12,15 17,10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                        Click to upload image or drag and drop
+                        <span className={styles.fileUploadHint}>PNG, JPG, GIF, WebP up to 5MB</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+              )}
+
+              {/* Error message */}
+              {errors.header_image_url && (
+                <span className={styles.errorText}>{errors.header_image_url}</span>
+              )}
+
+              {/* Image preview */}
+              {formData.header_image_url && (
+                <>
+                  <div className={styles.helperText}>Preview:</div>
+                  <div className={styles.imagePreviewContainer}>
+                    <img
+                      src={formData.header_image_url}
+                      alt="Header preview"
+                      className={styles.imagePreview}
+                    />
+                    <button
+                      type="button"
+                      className={styles.removeImageButton}
+                      onClick={() => handleInputChange('header_image_url', '')}
+                      title="Remove image"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

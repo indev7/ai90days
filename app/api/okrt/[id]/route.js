@@ -69,9 +69,11 @@ export async function PUT(request, { params }) {
       delete updateData.due_date;
       delete updateData.recurrence_json;
       delete updateData.blocked_by;
+      // keep header_image_url if provided
     } else if (type === 'K') {
       // Key Results don't have Objective or Task specific fields
       delete updateData.objective_kind;
+      delete updateData.header_image_url;
       delete updateData.task_status;
       delete updateData.due_date;
       delete updateData.recurrence_json;
@@ -79,6 +81,7 @@ export async function PUT(request, { params }) {
     } else if (type === 'T') {
       // Tasks don't have Objective or KR specific fields
       delete updateData.objective_kind;
+      delete updateData.header_image_url;
       delete updateData.kr_target_number;
       delete updateData.kr_unit;
       delete updateData.kr_baseline_number;

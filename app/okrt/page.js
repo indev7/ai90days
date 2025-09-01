@@ -316,6 +316,7 @@ export default function OKRTPage() {
   const [parentOkrt, setParentOkrt] = useState(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [warningMessage, setWarningMessage] = useState(null);
+  const [selectedObjectiveId, setSelectedObjectiveId] = useState(null);
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -343,7 +344,11 @@ export default function OKRTPage() {
       const data = await response.json();
       
       if (response.ok) {
-        setOkrts(data.okrts || []);
+        const list = data.okrts || [];
+        setOkrts(list);
+        // pick first Objective as default selection
+        const firstObjective = list.find(item => item.type === 'O');
+        setSelectedObjectiveId(prev => prev || firstObjective?.id || null);
       } else {
         setError(data.error || 'Failed to fetch OKRTs');
       }
@@ -390,6 +395,49 @@ export default function OKRTPage() {
         {item.children && item.children.length > 0 && renderOkrtTree(item.children, false)}
       </OKRTItem>
     ));
+  };
+
+  // Render an OKRT subtree with all levels expanded
+  const renderOkrtTreeExpanded = (items) => {
+    return items.map((item) => (
+      <OKRTItem
+        key={item.id}
+        okrt={item}
+        childrenData={item.children}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onCreateChild={handleCreateChild}
+        onRequestDelete={openDeleteConfirm}
+        initialExpanded={true}
+      >
+        {item.children && item.children.length > 0 && renderOkrtTreeExpanded(item.children)}
+      </OKRTItem>
+    ));
+  };
+
+  // Build a focused tree for a specific objective id
+  const renderSelectedObjective = (objectiveId) => {
+    if (!objectiveId) return null;
+    // Build a map to locate the selected objective with its children via hierarchy
+    const map = {};
+    okrts.forEach(i => { map[i.id] = { ...i, children: [] }; });
+    okrts.forEach(i => { if (i.parent_id && map[i.parent_id]) { map[i.parent_id].children.push(map[i.id]); } });
+    const selected = map[objectiveId];
+    if (!selected) return null;
+    return (
+      <OKRTItem
+        key={selected.id}
+        okrt={selected}
+        childrenData={selected.children}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onCreateChild={handleCreateChild}
+        onRequestDelete={openDeleteConfirm}
+        initialExpanded={true}
+      >
+        {selected.children && selected.children.length > 0 && renderOkrtTreeExpanded(selected.children)}
+      </OKRTItem>
+    );
   };
 
   const handleEdit = (okrt) => {
@@ -538,6 +586,8 @@ export default function OKRTPage() {
   }
 
   const hierarchicalOkrts = buildHierarchy(okrts);
+  const rootObjectives = hierarchicalOkrts.filter(item => item.type === 'O');
+  const selectedObjective = selectedObjectiveId;
 
   // Helper for type label
   const typeLabel = (t) => (t === 'O' ? 'Objective' : t === 'K' ? 'Key Result' : 'Task');
@@ -545,7 +595,7 @@ export default function OKRTPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>My Goals (OKRTs)</h1>
+        <h1 className={styles.title}>My Goals</h1>
         <button 
           className={styles.createButton}
           onClick={handleCreateNew}
@@ -567,9 +617,30 @@ export default function OKRTPage() {
           </button>
         </div>
       ) : (
-        <div className={styles.okrtList}>
-          {renderOkrtTree(hierarchicalOkrts, true)}
-        </div>
+        <>
+          <div className={styles.detailPane}>
+            {renderSelectedObjective(selectedObjective)}
+          </div>
+          <div className={styles.cardsHeaderRow}>
+            <h2 className={styles.sectionTitle}>All Objectives</h2>
+          </div>
+          <div className={styles.cardsGrid}>
+            {rootObjectives.map(obj => (
+              <div 
+                key={obj.id} 
+                className={`${styles.objectiveCard} ${selectedObjectiveId === obj.id ? styles.cardSelected : ''}`}
+                onClick={() => setSelectedObjectiveId(obj.id)}
+              >
+                {obj.header_image_url ? (
+                  <div className={styles.objectiveImage} style={{backgroundImage:`url(${obj.header_image_url})`, backgroundSize:'cover', backgroundPosition:'center'}} />
+                ) : (
+                  <div className={styles.objectiveImage} />
+                )}
+                <div className={styles.objectiveTitle}>{obj.title}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <OKRTModal

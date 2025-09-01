@@ -32,7 +32,7 @@ export async function POST(request) {
       type, parent_id, title, description, area, cycle_qtr,
       visibility = 'private', objective_kind, kr_target_number,
       kr_unit, kr_baseline_number, weight = 1.0, task_status,
-      due_date, recurrence_json, blocked_by
+      due_date, recurrence_json, blocked_by, header_image_url
     } = data;
 
     // Validate required fields based on type
@@ -65,6 +65,7 @@ export async function POST(request) {
       kr_target_number: type === 'K' ? kr_target_number : null,
       kr_unit: type === 'K' ? kr_unit : null,
       kr_baseline_number: type === 'K' ? kr_baseline_number : null,
+      header_image_url: type === 'O' ? header_image_url || null : null,
       weight: ['K', 'T'].includes(type) ? weight : null,
       task_status: type === 'T' ? (task_status || 'todo') : null,
       due_date: type === 'T' ? due_date : null,
