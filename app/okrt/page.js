@@ -107,6 +107,23 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               )}
             </div>
             <div className={styles.badges}>
+              {okrt.cycle_qtr && (
+                <span className={styles.infoBadge}>
+                  {okrt.cycle_qtr}
+                </span>
+              )}
+              {okrt.area && (
+                <span className={styles.infoBadge}>
+                  {okrt.area}
+                </span>
+              )}
+              {okrt.visibility && (
+                <span className={styles.infoBadge}>
+                  {okrt.visibility === 'private' ? 'Private' : 
+                   okrt.visibility === 'team' ? 'Team' : 
+                   okrt.visibility === 'org' ? 'Organization' : okrt.visibility}
+                </span>
+              )}
               <span className={`${styles.statusBadge} ${statusBadge.className}`}>
                 {statusBadge.label}
               </span>

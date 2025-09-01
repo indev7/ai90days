@@ -395,6 +395,16 @@
   letter-spacing: 0.05em;
 }
 
+.infoBadge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
 .statusDraft {
   background: #f3f4f6;
   color: #6b7280;
