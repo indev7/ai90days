@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTById, updateOKRT, deleteOKRTCascade } from '../../../../lib/db';
+import { getOKRTById, updateOKRT, deleteOKRT, getOKRTsByParent } from '../../../../lib/db';
 
 // GET /api/okrt/[id] - Get a specific OKRT by ID
 export async function GET(request, { params }) {
@@ -112,8 +112,21 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await deleteOKRTCascade(id);
-    return NextResponse.json({ message: 'OKRT (and its children) deleted successfully' });
+    // Check if the OKRT has children
+    const children = await getOKRTsByParent(id);
+    if (children && children.length > 0) {
+      const itemType = okrt.type === 'O' ? 'Objective' : okrt.type === 'K' ? 'Key Result' : 'Task';
+      const childType = okrt.type === 'O' ? 'Key Results' : okrt.type === 'K' ? 'Tasks' : 'sub-tasks';
+      
+      return NextResponse.json({ 
+        error: `Cannot delete ${itemType} with ${childType}`,
+        details: `This ${itemType} has ${children.length} ${childType}. Please delete all ${childType} first before deleting this ${itemType}.`
+      }, { status: 400 });
+    }
+
+    // If no children, proceed with deletion
+    await deleteOKRT(id);
+    return NextResponse.json({ message: 'OKRT deleted successfully' });
   } catch (error) {
     console.error('Error deleting OKRT:', error);
     return NextResponse.json({ error: 'Failed to delete OKRT' }, { status: 500 });

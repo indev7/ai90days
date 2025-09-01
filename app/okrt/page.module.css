@@ -583,7 +583,7 @@
     gap: 0.5rem 0.75rem;
     align-items: start;
   }
-  .objectiveLayout .okrtIcon { grid-area: icon; }
+  .objectiveLayout .okrtIcon { grid-area: icon; font-size: large }
   .objectiveLayout .okrtTitleSection { display: contents; }
   .objectiveLayout .okrtTitle { grid-area: title; margin: 0; }
   .objectiveLayout .objectiveDesc { grid-area: desc; }

@@ -298,6 +298,7 @@ export default function OKRTPage() {
   const [editingOkrt, setEditingOkrt] = useState(null);
   const [parentOkrt, setParentOkrt] = useState(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
+  const [warningMessage, setWarningMessage] = useState(null);
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -382,6 +383,8 @@ export default function OKRTPage() {
   };
 
   const openDeleteConfirm = (okrt) => {
+    // Always allow the delete confirmation dialog to open
+    // The backend will validate if deletion is allowed
     setDeleteConfirmItem(okrt);
   };
 
@@ -395,10 +398,21 @@ export default function OKRTPage() {
         fetchOkrts();
       } else {
         const data = await response.json();
-        alert('Failed to delete OKRT: ' + (data.error || 'Unknown error'));
+        // Show the API error message in a warning modal
+        setWarningMessage({
+          title: 'Cannot Delete',
+          message: data.details || data.error || 'Failed to delete OKRT',
+          itemType: okrt.type === 'O' ? 'Objective' : okrt.type === 'K' ? 'Key Result' : 'Task',
+          childType: okrt.type === 'O' ? 'Key Results' : okrt.type === 'K' ? 'Tasks' : 'sub-tasks'
+        });
       }
     } catch (err) {
-      alert('Network error while deleting OKRT');
+      setWarningMessage({
+        title: 'Network Error',
+        message: 'Network error while deleting OKRT',
+        itemType: 'Item',
+        childType: 'children'
+      });
     } finally {
       setDeleteConfirmItem(null);
     }
@@ -419,10 +433,21 @@ export default function OKRTPage() {
         fetchOkrts();
       } else {
         const data = await response.json();
-        alert('Failed to delete OKRT: ' + (data.error || 'Unknown error'));
+        // Show the API error message in a warning modal
+        setWarningMessage({
+          title: 'Cannot Delete',
+          message: data.details || data.error || 'Failed to delete OKRT',
+          itemType: okrt.type === 'O' ? 'Objective' : okrt.type === 'K' ? 'Key Result' : 'Task',
+          childType: okrt.type === 'O' ? 'Key Results' : okrt.type === 'K' ? 'Tasks' : 'sub-tasks'
+        });
       }
     } catch (err) {
-      alert('Network error while deleting OKRT');
+      setWarningMessage({
+        title: 'Network Error',
+        message: 'Network error while deleting OKRT',
+        itemType: 'Item',
+        childType: 'children'
+      });
     }
   };
 
@@ -549,6 +574,20 @@ export default function OKRTPage() {
             <div className={styles.confirmButtons}>
               <button className={styles.cancelButton} onClick={() => setDeleteConfirmItem(null)}>Cancel</button>
               <button className={styles.deleteConfirmButton} onClick={() => performDelete(deleteConfirmItem)}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {warningMessage && (
+        <div className={styles.confirmOverlay} onClick={() => setWarningMessage(null)}>
+          <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.confirmTitle}>{warningMessage.title}</h3>
+            <p className={styles.confirmText}>
+              {warningMessage.message}
+            </p>
+            <div className={styles.confirmButtons}>
+              <button className={styles.cancelButton} onClick={() => setWarningMessage(null)}>OK</button>
             </div>
           </div>
         </div>

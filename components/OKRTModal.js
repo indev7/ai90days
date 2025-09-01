@@ -40,6 +40,7 @@ export default function OKRTModal({
     area: '',
     cycle_qtr: '',
     visibility: 'private',
+    status: 'D',
     objective_kind: 'committed',
     kr_target_number: '',
     kr_unit: '%',
@@ -65,6 +66,7 @@ export default function OKRTModal({
           area: okrt.type === 'O' ? (okrt.area || '') : '',
           cycle_qtr: okrt.type === 'O' ? (okrt.cycle_qtr || '') : '',
           visibility: okrt.type === 'O' ? (okrt.visibility || 'private') : 'private',
+          status: okrt.status || 'D',
           objective_kind: okrt.objective_kind || 'committed',
           kr_target_number: okrt.kr_target_number || '',
           kr_unit: okrt.kr_unit || '%',
@@ -86,6 +88,7 @@ export default function OKRTModal({
           area: defaultType === 'O' ? (parentOkrt?.area || '') : '',
           cycle_qtr: defaultType === 'O' ? (parentOkrt?.cycle_qtr || '') : '',
           visibility: defaultType === 'O' ? 'private' : 'private',
+          status: 'D',
           objective_kind: 'committed',
           kr_target_number: '',
           kr_unit: '%',
@@ -292,9 +295,9 @@ export default function OKRTModal({
             </div>
           )}
 
-          {/* Visibility (Objectives only) and Progress */}
-          <div className={styles.formRow}>
-            {formData.type === 'O' && (
+          {/* Visibility and Status (Objectives only) */}
+          {formData.type === 'O' && (
+            <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Visibility</label>
                 <select
@@ -309,22 +312,36 @@ export default function OKRTModal({
                   ))}
                 </select>
               </div>
-            )}
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Progress (%)</label>
-              <div>
-                <input
-                  type="range"
-                  className={styles.input}
-                  value={formData.progress}
-                  onChange={e => handleInputChange('progress', Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-                <div className={styles.helperText}>{formData.progress}%</div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Status</label>
+                <select
+                  className={styles.select}
+                  value={formData.status}
+                  onChange={e => handleInputChange('status', e.target.value)}
+                >
+                  <option value="D">Draft</option>
+                  <option value="A">Active</option>
+                  <option value="C">Complete</option>
+                </select>
               </div>
+            </div>
+          )}
+
+          {/* Progress (full width) */}
+          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <label className={styles.label}>Progress (%)</label>
+            <div>
+              <input
+                type="range"
+                className={styles.input}
+                value={formData.progress}
+                onChange={e => handleInputChange('progress', Number(e.target.value))}
+                min={0}
+                max={100}
+                step={1}
+              />
+              <div className={styles.helperText}>{formData.progress}%</div>
             </div>
           </div>
 
@@ -396,7 +413,7 @@ export default function OKRTModal({
               </div>
 
               <div className={styles.formRow}>
-                <div className={styles.formGroup}>
+                <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                   <label className={styles.label}>Weight</label>
                   <input
                     type="number"
