@@ -68,15 +68,6 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
     }
   };
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      'D': { label: 'Draft', className: styles.statusDraft },
-      'A': { label: 'Active', className: styles.statusActive },
-      'C': { label: 'Complete', className: styles.statusComplete }
-    };
-    return badges[status] || { label: 'Unknown', className: '' };
-  };
-
   const getTaskStatus = (taskStatus) => {
     const statuses = {
       'todo': { label: 'To Do', className: styles.taskTodo },
@@ -303,6 +294,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
     </div>
   );
 }
+
+// Helper function to get status badge - moved outside OKRTItem so it can be used in main component
+const getStatusBadge = (status) => {
+  const badges = {
+    'D': { label: 'Draft', className: styles.statusDraft },
+    'A': { label: 'Active', className: styles.statusActive },
+    'C': { label: 'Complete', className: styles.statusComplete }
+  };
+  return badges[status] || { label: 'Unknown', className: '' };
+};
 
 export default function OKRTPage() {
   const router = useRouter();
@@ -622,23 +623,51 @@ export default function OKRTPage() {
             {renderSelectedObjective(selectedObjective)}
           </div>
           <div className={styles.cardsHeaderRow}>
-            <h2 className={styles.sectionTitle}>All Objectives</h2>
+            <h2 className={styles.sectionTitle}>All Goals</h2>
           </div>
           <div className={styles.cardsGrid}>
-            {rootObjectives.map(obj => (
-              <div 
-                key={obj.id} 
-                className={`${styles.objectiveCard} ${selectedObjectiveId === obj.id ? styles.cardSelected : ''}`}
-                onClick={() => setSelectedObjectiveId(obj.id)}
-              >
-                {obj.header_image_url ? (
-                  <div className={styles.objectiveImage} style={{backgroundImage:`url(${obj.header_image_url})`, backgroundSize:'cover', backgroundPosition:'center'}} />
-                ) : (
-                  <div className={styles.objectiveImage} />
-                )}
-                <div className={styles.objectiveTitle}>{obj.title}</div>
-              </div>
-            ))}
+            {rootObjectives.map(obj => {
+              const statusBadge = getStatusBadge(obj.status);
+              return (
+                <div 
+                  key={obj.id} 
+                  className={`${styles.objectiveCard} ${selectedObjectiveId === obj.id ? styles.cardSelected : ''}`}
+                  onClick={() => setSelectedObjectiveId(obj.id)}
+                >
+                  {obj.header_image_url ? (
+                    <div className={styles.objectiveImage} style={{backgroundImage:`url(${obj.header_image_url})`}} />
+                  ) : (
+                    <div className={styles.objectiveImage} />
+                  )}
+                  <div className={styles.objectiveCardContent}>
+                    <div className={styles.objectiveTitle}>{obj.title}</div>
+                    <p className={styles.objectiveDescriptionCard}>{obj.description}</p>
+                    <div className={styles.objectiveMeta}>
+                      <div className={styles.badgeRow}>
+                        {obj.cycle_qtr && <span className={styles.infoBadge}>Quarter: {obj.cycle_qtr}</span>}
+                        {obj.area && <span className={styles.infoBadge}>Area: {obj.area}</span>}
+                      </div>
+                      <div className={styles.badgeRow}>
+                        {obj.visibility && <span className={styles.infoBadge}>
+                          Visibility: {obj.visibility === 'private' ? 'Private' : 
+                           obj.visibility === 'team' ? 'Team' : 
+                           obj.visibility === 'org' ? 'Organization' : obj.visibility}
+                        </span>}
+                        <span className={`${styles.statusBadge} ${statusBadge.className}`}>
+                          Status: {statusBadge.label}
+                        </span>
+                      </div>
+                      <div className={styles.badgeRow}>
+                        <span className={styles.infoBadge}>
+                          Progress: {obj.progress || 0}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}

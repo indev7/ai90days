@@ -116,14 +116,14 @@
 
 .cardsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, 280px);
+  gap: 2rem;
   max-height: 38vh;
   overflow: auto;
   padding-bottom: 0.5rem;
   padding-top: 10px;
   padding-left: 10px;
-
+  justify-content: start;
 }
 
 .objectiveCard {
@@ -133,24 +133,95 @@
   overflow: hidden;
   cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  width: 280px;
+  height: 400px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .objectiveCard:hover { 
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  transform: scale(1.007);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.295);
   border-color: var(--accent-color);
 }
 
 .objectiveImage {
-  height: 120px;
+  width: 280px;
+  height: 160px;
   background: linear-gradient(135deg, rgba(124,58,237,.15), rgba(16,185,129,.15));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
 }
 
-.objectiveTitle {
-  padding: 0.75rem;
+.objectiveCardContent {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.75rem;
+}
+
+.objectiveCardContent .objectiveTitle {
   font-weight: 600;
   color: var(--text-primary);
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.3;
 }
+
+.objectiveDescriptionCard {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  flex: 1;
+  min-height: 4.2rem;
+}
+
+.objectiveMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.objectiveProgress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.objectiveProgress .progressBar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgb(208, 208, 208);
+}
+
+.objectiveProgress .progressText {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 35px;
+}
+
 
 .cardSelected {
   outline: 2px solid var(--accent-color);
@@ -457,7 +528,6 @@
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 500;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
