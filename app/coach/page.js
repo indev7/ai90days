@@ -5,26 +5,91 @@ import { useRouter } from 'next/navigation';
 import { useCoach } from '@/contexts/CoachContext';
 import styles from './page.module.css';
 
-// Action button component
-function ActionButtons({ actions, onActionClick }) {
-  if (!actions || actions.length === 0) return null;
+/* ---------- helpers ---------- */
+
+// Pretty labels for buttons from minimal 3-intent schema
+function labelForAction(action) {
+  const { intent, method, payload = {} } = action || {};
+  const noun =
+    payload?.type === 'O' ? 'Objective' :
+    payload?.type === 'K' ? 'Key Result' :
+    payload?.type === 'T' ? 'Task' :
+    'OKRT';
+
+  if (intent === 'CREATE_OKRT') {
+    return `Create ${noun}`;
+  }
+  if (intent === 'UPDATE_OKRT') {
+    // prioritize common fields for clarity
+    if (payload?.title) return `Rename Objective`;
+    if (typeof payload?.progress === 'number') return `Update ${noun} Progress`;
+    if (payload?.task_status) return `Update Task Status`;
+    if (payload?.description) return `Update ${noun} Description`;
+    return `Update ${noun}`;
+  }
+  if (intent === 'DELETE_OKRT') {
+    return `Delete ${noun}`;
+  }
+  // fallback to HTTP method for any unknowns
+  return `${method || 'POST'} ${noun}`;
+}
+
+// Normalize server action → client button model
+function normalizeActions(rawActions = []) {
+  return rawActions.map((a, idx) => {
+    const idFromPayload = a?.payload?.id;
+    const endpoint = a?.endpoint?.includes('[id]')
+      ? a.endpoint.replace('[id]', idFromPayload || '')
+      : a?.endpoint || '/api/okrt';
+    const label = labelForAction(a);
+
+    return {
+      key: `act-${idx}-${idFromPayload || Math.random().toString(36).slice(2)}`,
+      label,
+      endpoint,
+      method: a?.method || 'POST',
+      body: a?.payload || {},
+      intent: a?.intent || 'UPDATE_OKRT',
+    };
+  });
+}
+
+/* ---------- Action Buttons ---------- */
+
+function ActionButtons({ actions, onActionClick, onRunAll }) {
+  console.log('🎯 ActionButtons rendered with:', actions?.length, 'actions');
+  if (!actions || actions.length === 0) {
+    console.log('🎯 ActionButtons: No actions to render');
+    return null;
+  }
 
   return (
     <div className={styles.actionButtons}>
       {actions.map((action) => (
         <button
-          key={action.id}
+          key={action.key}
           className={styles.actionButton}
           onClick={() => onActionClick(action)}
+          title={JSON.stringify(action.body || {}, null, 2)}
         >
           {action.label}
         </button>
       ))}
+      {actions.length > 1 && (
+        <button
+          className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
+          onClick={onRunAll}
+          title="Execute all actions in order"
+        >
+          Run All
+        </button>
+      )}
     </div>
   );
 }
 
-// HTML form handler component
+/* ---------- HTML <ACTION_HTML> fallback ---------- */
+
 function HtmlFormHandler({ htmlContent, onFormSubmit }) {
   const containerRef = useRef(null);
 
@@ -33,47 +98,29 @@ function HtmlFormHandler({ htmlContent, onFormSubmit }) {
 
     const handleFormSubmit = async (e) => {
       e.preventDefault();
-      console.log('Form submit intercepted');
-      
       const form = e.target;
       let endpoint = form.dataset.endpoint;
       const method = form.dataset.method || 'POST';
-      
-      // Extract form data
+
       const formData = new FormData(form);
       const data = {};
-      for (const [key, value] of formData.entries()) {
-        data[key] = value;
-      }
-      
-      // Fix endpoint for CREATE operations - LLM sometimes puts UUID in wrong place
+      for (const [key, value] of formData.entries()) data[key] = value;
+
+      // Safety: ensure POST /api/okrt for creates
       if (method === 'POST' && data.type && endpoint !== '/api/okrt') {
-        console.log('🔧 Fixing CREATE endpoint from', endpoint, 'to /api/okrt');
         endpoint = '/api/okrt';
       }
-      
-      console.log('Form data:', { endpoint, method });
-      console.log('Extracted data:', data);
+
       onFormSubmit(endpoint, method, data);
     };
 
-    // Add event listeners to all forms in this container
     const forms = containerRef.current.querySelectorAll('form.coach-form');
-    console.log('Found coach forms:', forms.length);
-    
-    forms.forEach(form => {
-      form.addEventListener('submit', handleFormSubmit);
-    });
-
-    return () => {
-      forms.forEach(form => {
-        form.removeEventListener('submit', handleFormSubmit);
-      });
-    };
+    forms.forEach((form) => form.addEventListener('submit', handleFormSubmit));
+    return () => forms.forEach((form) => form.removeEventListener('submit', handleFormSubmit));
   }, [htmlContent, onFormSubmit]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={styles.actionForms}
       dangerouslySetInnerHTML={{ __html: htmlContent }}
@@ -81,42 +128,68 @@ function HtmlFormHandler({ htmlContent, onFormSubmit }) {
   );
 }
 
-// Message component
-function Message({ message, onActionClick, onRetry, onFormSubmit }) {
+/* ---------- Message ---------- */
+
+function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit }) {
   const isUser = message.role === 'user';
-  
-  // Parse HTML forms from message content
+
+  // Fallback: parse <ACTION_HTML> blocks if present (for legacy responses)
   const htmlMatch = message.content?.match(/<ACTION_HTML>([\s\S]*?)<\/ACTION_HTML>/);
-  const textContent = htmlMatch 
+  const textOnly = htmlMatch
     ? message.content.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '').trim()
     : message.content;
   const htmlContent = htmlMatch ? htmlMatch[1] : null;
-  
+
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
       <div className={styles.messageContent}>
         {message.error ? (
           <div className={styles.errorMessage}>
-            <p>{textContent}</p>
-            <button className={styles.retryButton} onClick={onRetry}>
-              Retry
-            </button>
+            <p>{textOnly}</p>
+            <button className={styles.retryButton} onClick={onRetry}>Retry</button>
           </div>
         ) : (
           <>
-            <p>{textContent}</p>
+            {/* Streamed assistant/user text */}
+            <p>{textOnly}</p>
+
+            {/* Show loading spinner when preparing actions */}
+            {!isUser && message.preparingActions && (
+              <div className={styles.actionsLoading}>
+                <div className={styles.spinner}></div>
+                <span>Preparing your actions...</span>
+              </div>
+            )}
+
+            {/* Show loading spinner when processing actions */}
+            {!isUser && message.processingActions && (
+              <div className={styles.actionsLoading}>
+                <div className={styles.spinner}></div>
+                <span>Processing actions...</span>
+              </div>
+            )}
+
+            {/* Render structured actions (new Responses API path) */}
+            {!isUser && message.actions?.length > 0 && (
+              <ActionButtons
+                actions={message.actions}
+                onActionClick={onActionClick}
+                onRunAll={onRunAll}
+              />
+            )}
+
+            {/* Legacy HTML form fallback (old path) */}
             {!isUser && htmlContent && (
               <HtmlFormHandler htmlContent={htmlContent} onFormSubmit={onFormSubmit} />
             )}
           </>
         )}
-        {!isUser && message.actions && (
-          <ActionButtons actions={message.actions} onActionClick={onActionClick} />
-        )}
       </div>
     </div>
   );
 }
+
+/* ---------- Page ---------- */
 
 export default function CoachPage() {
   const router = useRouter();
@@ -126,30 +199,20 @@ export default function CoachPage() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        } else {
-          router.push('/login');
-        }
+        if (response.ok) setUser((await response.json()).user);
+        else router.push('/login');
       } catch (err) {
         console.error('Auth check failed:', err);
         router.push('/login');
       }
     };
-
     checkAuth();
   }, [router]);
 
@@ -160,7 +223,7 @@ export default function CoachPage() {
       id: Date.now(),
       role: 'user',
       content: messageContent.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     addMessage(userMessage);
@@ -168,222 +231,256 @@ export default function CoachPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/llm/chat', {
+      const response = await fetch('/api/llm', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].slice(-10) // Send last 10 messages
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...messages, userMessage].slice(-10) }),
       });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Handle streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
-      
-      // Create initial message for streaming content
+
+      // Create assistant message to stream into
       const assistantMessageId = Date.now() + 1;
-      const assistantMessage = {
+      const assistantMsg = {
         id: assistantMessageId,
         role: 'assistant',
         content: '',
-        timestamp: new Date()
+        actions: [], // will fill after streaming finishes (if any)
+        timestamp: new Date(),
       };
-      
-      addMessage(assistantMessage);
-      
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim());
-          
-          for (const line of lines) {
-            try {
-              const data = JSON.parse(line);
+      addMessage(assistantMsg);
+
+      let textBuffer = '';
+      let pendingActions = [];
+      let processingActions = false;
+      let preparingActions = false;
+
+      // stream loop
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter((l) => l.trim());
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+
+            if (data.type === 'content') {
+              // append streamed text
+              textBuffer += data.data;
+              updateMessage(assistantMessageId, { content: textBuffer });
+            } else if (data.type === 'preparing_actions') {
+              // Show "Preparing your actions..." indicator
+              preparingActions = true;
+              updateMessage(assistantMessageId, { 
+                content: textBuffer,
+                preparingActions: true 
+              });
+            } else if (data.type === 'actions') {
+              // Actions are ready - show processing indicator
+              preparingActions = false;
+              processingActions = true;
+              updateMessage(assistantMessageId, { 
+                content: textBuffer,
+                preparingActions: false,
+                processingActions: true 
+              });
               
-              if (data.type === 'content') {
-                buffer += data.data;
-                
-                // Update the existing message content
-                updateMessage(assistantMessageId, { content: buffer });
-              } else if (data.type === 'done') {
-                console.log('Streaming complete');
-              }
-            } catch (e) {
-              console.error('Error parsing stream chunk:', e);
+              // retain actions; normalize for UI
+              pendingActions = normalizeActions(data.data || []);
+              
+              // Log results only at the end
+              console.log('\n=== COACH RESPONSE COMPLETE ===');
+              console.log('Text:', textBuffer);
+              console.log('Actions received:', data.data);
+              console.log('Normalized actions:', pendingActions);
+            } else if (data.type === 'done') {
+              // Final completion
             }
+          } catch (e) {
+            console.error('Stream parse error:', e, 'Line was:', line);
           }
         }
-      } catch (streamError) {
-        console.error('Streaming error:', streamError);
-        throw streamError;
       }
-      
+
+      // After stream ends: attach actions (if any) once
+      if (pendingActions.length > 0) {
+        updateMessage(assistantMessageId, { 
+          content: textBuffer,
+          actions: pendingActions,
+          preparingActions: false,
+          processingActions: false 
+        });
+      } else {
+        // Clear all indicators if no actions
+        updateMessage(assistantMessageId, { 
+          content: textBuffer,
+          preparingActions: false,
+          processingActions: false 
+        });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage = {
+      addMessage({
         id: Date.now() + 1,
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
         error: true,
-        timestamp: new Date()
-      };
-      addMessage(errorMessage);
+        timestamp: new Date(),
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFormSubmit = async (endpoint, method, data) => {
-    console.log('🚀 handleFormSubmit called with:', { endpoint, method, data });
+  // Execute a single action
+  const handleActionClick = async (action) => {
     setLoading(true);
-    
     try {
-      // Validate that we have actual data, not placeholders
-      // if (data.description === '[YOUR_TASK_DESCRIPTION]' || !data.description || data.description.startsWith('[')) {
-      //   throw new Error('Please provide a real task description, not a placeholder');
-      // }
+      // Handle generated UUIDs for CREATE operations
+      let payload = { ...action.body };
       
-      console.log('Form submission:', { endpoint, method, data });
-      
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: method !== 'DELETE' ? JSON.stringify(data) : undefined
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API error: ${response.status} - ${errorText}`);
+      // If this is a CREATE with a generated ID, remove it (database will generate real UUID)
+      if (action.method === 'POST' && payload.id && payload.id.startsWith('gen-')) {
+        delete payload.id;
       }
+      
+      const res = await fetch(action.endpoint, {
+        method: action.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
 
-      // Show success message
-      const successMessage = {
+      addMessage({
         id: Date.now(),
         role: 'assistant',
-        content: `✅ Task "${data.description}" added successfully!`,
-        timestamp: new Date()
-      };
+        content: `✅ ${action.label} completed successfully!`,
+        timestamp: new Date(),
+      });
+    } catch (err) {
+      console.error('Action error:', err);
+      addMessage({
+        id: Date.now(),
+        role: 'assistant',
+        content: `❌ Failed to execute "${action.label}". Please try again.`,
+        error: true,
+        timestamp: new Date(),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Execute all actions in order with UUID mapping
+  const handleRunAll = async (actions) => {
+    setLoading(true);
+    try {
+      const uuidMap = new Map(); // generated UUID -> real UUID
       
-      addMessage(successMessage);
-      
+      for (const action of actions) {
+        let payload = { ...action.body };
+        
+        // Handle generated UUIDs
+        if (action.method === 'POST') {
+          // For CREATE operations
+          if (payload.id && payload.id.startsWith('gen-')) {
+            // Remove generated ID - database will create real one
+            delete payload.id;
+          }
+          
+          // Map parent_id if it's a generated UUID
+          if (payload.parent_id && payload.parent_id.startsWith('gen-')) {
+            const realParentId = uuidMap.get(payload.parent_id);
+            if (realParentId) {
+              payload.parent_id = realParentId;
+            } else {
+              throw new Error(`Parent ${payload.parent_id} not found. Execute Objective creation first.`);
+            }
+          }
+        }
+        
+        const res = await fetch(action.endpoint, {
+          method: action.method,
+          headers: { 'Content-Type': 'application/json' },
+          body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
+        });
+        
+        if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
+        
+        // If this was a CREATE, store the real UUID for future actions
+        if (action.method === 'POST' && action.body?.id?.startsWith('gen-')) {
+          const result = await res.json();
+          if (result.id) {
+            uuidMap.set(action.body.id, result.id);
+            console.log(`UUID mapped: ${action.body.id} -> ${result.id}`);
+          }
+        }
+      }
+
+      addMessage({
+        id: Date.now(),
+        role: 'assistant',
+        content: `✅ All actions completed successfully!`,
+        timestamp: new Date(),
+      });
+    } catch (err) {
+      console.error('Run All error:', err);
+      addMessage({
+        id: Date.now(),
+        role: 'assistant',
+        content: `❌ Failed while executing actions. ${err.message}`,
+        error: true,
+        timestamp: new Date(),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Legacy HTML form submit (fallback path)
+  const handleFormSubmit = async (endpoint, method, data) => {
+    setLoading(true);
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'DELETE' ? undefined : JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+      addMessage({
+        id: Date.now(),
+        role: 'assistant',
+        content: `✅ Request completed successfully!`,
+        timestamp: new Date(),
+      });
     } catch (error) {
       console.error('Form submission error:', error);
-      const errorMessage = {
+      addMessage({
         id: Date.now(),
         role: 'assistant',
         content: `❌ ${error.message}`,
         error: true,
-        timestamp: new Date()
-      };
-      addMessage(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleActionClick = async (action) => {
-    setLoading(true);
-    
-    try {
-      const apiBase = process.env.NEXT_PUBLIC_OKRT_API_BASE || '/api/okrt';
-      
-      // Debug log the action
-      console.log('Action clicked:', action);
-      
-      // Map action endpoints to actual API structure
-      let url, method, body;
-      
-      if (action.endpoint === '/delete' && action.body?.id) {
-        // Delete endpoint: DELETE /api/okrt/[id]
-        url = `${apiBase}/${action.body.id}`;
-        method = 'DELETE';
-        body = undefined;
-      } else if (action.endpoint === '/update' && action.body?.id) {
-        // Update endpoint: PUT /api/okrt/[id]
-        url = `${apiBase}/${action.body.id}`;
-        method = 'PUT';
-        body = action.body;
-      } else if (action.endpoint === '/create') {
-        // Create endpoint: POST /api/okrt
-        url = apiBase;
-        method = 'POST';
-        body = action.body;
-      } else {
-        // Fallback - assume create for new items without ID
-        url = apiBase;
-        method = 'POST';
-        body = action.body;
-      }
-      
-      console.log('API call:', { url, method, body });
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: body ? JSON.stringify(body) : undefined
+        timestamp: new Date(),
       });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      // Show success message and refresh coach context
-      const successMessage = {
-        id: Date.now(),
-        role: 'assistant',
-        content: `✅ ${action.label} completed successfully!`,
-        timestamp: new Date()
-      };
-      
-      addMessage(successMessage);
-      
-    } catch (error) {
-      console.error('Action error:', error);
-      const errorMessage = {
-        id: Date.now(),
-        role: 'assistant',
-        content: `❌ Failed to ${action.label.toLowerCase()}. Please try again.`,
-        error: true,
-        timestamp: new Date()
-      };
-      addMessage(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleRetry = () => {
-    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-    if (lastUserMessage) {
-      sendMessage(lastUserMessage.content);
-    }
+    const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
+    if (lastUserMessage) sendMessage(lastUserMessage.content);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    sendMessage();
-  };
-
+  const handleSubmit = (e) => { e.preventDefault(); sendMessage(); };
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
   if (!user) {
@@ -408,27 +505,23 @@ export default function CoachPage() {
             <p>Hi! I'm your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
           </div>
         )}
-        
+
         {messages.map((message) => (
           <Message
             key={message.id}
             message={message}
             onActionClick={handleActionClick}
+            onRunAll={() => handleRunAll(message.actions || [])}
             onRetry={handleRetry}
             onFormSubmit={handleFormSubmit}
           />
         ))}
-        
+
         {isLoading && (
           <div className={styles.loadingMessage}>
-            <div className={styles.typingIndicator}>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
+            <div className={styles.typingIndicator}><span></span><span></span><span></span></div>
           </div>
         )}
-        
         <div ref={messagesEndRef} />
       </div>
 
@@ -444,11 +537,7 @@ export default function CoachPage() {
             disabled={isLoading}
             rows={1}
           />
-          <button
-            type="submit"
-            className={styles.sendButton}
-            disabled={isLoading || !input.trim()}
-          >
+          <button type="submit" className={styles.sendButton} disabled={isLoading || !input.trim()}>
             Send
           </button>
         </div>

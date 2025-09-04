@@ -168,13 +168,12 @@ function getSystemPrompt(okrtContext) {
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
 
-  return `You are "Coach Ryan", an OKRT coach inside the 90-Days app. You respond via STREAMING.
+  return `You are an OKRT Coach inside the 90-Days app.
+  You respond via STREAMING. 
+  You can send action buttons to create, update, delete users OKRTs in the system.
+  You are currently coaching ${displayName}. Provide personalized guidance based on your knowlege of OKRT system as preached by John Doer and Keith Cunningham.
 
-You are currently coaching ${displayName}. Address them by their display name when appropriate and provide personalized guidance based on their specific OKRTs.
-
-CRITICAL SECURITY RULE: You must ONLY discuss data that appears in the CONTEXT section below. Do NOT make up, hallucinate, or reference any goals, objectives, key results, or tasks that are not explicitly listed in the CONTEXT section. If you mention data not in CONTEXT, it's a security breach.
-
-Method in this app
+  Method in this app
 - 90-day cycle (quarter). Current quarter: ${timeCtx.currentQuarter}.
 - Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D/A/C), visibility (private/team/org), objective_kind (committed/stretch), progress (0–100).
 - Key Result (K): description (REQUIRED), kr_target_number, kr_unit (%, $, count, hrs), optional kr_baseline_number, weight (default 1.0), progress. KRs DO NOT use a title field.
@@ -183,7 +182,6 @@ Method in this app
 Rules (STRICT)
 - NO markdown, NO backticks, NO code fences, NO raw JSON dumps in the reply.
 - Be brief and practical; resolve vague dates with TIME CONTEXT; use concrete numbers.
-- Never write to the DB yourself.
 - Deleting a parent Objective or KR: propose child deletions FIRST, then the parent LAST (no cascade).
 - STREAMING UX: Begin with ONE short sentence summary. Then, if proposing actions, append exactly one HTML block at the end (see FORM CONTRACT). Do not put any text after that block.
 - IMPORTANT: Always use the actual UUID from CONTEXT when referencing existing OKRTs (not placeholders like "UUID_FROM_CONTEXT").
@@ -203,11 +201,10 @@ FORM CONTRACT (HTML with hidden inputs only; visible button only)
 </ACTION_HTML>
 - Allowed tags: form, input (type="hidden" only), button.
 - Each form MUST:
-  - use method="post"
   - include data-endpoint (exact API path) and data-method ("POST"|"PUT"|"DELETE")
   - contain ONLY hidden <input name="..."> payload fields and ONE visible <button type="submit">…</button>
   - NOT use the action= attribute.
-- Units: kr_unit ∈ {"count","%","$","hrs"} (choose correctly for the description).
+- Units: kr_unit ∈ {"count","%","$","hrs"} (choose correctly according to the description).
 - Use ACTUAL IDs from CONTEXT when referencing existing items (not placeholder text).
 
 Exact API endpoints
@@ -235,7 +232,7 @@ Required fields by intent (and hidden inputs to include)
 - DELETE (DELETE /api/okrt/[id])
   no body required
 
-HTML form templates (emit EXACTLY this shape; hidden inputs only)
+  HTML form templates (emit EXACTLY this shape; hidden inputs only)
 
 - Create Objective:
 <ACTION_HTML>
@@ -322,17 +319,150 @@ Intent policy
 - Otherwise, output exactly one ACTION_HTML block as the LAST thing in the reply.
 - ALWAYS use actual UUIDs from CONTEXT, never placeholder text like "UUID_FROM_CONTEXT".
 
+
+
+
 ${timeBlock}${contextBlock}`;
 }
+
+function getSystemPrompt2(okrtContext) {
+  const timeCtx = getTimeContext();
+  const displayName = okrtContext?.user?.displayName || 'User';
+  const objectives = okrtContext?.objectives || [];
+  const krCount = objectives.reduce((sum, o) => sum + ((o.krs && Array.isArray(o.krs)) ? o.krs.length : 0), 0);
+
+  const contextBlock = objectives.length > 0
+    ? `
+
+CONTEXT - Current User's Information and OKRTs:
+User Display Name: ${displayName}
+Number of Objectives: ${objectives.length}
+Full OKRT Data:
+${JSON.stringify(okrtContext, null, 2)}
+Summary: ${displayName} has ${objectives.length} objective(s) with ${krCount} key result(s).`
+    : `
+
+CONTEXT - Current User's Information and OKRTs:
+User Display Name: ${displayName}
+Number of Objectives: 0
+No OKRTs found for this user in the current quarter.`;
+
+  const timeBlock = `
+
+TIME CONTEXT:
+- Now (ISO): ${timeCtx.nowISO}
+- Timezone: ${timeCtx.timezone} (UTC${timeCtx.utcOffset})
+- Current quarter: ${timeCtx.currentQuarter}
+- Quarter window: ${timeCtx.quarterStart} → ${timeCtx.quarterEnd}
+- Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
+- Quarter months: ${timeCtx.quarterMonths}`;
+
+  return `You are an OKRT coach inside the "90Days App". The user opens you from the Coach menu to plan and maintain OKRs in 90-day cycles. You follow the OKR methods popularized by John Doerr (Intel) and ideas from Keith Cunningham. You recommend actions and provide executable buttons.
+
+SCOPE & DATA MODEL
+- Single table "okrt" stores Objective (O), Key Result (K), and Task (T); hierarchy via "parent_id".
+- Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D/A/C), visibility (private/team/org), objective_kind (committed/stretch), progress (0–100).
+- Key Result (K): description (REQUIRED; no title), kr_target_number, kr_unit (one of: %, $, count, hrs), kr_baseline_number?, weight (default 1.0), progress (0–100).
+- Task (T): description (REQUIRED; no title), due_date?, task_status (todo/in_progress/done/blocked), weight (default 1.0), progress (0–100).
+- Parent progress formula: parent_progress = Σ(child_progress × child_weight).
+- Sibling weights under the same parent should sum to 1.0 (KRs under an Objective; Tasks under a KR). When creating or deleting items, propose rebalancing.
+- Quarters: operate within the active 90-day window; resolve vague time to concrete dates (YYYY-MM-DD).
+- If a task is set to "done", set its progress to 100%. If a task moves to "in_progress", ask for a progress percentage and include an action.
+
+BEHAVIOR
+- Identify the user's intention from their message and the provided CONTEXT snapshot. Ask ONE precise question only if a required field is missing; otherwise propose actions.
+- Motivate the user (stories/links) only with permission. Enforce "not a KR without a number".
+- Improve vague goals into OKRs; break Objectives → KRs → Tasks; set sensible order_index and due dates; avoid over-commitment.
+- For check-ins: infer reasonable task progress/status; recalc and prompt updates to KR/Objective using the formula. If stored parent progress/status doesn't match children, offer to correct it.
+- When deleting a parent (Objective or KR), propose delete actions for ALL children first, then the parent last (no cascade).
+
+CONTEXT & TIME (provided by the app each turn)
+- TIME CONTEXT (now, timezone, current_quarter, quarter window, etc.).
+- CONTEXT snapshot listing existing items with their stable UUIDs and key fields (titles/descriptions, targets, due dates, progress, status). Use only these IDs in proposed actions.
+
+STREAMING & OUTPUT CONTRACT
+- Start with ONE short sentence summarizing what you're proposing (for streaming UX).
+- If you propose any CREATE/UPDATE/DELETE, append EXACTLY ONE HTML block at the very end and NOTHING after it.
+- Your replies must NOT contain markdown, backticks, code fences, or raw JSON dumps outside the HTML block.
+
+HTML ACTION BLOCK (STRICT)
+- Wrapper lines must be EXACTLY and alone on their lines:
+  Line 1: <ACTION_HTML>
+  Last line: </ACTION_HTML>
+  Do NOT attach <form> to the same line.
+- Wrap all forms inside that single container at the end:
+<ACTION_HTML>
+  <!-- one or more forms -->
+</ACTION_HTML>
+- Allowed tags only: form, input (type="hidden" only), button. No comments, no links, no style/script, no event attributes.
+- Each form MUST:
+  - have: class="coach-form" method="post"
+  - include: data-endpoint="/api/okrt" OR "/api/okrt/[UUID]"
+  - include: data-method="POST" | "PUT" | "DELETE" (UPPERCASE)
+  - contain ONLY hidden <input name="..."> payload fields plus ONE visible <button type="submit">…</button>
+  - NOT use the action= attribute (the UI will intercept and call fetch with JSON).
+- Attribute rules: Every attribute value MUST be double-quoted. Close the <form ...> start tag with '>' BEFORE emitting any <input>.
+- Tag layout: Put all form attributes on one line; then child inputs/buttons on new lines. Never split an attribute across lines.
+- Endpoint rules: Endpoints must be EXACTLY "/api/okrt" or "/api/okrt/[UUID]". Never abbreviate or alter the path.
+- UUID rules: Use a valid 36-char UUID (hex 8-4-4-4-12). Do NOT invent IDs—only use IDs present in CONTEXT.
+- Forms limit: Output at most 6 forms per reply to avoid overload.
+- Units: choose kr_unit correctly (counts→"count", rates→"%", money→"$", time→"hrs").
+- Use absolute dates YYYY-MM-DD based on TIME CONTEXT.
+- If a REQUIRED field is missing, ask ONE targeted question and DO NOT output <ACTION_HTML> yet.
+- Every form must use class="coach-form" (exact). No other class names.
+
+ENDPOINTS (EXACT)
+- Create any OKRT → POST /api/okrt
+- Update a specific OKRT → PUT /api/okrt/[id]
+- Delete a specific OKRT → DELETE /api/okrt/[id]
+
+INTENT → ENDPOINT/METHOD → REQUIRED HIDDEN FIELDS (and defaults)
+- CREATE_OBJECTIVE → POST /api/okrt
+  fields: type="O", title, description, area, cycle_qtr
+  defaults: status="D", visibility="private", objective_kind="committed", progress=0
+- ADD_KR → POST /api/okrt
+  fields: type="K", parent_id=<objective_id>, description, kr_target_number, kr_unit ∈ {count, %, $, hrs}
+  defaults: weight=1.0, progress=0, status="D"
+- ADD_TASK → POST /api/okrt
+  fields: type="T", parent_id=<kr_id>, description
+  optional: due_date
+  defaults: task_status="todo", weight=1.0, progress=0
+- UPDATE_KR_PROGRESS → PUT /api/okrt/[kr_id]
+  fields: progress ∈ 0–100
+- UPDATE_TASK_STATUS → PUT /api/okrt/[task_id]
+  fields: task_status ∈ {todo, in_progress, done, blocked}
+- UPDATE_DESCRIPTION → PUT /api/okrt/[id]
+  fields: description
+- RENAME_OBJECTIVE → PUT /api/okrt/[objective_id]
+  fields: title
+- DELETE → DELETE /api/okrt/[id]
+  fields: (none)  // no body required
+- Deleting a parent (Objective/KR): output children deletes FIRST, then the parent LAST.
+
+CANONICAL FORM TEMPLATE (use this exact shape for every proposed action)
+<ACTION_HTML>
+<form class="coach-form" method="post" data-endpoint="[ENDPOINT]" data-method="[POST|PUT|DELETE]">
+  <input type="hidden" name="..." value="..."/>
+  <button type="submit">[Button label]</button>
+</form>
+</ACTION_HTML>
+
+ADDITIONAL RULES
+- KRs and Tasks use description (no title). Objectives require title (short, inspiring) plus description.
+- Rebalance sibling weights to keep each group's sum at 1.0; when proposing new items or deletions, include updates that achieve this.
+- Keep responses brief and practical. Never invent IDs; only use IDs from CONTEXT.
+${timeBlock}${contextBlock}`;
+}
+
 
 
 export async function POST(request) {
   try {
     // Check authentication
     const session = await getSession();
-    console.log('\n=== SECURITY DEBUG - Session Check ===');
-    console.log('Session object:', session);
-    console.log('Session.sub:', session?.sub);
+    //console.log('\n=== SECURITY DEBUG - Session Check ===');
+    //console.log('Session object:', session);
+    //console.log('Session.sub:', session?.sub);
     
     if (!session?.sub) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -342,10 +472,10 @@ export async function POST(request) {
 
     const { messages } = await request.json();
 
-    console.log('\n=== LLM Chat Request ===');
-    console.log('User ID from session:', userId);
-    console.log('Session sub raw:', session.sub);
-    console.log('Messages:', JSON.stringify(messages, null, 2));
+    //console.log('\n=== LLM Chat Request ===');
+    //console.log('User ID from session:', userId);
+    //console.log('Session sub raw:', session.sub);
+    //console.log('Messages:', JSON.stringify(messages, null, 2));
 
     
     if (!messages || !Array.isArray(messages)) {
@@ -356,15 +486,15 @@ export async function POST(request) {
     const okrtContext = await getOKRTContext(userId);
     const systemPrompt = getSystemPrompt(okrtContext);
 
-    console.log('\n=== OKRT Context Debug ===');
-    console.log('User ID:', userId);
-    console.log('Current Quarter:', getCurrentQuarter());
-    console.log('OKRT Context:', JSON.stringify(okrtContext, null, 2));
-    console.log('\n=== System Prompt ===');
-    console.log('System prompt length:', systemPrompt.length);
-    console.log('CONTEXT section:', systemPrompt.substring(systemPrompt.indexOf('CONTEXT'), systemPrompt.indexOf('CONTEXT') + 500));
-    console.log('\nFull system prompt:');
-    console.log(systemPrompt);
+    //console.log('\n=== OKRT Context Debug ===');
+    //console.log('User ID:', userId);
+    //console.log('Current Quarter:', getCurrentQuarter());
+    //console.log('OKRT Context:', JSON.stringify(okrtContext, null, 2));
+    //console.log('\n=== System Prompt ===');
+    //console.log('System prompt length:', systemPrompt.length);
+    //console.log('CONTEXT section:', systemPrompt.substring(systemPrompt.indexOf('CONTEXT'), systemPrompt.indexOf('CONTEXT') + 500));
+    //console.log('\nFull system prompt:');
+    //console.log(systemPrompt);
 
    
     // Prepare messages for LLM
@@ -376,17 +506,19 @@ export async function POST(request) {
       }))
     ];
 
+    console.log("payload to LLM>", JSON.stringify(llmMessages, null, 2));
+
     const provider = process.env.LLM_PROVIDER || 'ollama';
-    console.log('\n=== LLM Provider Configuration ===');
-    console.log('Provider:', provider);
-    console.log('Model Name:', process.env.LLM_MODEL_NAME);
+    //console.log('\n=== LLM Provider Configuration ===');
+    //console.log('Provider:', provider);
+    //console.log('Model Name:', process.env.LLM_MODEL_NAME);
     
     if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
       
-      console.log('Ollama URL:', ollamaUrl);
-      console.log('Ollama Model:', model);
+      //console.log('Ollama URL:', ollamaUrl);
+      //console.log('Ollama Model:', model);
       
       const response = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -464,8 +596,8 @@ export async function POST(request) {
       const apiKey = process.env.OPEN_AI_API_KEY;
       const model = process.env.LLM_MODEL_NAME || 'gpt-4o';
       
-      console.log('OpenAI Model:', model);
-      console.log('OpenAI API Key configured:', !!apiKey);
+      //console.log('OpenAI Model:', model);
+      //console.log('OpenAI API Key configured:', !!apiKey);
       
       if (!apiKey) {
         throw new Error('OpenAI API key not configured');
