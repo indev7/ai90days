@@ -196,6 +196,7 @@ export default function CoachPage() {
   const { messages, addMessage, updateMessage, isLoading, setLoading } = useCoach();
   const [input, setInput] = useState('');
   const [user, setUser] = useState(null);
+  //const [uuidMap, setUuidMap] = useState(new Map()); // Track generated UUID -> real UUID mappings
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -341,13 +342,9 @@ export default function CoachPage() {
   const handleActionClick = async (action) => {
     setLoading(true);
     try {
-      // Handle generated UUIDs for CREATE operations
       let payload = { ...action.body };
       
-      // If this is a CREATE with a generated ID, remove it (database will generate real UUID)
-      if (action.method === 'POST' && payload.id && payload.id.startsWith('gen-')) {
-        delete payload.id;
-      }
+ 
       
       const res = await fetch(action.endpoint, {
         method: action.method,
@@ -355,6 +352,8 @@ export default function CoachPage() {
         body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+
 
       addMessage({
         id: Date.now(),
@@ -367,7 +366,7 @@ export default function CoachPage() {
       addMessage({
         id: Date.now(),
         role: 'assistant',
-        content: `❌ Failed to execute "${action.label}". Please try again.`,
+        content: `❌ Failed to execute "${action.label}". ${err.message}`,
         error: true,
         timestamp: new Date(),
       });
@@ -378,22 +377,18 @@ export default function CoachPage() {
 
   // Execute all actions in order with UUID mapping
   const handleRunAll = async (actions) => {
+    console.log('Running all actions:', actions.length);
+    console.log(JSON.stringify(actions, null, 2));
     setLoading(true);
     try {
-      const uuidMap = new Map(); // generated UUID -> real UUID
+      const localUuidMap = new Map(); // Start with existing mappings
       
       for (const action of actions) {
         let payload = { ...action.body };
         
-        // Handle generated UUIDs
+        // Handle UUID mapping for hierarchical creates
         if (action.method === 'POST') {
-          // For CREATE operations
-          if (payload.id && payload.id.startsWith('gen-')) {
-            // Remove generated ID - database will create real one
-            delete payload.id;
-          }
-          
-          // Map parent_id if it's a generated UUID
+          // Map parent_id if it's a generated UUID from a previous action
           if (payload.parent_id && payload.parent_id.startsWith('gen-')) {
             const realParentId = uuidMap.get(payload.parent_id);
             if (realParentId) {

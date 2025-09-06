@@ -254,16 +254,16 @@ function getActionsTool() {
                     blocked_by: { type: "string" },
                     repeat: { type: "string", enum: ["Y","N"] }
                   },
-                  additionalProperties: false
+                  additionalProperties: true
                 }
               },
               required: ["intent", "endpoint", "method", "payload"],
-              additionalProperties: false
+              additionalProperties: true
             }
           }
         },
         required: ["actions"],
-        additionalProperties: false
+        additionalProperties: true
       }
     }
   };
@@ -472,10 +472,13 @@ export async function POST(request) {
                     const key = toolCall.id || `tool_${toolCall.index || 0}`;
                     
                     if (toolCall.function?.name) {
-                      // Tool call started
+                      // Tool call started: initialize buffer only
                       toolNames.set(key, toolCall.function.name);
-                      toolBuffers.set(key, toolCall.function.arguments || '');
-                    } else if (toolCall.function?.arguments) {
+                      if (!toolBuffers.has(key)) {
+                        toolBuffers.set(key, '');
+                      }
+                    }
+                    if (toolCall.function?.arguments) {
                       // Tool call arguments delta
                       if (toolBuffers.has(key)) {
                         toolBuffers.set(key, (toolBuffers.get(key) || '') + toolCall.function.arguments);

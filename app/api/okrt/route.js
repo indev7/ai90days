@@ -29,6 +29,7 @@ export async function POST(request) {
 
     const data = await request.json();
     const {
+      id: incomingId,
       type, parent_id, title, description, area, cycle_qtr,
       visibility = 'private', objective_kind, kr_target_number,
       kr_unit, kr_baseline_number, weight = 1.0, task_status,
@@ -48,8 +49,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Target number and unit are required for Key Results' }, { status: 400 });
     }
 
-    // Generate UUID for the new OKRT
-    const id = uuidv4();
+    // Use provided id if exists, else generate new UUID
+    const id = incomingId || uuidv4();
 
     const okrtData = {
       id,
