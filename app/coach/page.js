@@ -387,17 +387,17 @@ export default function CoachPage() {
         let payload = { ...action.body };
         
         // Handle UUID mapping for hierarchical creates
-        if (action.method === 'POST') {
-          // Map parent_id if it's a generated UUID from a previous action
-          if (payload.parent_id && payload.parent_id.startsWith('gen-')) {
-            const realParentId = uuidMap.get(payload.parent_id);
-            if (realParentId) {
-              payload.parent_id = realParentId;
-            } else {
-              throw new Error(`Parent ${payload.parent_id} not found. Execute Objective creation first.`);
-            }
-          }
-        }
+        // if (action.method === 'POST') {
+        //   // Map parent_id if it's a generated UUID from a previous action
+        //   if (payload.parent_id && payload.parent_id.startsWith('gen-')) {
+        //     const realParentId = uuidMap.get(payload.parent_id);
+        //     if (realParentId) {
+        //       payload.parent_id = realParentId;
+        //     } else {
+        //       throw new Error(`Parent ${payload.parent_id} not found. Execute Objective creation first.`);
+        //     }
+        //   }
+        // }
         
         const res = await fetch(action.endpoint, {
           method: action.method,
@@ -408,13 +408,13 @@ export default function CoachPage() {
         if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
         
         // If this was a CREATE, store the real UUID for future actions
-        if (action.method === 'POST' && action.body?.id?.startsWith('gen-')) {
-          const result = await res.json();
-          if (result.id) {
-            uuidMap.set(action.body.id, result.id);
-            console.log(`UUID mapped: ${action.body.id} -> ${result.id}`);
-          }
-        }
+        // if (action.method === 'POST' && action.body?.id?.startsWith('gen-')) {
+        //   const result = await res.json();
+        //   if (result.id) {
+        //     uuidMap.set(action.body.id, result.id);
+        //     console.log(`UUID mapped: ${action.body.id} -> ${result.id}`);
+        //   }
+        // }
       }
 
       addMessage({
