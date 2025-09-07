@@ -64,27 +64,55 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
   }
 
   return (
-    <div className={styles.actionButtons}>
-      {actions.map((action) => (
-        <button
-          key={action.key}
-          className={styles.actionButton}
-          onClick={() => onActionClick(action)}
-          title={JSON.stringify(action.body || {}, null, 2)}
-        >
-          {action.label}
-        </button>
-      ))}
-      {actions.length > 1 && (
-        <button
-          className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
-          onClick={onRunAll}
-          title="Execute all actions in order"
-        >
-          Run All
-        </button>
-      )}
-    </div>
+    <table className={styles.actionButtons}>
+      <tbody>
+        {actions.map((action) => {
+          let description = '';
+          if (action.method === 'POST') {
+            if (action.body?.type === 'O') {
+              description = `Create Objective: ${action.body?.title || ''}`;
+            } else if (action.body?.type === 'K') {
+              description = `Create KR: ${action.body?.description || ''}`;
+            } else if (action.body?.type === 'T') {
+              description = `Create Task: ${action.body?.description || ''}`;
+            }
+          } else if (action.method === 'PUT') {
+            description = `Update ${action.body?.title || action.body?.description || 'OKRT'}`;
+          } else if (action.method === 'DELETE') {
+            description = `Delete ${action.body?.title || action.body?.description || 'OKRT'}`;
+          }
+
+          return (
+            <tr key={action.key}>
+              <td>{description}</td>
+              <td>
+                <button
+                  className={styles.actionButton}
+                  onClick={() => onActionClick(action)}
+                  title={JSON.stringify(action.body || {}, null, 2)}
+                >
+                  Accept
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+        {actions.length > 1 && (
+          <tr>
+            <td></td>
+            <td>
+              <button
+                className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
+                onClick={onRunAll}
+                title="Execute all actions in order"
+              >
+                Accept All
+              </button>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }
 
@@ -282,19 +310,17 @@ export default function CoachPage() {
                 preparingActions: true 
               });
             } else if (data.type === 'actions') {
-              // Actions are ready - show processing indicator
+              // Actions are ready - show them immediately, stop spinner
               preparingActions = false;
-              processingActions = true;
-              updateMessage(assistantMessageId, { 
+              processingActions = false;
+              pendingActions = normalizeActions(data.data || []);
+              updateMessage(assistantMessageId, {
                 content: textBuffer,
                 preparingActions: false,
-                processingActions: true 
+                processingActions: false,
+                actions: pendingActions
               });
-              
-              // retain actions; normalize for UI
-              pendingActions = normalizeActions(data.data || []);
-              
-              // Log results only at the end
+
               console.log('\n=== COACH RESPONSE COMPLETE ===');
               console.log('Text:', textBuffer);
               console.log('Actions received:', data.data);

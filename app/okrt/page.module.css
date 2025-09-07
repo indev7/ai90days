@@ -514,9 +514,9 @@
 
 /* Children */
 .okrtChildren {
-  padding-left: 2rem;
+  padding-left: 0rem;
   border-left: 2px solid var(--border-light);
-  margin-left: 2.75rem;
+  margin-left: 2.5rem;
 }
 
 .okrtChildren .okrtItem {

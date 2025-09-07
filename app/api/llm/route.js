@@ -186,8 +186,7 @@ STRICT JSON CONTRACT FOR ACTIONS (AVOID MALFORMED OUTPUT)
 - Each property ("key": value) must appear atomically within a single streamed chunk.
 - Emit the ENTIRE tool_call arguments JSON in one contiguous block when possible.
 - The only valid top-level for tool_call arguments is: { "actions": [ ... ] }.
-- Each action in actions[] MUST include "intent", "endpoint", "method", "payload".
-- The "payload" object must itself be valid and include all required fields.
+- MANDATORY. Each action in actions[] MUST include "intent", "endpoint", "method", "payload".
 - Preserve client-supplied IDs exactly (e.g., "id": "gen-xxxx"). Use consistent IDs for children with parent_id linking correctly.
 - Never invent or drop keys defined in schema, but also allow additional properties safely.
 - If unsure, omit the tool call entirely rather than emit malformed JSON.
@@ -210,9 +209,11 @@ BEHAVIOR
 
 
 OUTPUT CONTRACT (VERY IMPORTANT)
-1) First, STREAM a single short paragraph of human-readable coaching text. Do NOT include JSON in the text.
-2) Only if actions are warranted, CALL the tool "emit_actions" once with an ordered actions[] list.
-3) Use only three intents: CREATE_OKRT, UPDATE_OKRT, DELETE_OKRT.
+1) First, STREAM a single short paragraph of human-readable coaching text. Do NOT include JSON or code blocks for actions in the text.
+2) When the user’s request or your coaching implies that an Objective, Key Result, or Task should be created, updated, or deleted, you MUST call the tool "emit_actions" once. Always output a well‑formed JSON object with an "actions" array matching those changes.
+   - IMPORTANT: Never embed action JSON inside text or markdown (no triple backtick blocks). Actions must ONLY be emitted via the tool call.
+3) If no OKRT changes are expected, do not call the tool and only return coaching text.
+4) Use only three intents: CREATE_OKRT, UPDATE_OKRT, DELETE_OKRT.
 4) For CREATE_OKRT include type and other needed fields; for UPDATE_OKRT/DELETE_OKRT include id. Include only fields that are required or changing. Never include created_at/updated_at.
 5) When deleting a parent, include child deletes first (tasks → KR) then parent last.
 6) For CREATE operations involving hierarchies (Objective + KRs + Tasks): 
@@ -226,65 +227,64 @@ ${timeBlock}${contextBlock}`;
 /* =========================
    Actions tool (your schema)
    ========================= */
-function getActionsTool() {
-  return {
-    type: "function",
-    function: {
-      name: "emit_actions",
-      description: "Emit an ordered list of OKRT actions (create, update, delete). Use real UUIDs from CONTEXT.",
-      parameters: {
-        type: "object",
-        properties: {
-          actions: {
-            type: "array",
-            minItems: 1,
-            items: {
-              type: "object",
-              properties: {
-                intent: { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
-                endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
-                method: { type: "string", enum: ["POST", "PUT", "DELETE"] },
-                payload: {
-                  type: "object",
-                  description: "OKRT fields to send. Include only what is required or changing.",
-                  properties: {
-                    id: { type: "string" },
-                    type: { type: "string", enum: ["O","K","T"] },
-                    owner_id: { type: "integer" },
-                    parent_id: { type: "string" },
-                    description: { type: "string" },
-                    progress: { type: "number" },
-                    order_index: { type: "integer" },
-                    task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
-                    title: { type: "string" },
-                    area: { type: "string" },
-                    visibility: { type: "string", enum: ["private","team","org"] },
-                    objective_kind: { type: "string", enum: ["committed","stretch"] },
-                    status: { type: "string", enum: ["D","A","C"] },
-                    cycle_qtr: { type: "string" },
-                    kr_target_number: { type: "number" },
-                    kr_unit: { type: "string", enum: ["%","$","count","hrs"] },
-                    kr_baseline_number: { type: "number" },
-                    weight: { type: "number" },
-                    due_date: { type: "string" },
-                    recurrence_json: { type: "string" },
-                    blocked_by: { type: "string" },
-                    repeat: { type: "string", enum: ["Y","N"] }
-                  },
-                  additionalProperties: true
-                }
-              },
-              required: ["intent", "endpoint", "method", "payload"],
-              additionalProperties: true
-            }
-          }
-        },
-        required: ["actions"],
-        additionalProperties: true
-      }
-    }
-  };
-}
+ function getActionsTool() {
+   return {
+     type: "function",
+     name: "emit_actions",
+     description:
+       "Emit an ordered list of OKRT actions (create, update, delete). Use real UUIDs from CONTEXT.",
+     parameters: {
+       type: "object",
+       properties: {
+         actions: {
+           type: "array",
+           minItems: 1,
+           items: {
+             type: "object",
+             properties: {
+               intent: { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
+               endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
+               method: { type: "string", enum: ["POST", "PUT", "DELETE"] },
+               payload: {
+                 type: "object",
+                 description: "OKRT fields to send. Include only what is required or changing.",
+                 properties: {
+                   id: { type: "string" },
+                   type: { type: "string", enum: ["O","K","T"] },
+                   owner_id: { type: "integer" },
+                   parent_id: { type: "string" },
+                   description: { type: "string" },
+                   progress: { type: "number" },
+                   order_index: { type: "integer" },
+                   task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
+                   title: { type: "string" },
+                   area: { type: "string" },
+                   visibility: { type: "string", enum: ["private","team","org"] },
+                   objective_kind: { type: "string", enum: ["committed","stretch"] },
+                   status: { type: "string", enum: ["D","A","C"] },
+                   cycle_qtr: { type: "string" },
+                   kr_target_number: { type: "number" },
+                   kr_unit: { type: "string", enum: ["%","$","count","hrs"] },
+                   kr_baseline_number: { type: "number" },
+                   weight: { type: "number" },
+                   due_date: { type: "string" },
+                   recurrence_json: { type: "string" },
+                   blocked_by: { type: "string" },
+                   repeat: { type: "string", enum: ["Y","N"] }
+                 },
+                 additionalProperties: true
+               }
+             },
+             required: ["intent", "endpoint", "method", "payload"],
+             additionalProperties: true
+           }
+         }
+       },
+       required: ["actions"],
+       additionalProperties: true
+     }
+   };
+ }
 
 /* =========================
    Route handler
@@ -377,167 +377,312 @@ export async function POST(request) {
       });
     }
 
-    /* ========== OPENAI (Responses API + tool call) ========== */
-    if (provider === 'openai') {
-      const apiKey = process.env.OPEN_AI_API_KEY;
-      const model = process.env.LLM_MODEL_NAME || 'gpt-4o-mini';
-      if (!apiKey) throw new Error('OpenAI API key not configured');
+  /* ========== OPENAI (Responses API + tool call) ========== */
+  if (provider === 'openai') {
+    const apiKey = process.env.OPEN_AI_API_KEY;
+    const model = process.env.LLM_MODEL_NAME || 'gpt-4o-mini';
+    if (!apiKey) throw new Error('OpenAI API key not configured');
 
-      console.log('🔧 Making OpenAI request with:', { model, messagesCount: llmMessages.length });
-      
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: llmMessages,
-          tools: [getActionsTool()],
-          tool_choice: "auto",
-          stream: true
-        })
-      });
+    // Convert old ChatCompletion-style messages -> Responses API "input"
+    // Each message must be role + array of content parts (type=text)
+    const input = llmMessages.map(m => {
+      // Normalize roles to what Responses expects
+      // (it accepts 'system', 'user', 'assistant')
+      const role = m.role === 'system' ? 'system'
+                : m.role === 'assistant' ? 'assistant'
+                : 'user';
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('OpenAI API Error Details:', errorBody);
-        throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
+      // Content type depends on role:
+      // - user/system -> input_text
+      // - assistant   -> output_text (historical assistant messages)
+      const partType = role === 'assistant' ? 'output_text' : 'input_text';
+
+      return {
+        role,
+        content: [{ type: partType, text: String(m.content ?? '') }]
+      };
+    });
+
+
+    //console.log('🔧 Making OpenAI Responses request with:', { model, inputCount: input.length });
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        input,
+        tools: [getActionsTool()],
+        tool_choice: "auto",
+        stream: true
+      })
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('OpenAI API Error Details:', errorBody);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
+    }
+
+    const encoder = new TextEncoder();
+
+    // --- SSE parser state for Responses API ---
+    // Tool call buffers are keyed by tool_call id; accumulate streamed arguments
+    const toolBuffers = new Map(); // id -> string (arguments JSON chunks)
+    const toolNames   = new Map(); // id -> function name
+    const actionsPayloads = [];    // final aggregated actions we’ll emit
+    const collectedText    = [];    // aggregated assistant text deltas
+
+    // Flush & parse any tool buffers we’ve accumulated
+    const flushAllTools = () => {
+      for (const [id, buf] of toolBuffers.entries()) {
+        try {
+          const fullStr = Array.isArray(buf) ? buf.join('') : buf;
+          const parsed = JSON.parse(fullStr || '{}');
+          if (toolNames.get(id) === 'emit_actions' && parsed?.actions) {
+            actionsPayloads.push(...parsed.actions);
+          }
+        } catch (e) {
+          console.error('Tool JSON parse error for', id, ':', e, 'Buffer was:', buf);
+        }
       }
+    };
 
-      const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
-      const stream = new ReadableStream({
-        async start(controller) {
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
+        // Minimal SSE line parser (handles: event: <name> / data: <json or text>)
+        let pendingEvent = null; // current "event:" name until a "data:" arrives
 
-          // Buffers for tool call JSON (standard OpenAI format)
-          const toolBuffers = new Map(); // tool_call_id -> string
-          const toolNames = new Map();   // tool_call_id -> name
-          const actionsPayloads = [];    // accumulated actions (if any)
+        const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
 
-          const flushAllTools = () => {
-            for (const [id, buf] of toolBuffers.entries()) {
-              try {
-                const parsed = JSON.parse(buf || '{}');
-                if (toolNames.get(id) === 'emit_actions' && parsed?.actions) {
-                  actionsPayloads.push(...parsed.actions);
-                }
-              } catch (e) {
-                console.error('Tool JSON parse error for', id, ':', e, 'Buffer was:', buf);
-              }
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              // Safety flush
+              flushAllTools();
+              send({ type: 'actions', data: actionsPayloads });
+              send({ type: 'done' });
+              controller.close();
+              break;
             }
-            
-            // Log summary at the end
-            console.log('\n=== FINAL RESULTS ===');
-            console.log('Tool buffers:', Array.from(toolBuffers.entries()));
-            console.log('Final actions payload:', actionsPayloads);
-          };
 
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                // On hard end, flush tools & finish
-                flushAllTools();
-                controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actionsPayloads }) + '\n'));
-                controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
-                controller.close();
-                break;
+            const chunk = decoder.decode(value, { stream: true });
+            // Split into lines; Responses SSE emits multiple event/data pairs
+            for (const rawLine of chunk.split('\n')) {
+              const line = rawLine.trim();
+              if (!line) continue;
+              //console.log('🔵 RAW SSE LINE:', rawLine);
+
+              if (line.startsWith('event:')) {
+                pendingEvent = line.slice(6).trim();
+                continue;
               }
 
-              const chunk = decoder.decode(value);
-              const lines = chunk.split('\n').filter(l => l.trim().startsWith('data:'));
-              
-              for (const line of lines) {
-                const data = line.slice(5).trim(); // after 'data:'
-                if (data === '[DONE]') {
+              if (line.startsWith('data:')) {
+                const dataStr = line.slice(5).trim();
+
+                // Some servers may send a terminal marker; handle gracefully
+                if (dataStr === '[DONE]') {
                   flushAllTools();
-                  controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actionsPayloads }) + '\n'));
-                  controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
+                  const uniqueActions = Array.from(
+                    new Map(actionsPayloads.map(a => [JSON.stringify(a), a])).values()
+                  );
+                  send({ type: 'actions', data: uniqueActions });
+                  send({ type: 'done' });
                   controller.close();
                   return;
                 }
-                
-                let evt;
+
+                // Parse JSON payloads when present; some text-delta events are raw strings
+                let data;
                 try {
-                  evt = JSON.parse(data);
-                } catch (e) {
-                  continue;
+                  data = JSON.parse(dataStr);
+                } catch {
+                  data = dataStr; // textual deltas may be plain strings
                 }
 
-                // Handle standard OpenAI Chat Completions streaming events
-                const choice = evt?.choices?.[0];
-                if (!choice) continue;
-
-                // Text content streaming
-                if (choice.delta?.content) {
-                  controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: choice.delta.content }) + '\n'));
-                }
-
-                // Tool calls
-                if (choice.delta?.tool_calls) {
-                  // Signal that we're starting to prepare actions (only once)
-                  if (toolBuffers.size === 0) {
-                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'preparing_actions' }) + '\n'));
-                  }
-                  
-                  for (const toolCall of choice.delta.tool_calls) {
-                    // Use index as the key when id is missing
-                    const key = toolCall.id || `tool_${toolCall.index || 0}`;
-                    
-                    if (toolCall.function?.name) {
-                      // Tool call started: initialize buffer only
-                      toolNames.set(key, toolCall.function.name);
-                      if (!toolBuffers.has(key)) {
-                        toolBuffers.set(key, '');
-                      }
+                switch (pendingEvent) {
+                  // === Text streaming ===
+                  case 'response.output_text.delta': {
+                    // Always extract only the delta field
+                    const textDelta = data?.delta || '';
+                    if (textDelta) {
+                      send({ type: 'content', data: textDelta });
+                      collectedText.push(textDelta);
                     }
-                    if (toolCall.function?.arguments) {
-                      // Tool call arguments delta
-                      if (toolBuffers.has(key)) {
-                        toolBuffers.set(key, (toolBuffers.get(key) || '') + toolCall.function.arguments);
-                      } else {
-                        // Initialize buffer if it doesn't exist (for streaming arguments)
-                        toolBuffers.set(key, toolCall.function.arguments);
-                        // Set a default name if not set
-                        if (!toolNames.has(key)) {
-                          toolNames.set(key, 'emit_actions');
+                    break;
+                  }
+                  case 'response.output_text.done': {
+                    // nothing special to do
+                    break;
+                  }
+
+                  // === Tool calling lifecycle ===
+                  case 'response.tool_call.created': {
+                    // { id, type: 'function', name?: 'emit_actions' }
+                    const { id, type, name } = data || {};
+                    if (id) {
+                      toolBuffers.set(id, '');
+                      if (type === 'function' && name) toolNames.set(id, name);
+                    }
+                    // Signal once that actions are being prepared
+                    if (actionsPayloads.length === 0 && toolBuffers.size === 1) {
+                      send({ type: 'preparing_actions' });
+                    }
+                    break;
+                  }
+                  case 'response.tool_call.delta': {
+                    // { id, delta: { arguments: '...' } }
+                    const { id, delta } = data || {};
+                    if (id && delta?.arguments != null) {
+                      const prev = toolBuffers.get(id) || [];
+                      const arr = Array.isArray(prev) ? prev : [String(prev)];
+                      arr.push(String(delta.arguments));
+                      toolBuffers.set(id, arr);
+                      //console.log('🔎 Tool delta fragment for', id, ':', delta.arguments);
+                      //console.log('🔎 Current buffer for', id, ':', arr.join(''));
+                    }
+                    break;
+                  }
+                  case 'response.tool_call.completed': {
+                    // { id, type: 'function', name, arguments?: '{...}' }
+                    const { id, name, arguments: finalArgs } = data || {};
+                    // If model sent a final full arguments blob, prefer it
+                    if (id && finalArgs != null) {
+                      toolBuffers.set(id, String(finalArgs));
+                    }
+                    if (id && name) toolNames.set(id, name);
+
+                    // Try parsing this tool call right away
+                    try {
+                      const buf = toolBuffers.get(id) || [];
+                      const fullStr = Array.isArray(buf) ? buf.join('') : buf;
+                      const parsed = JSON.parse(fullStr || '{}');
+                      if (toolNames.get(id) === 'emit_actions' && parsed?.actions) {
+                        actionsPayloads.push(...parsed.actions);
+                      }
+                    } catch (e) {
+                      console.error('Tool completed but JSON invalid:', e);
+                    }
+                    //console.log('✅ Raw tool_call JSON for', id, ':', toolBuffers.get(id));
+                    break;
+                  }
+
+                  // === Overall response lifecycle ===
+                  case 'response.completed': {
+                    // The model is done; flush any pending tool calls and finish
+                    flushAllTools();
+                    // Also check if completed response contains inline function_call output
+                    if (data?.response?.output) {
+                      for (const out of data.response.output) {
+                        if (out.type === 'function_call' && out.name === 'emit_actions') {
+                          try {
+                            const parsed = JSON.parse(out.arguments || '{}');
+                            if (parsed?.actions) {
+                              actionsPayloads.push(...parsed.actions);
+                            }
+                          } catch (e) {
+                            console.error('Error parsing final function_call arguments:', e, out.arguments);
+                          }
                         }
                       }
                     }
+                    // if we found any function_call actions only at completion, notify UI that actions are being prepared
+                    if (actionsPayloads.length > 0) {
+                      send({ type: 'preparing_actions' });
+                      // send only once at completion, avoid double-send
+                      send({ type: 'actions', data: actionsPayloads });
+                    }
+                    // Do NOT resend collectedText here (already streamed via deltas)
+                    send({ type: 'done' });
+                    controller.close();
+                    return;
+       
+                    send({ type: 'done' });
+                    controller.close();
+                    return;
+                  }
+                  case 'response.output_item.done': {
+                    const item = data?.item;
+                    if (item?.type === 'message' || item?.type === 'output_text') {
+                      const contents = item.content || [];
+                      for (const c of contents) {
+                        if (c.type === 'output_text' && c.text) {
+                          send({ type: 'content', data: c.text });
+                          collectedText.push(c.text);
+                        }
+                      }
+                    }
+                    break;
+                  }
+                  case 'response.function_call_arguments.delta': {
+                    const { item_id, delta } = data || {};
+                    if (item_id && delta != null) {
+                      const prev = toolBuffers.get(item_id) || '';
+                      toolBuffers.set(item_id, prev + String(delta));
+                      if (!actionsPayloads.length) {
+                        send({ type: 'preparing_actions' });
+                      }
+                    }
+                    break;
+                  }
+                  case 'response.function_call_arguments.done': {
+                    const { item_id, arguments: finalArgs } = data || {};
+                    if (item_id && finalArgs != null) {
+                      try {
+                        const parsed = JSON.parse(finalArgs);
+                        if (parsed?.actions) {
+                          actionsPayloads.push(...parsed.actions);
+                        }
+                      } catch (e) {
+                        console.error('Error parsing function_call_arguments.done:', e, finalArgs);
+                      }
+                    }
+                    break;
+                  }
+                  case 'response.error': {
+                    console.error('Responses API stream error event:', data);
+                    flushAllTools();
+                    send({ type: 'actions', data: actionsPayloads });
+                    controller.error(new Error(typeof data === 'string' ? data : (data?.error || 'Responses API stream error')));
+                    return;
+                  }
+                  default: {
+                    // Ignore other event types (e.g., refusal deltas, reasoning, metadata)
+                    break;
                   }
                 }
 
-                // Finish reason indicates completion
-                if (choice.finish_reason) {
-                  flushAllTools();
-                  controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actionsPayloads }) + '\n'));
-                  controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
-                  controller.close();
-                  return;
-                }
+                // After handling this data line, clear the pending event name
+                pendingEvent = null;
               }
             }
-          } catch (err) {
-            console.error('OpenAI streaming error:', err);
-            controller.error(err);
           }
+        } catch (err) {
+          console.error('OpenAI streaming error:', err);
+          controller.error(err);
         }
-      });
+      }
+      
+    });
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        }
-      });
-    }
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+    });
+  }
 
-    return NextResponse.json({ error: 'Invalid LLM provider' }, { status: 400 });
+  return NextResponse.json({ error: 'Invalid LLM provider' }, { status: 400 });
 
   } catch (error) {
     console.error('LLM chat error:', error);

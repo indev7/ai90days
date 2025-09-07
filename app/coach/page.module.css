@@ -127,6 +127,10 @@
   font-weight: 500;
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+  width: 100px;
+  height: 25px;
+  margin: 5px;
+  padding-top: 3px;
 }
 
 .actionButton:hover {
