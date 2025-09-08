@@ -95,10 +95,12 @@ export default function LeftMenu({ isCollapsed = false, onToggle }) {
   const [objectives, setObjectives] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Auto-expand goals if we're on the okrt page
+  // Auto-expand goals if we're on the okrt page, collapse if not
   useEffect(() => {
     if (pathname === '/okrt') {
       setIsGoalsExpanded(true);
+    } else {
+      setIsGoalsExpanded(false);
     }
   }, [pathname]);
 
@@ -127,7 +129,10 @@ export default function LeftMenu({ isCollapsed = false, onToggle }) {
   }, []);
 
   const handleGoalsClick = (e) => {
-    setIsGoalsExpanded(!isGoalsExpanded);
+    // Only allow manual expansion/collapse when on the okrt page
+    if (pathname === '/okrt') {
+      setIsGoalsExpanded(!isGoalsExpanded);
+    }
   };
 
   return (
