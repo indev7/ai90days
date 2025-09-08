@@ -59,10 +59,7 @@
 
 .header {
   padding: var(--space-4);
-  background: linear-gradient(135deg, 
-    rgba(124, 58, 237, 0.03) 0%, 
-    rgba(168, 85, 247, 0.02) 100%
-  );
+  background: rgba(124, 58, 237, 0.03);
   border-bottom: 1px solid rgba(248, 250, 252, 0.8);
 }
 

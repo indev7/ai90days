@@ -46,11 +46,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, 
-    var(--brand-primary), 
-    var(--brand-secondary), 
-    var(--brand-accent)
-  );
+  background: var(--brand-primary);
 }
 
 .section {
@@ -98,10 +94,7 @@
   font-size: var(--text-base);
   color: var(--text);
   padding: var(--space-4);
-  background: linear-gradient(135deg, 
-    var(--bg-solid) 0%, 
-    rgba(248, 250, 252, 0.8) 100%
-  );
+  background: var(--bg-solid);
   border: 2px solid var(--border-light);
   border-radius: var(--radius-lg);
   font-weight: 500;

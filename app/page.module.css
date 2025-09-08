@@ -64,26 +64,14 @@
   animation: gradientShift 3s ease-in-out infinite;
 }
 
-.landingLogoWord {
-  font-size: 4rem;
+.brandText {
+  font-size: var(--text-4xl);
   font-weight: 800;
-  background: linear-gradient(135deg, 
-    var(--brand-primary) 0%, 
-    var(--brand-secondary) 40%, 
-    var(--brand-accent) 80%,
-    var(--brand-primary) 100%
-  );
-  background-size: 200% 200%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientShift 3s ease-in-out infinite;
+  margin-bottom: var(--space-2);
+  color: var(--brand-primary);
 }
 
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
+
 
 .landingTitle {
   font-size: var(--text-3xl);
@@ -109,7 +97,7 @@
 
 .container {
   min-height: calc(100vh - 72px);
-  padding: var(--space-8) var(--space-6);
+  padding: 0%;
   background: var(--bg-solid);
 }
 
@@ -145,10 +133,7 @@
 }
 
 .card {
-  background: linear-gradient(135deg, 
-    var(--surface) 0%, 
-    rgba(255, 255, 255, 0.95) 100%
-  );
+  background: var(--surface);
   border: 1px solid rgba(248, 250, 252, 0.8);
   border-radius: 16px;
   padding: var(--space-10);

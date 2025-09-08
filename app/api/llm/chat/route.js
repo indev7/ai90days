@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
-
+ 
 // Get current quarter for context
 function getCurrentQuarter() {
   const now = new Date();
@@ -10,7 +10,7 @@ function getCurrentQuarter() {
   const quarter = Math.ceil(month / 3);
   return `${year}-Q${quarter}`;
 }
-
+ 
 // Get comprehensive time context
 function getTimeContext() {
   const now = new Date();
@@ -48,7 +48,7 @@ function getTimeContext() {
     quarterMonths
   };
 }
-
+ 
 // Fetch user's OKRT context for the coach (include UUIDs)
 async function getOKRTContext(userId) {
   try {
@@ -58,15 +58,15 @@ async function getOKRTContext(userId) {
     // Get objectives (prioritize current quarter, but include all)
     const objectives = await db.all(`
       SELECT id, type, title, description, status, progress, cycle_qtr
-      FROM okrt 
+      FROM okrt
       WHERE owner_id = ? AND type = 'O'
-      ORDER BY 
+      ORDER BY
         CASE WHEN cycle_qtr = ? THEN 0 ELSE 1 END,
-        status = 'A' DESC, 
+        status = 'A' DESC,
         created_at DESC
       
     `, [userId, currentQuarter]);
-
+ 
     const context = [];
     
     for (const obj of objectives) {
@@ -81,7 +81,7 @@ async function getOKRTContext(userId) {
       // Get KRs for this objective (limit 3)
       const krs = await db.all(`
         SELECT id, type, description, kr_target_number, kr_unit, progress
-        FROM okrt 
+        FROM okrt
         WHERE owner_id = ? AND parent_id = ? AND type = 'K'
         ORDER BY created_at DESC
         
@@ -101,7 +101,7 @@ async function getOKRTContext(userId) {
         // Get tasks for this KR (limit 3)
         const tasks = await db.all(`
           SELECT id, type, description, task_status, due_date, progress
-          FROM okrt 
+          FROM okrt
           WHERE owner_id = ? AND parent_id = ? AND type = 'T'
           ORDER BY  created_at DESC
           
@@ -128,7 +128,7 @@ async function getOKRTContext(userId) {
     return [];
   }
 }
-
+ 
 // System prompt for Coach Ryan
 // System prompt for Coach Ryan (HTML forms, hidden inputs only; KRs/Tasks use description; streaming-safe)
 function getSystemPrompt(okrtContext) {
@@ -136,7 +136,7 @@ function getSystemPrompt(okrtContext) {
   const contextBlock = okrtContext.length > 0
     ? `\n\nCONTEXT - Current User's OKRTs:\nNumber of Objectives: ${okrtContext.length}\nFull OKRT Data:\n${JSON.stringify(okrtContext, null, 2)}\nSummary: User has ${okrtContext.length} objective(s) with ${okrtContext.reduce((total, obj) => total + obj.krs.length, 0)} key result(s).`
     : '\n\nCONTEXT - Current User\'s OKRTs:\nNumber of Objectives: 0\nNo OKRTs found for this user in the current quarter.';
-
+ 
   const timeBlock = `\n\nTIME CONTEXT:
 - Now (ISO): ${timeCtx.nowISO}
 - Timezone: ${timeCtx.timezone} (UTC${timeCtx.utcOffset})
@@ -144,17 +144,17 @@ function getSystemPrompt(okrtContext) {
 - Quarter window: ${timeCtx.quarterStart} → ${timeCtx.quarterEnd}
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
-
+ 
   return `You are "Coach Ryan", an OKRT coach inside the 90-Days app. You respond via STREAMING.
-
+ 
 CRITICAL SECURITY RULE: You must ONLY discuss data that appears in the CONTEXT section below. Do NOT make up, hallucinate, or reference any goals, objectives, key results, or tasks that are not explicitly listed in the CONTEXT section. If you mention data not in CONTEXT, it's a security breach.
-
+ 
 Method in this app
 - 90-day cycle (quarter). Current quarter: ${timeCtx.currentQuarter}.
 - Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D/A/C), visibility (private/team/org), objective_kind (committed/stretch), progress (0–100).
 - Key Result (K): description (REQUIRED), kr_target_number, kr_unit (%, $, count, hrs), optional kr_baseline_number, weight (default 1.0), progress. KRs DO NOT use a title field.
 - Task (T): description (REQUIRED), optional due_date, task_status (todo/in_progress/done/blocked), optional recurrence_json, weight. Tasks DO NOT use a title field.
-
+ 
 Rules (STRICT)
 - NO markdown, NO backticks, NO code fences, NO raw JSON dumps in the reply.
 - Be brief and practical; resolve vague dates with TIME CONTEXT; use concrete numbers.
@@ -163,14 +163,14 @@ Rules (STRICT)
 - STREAMING UX: Begin with ONE short sentence summary. Then, if proposing actions, append exactly one HTML block at the end (see FORM CONTRACT). Do not put any text after that block.
 - IMPORTANT: Always use the actual UUID from CONTEXT when referencing existing OKRTs (not placeholders like "UUID_FROM_CONTEXT").
 - SECURITY: ONLY discuss OKRTs that are explicitly provided in the CONTEXT section. NEVER mention goals, objectives, or data that are not in the current user's CONTEXT.
-
+ 
 Suggesting an entire OKRT set
 - You MAY present a concise human-readable "plan" (Objective with its KRs and Tasks) inline as plain text (not JSON, no markdown).
 - Only include executable forms for items whose required IDs/fields are known:
   - If the Objective does NOT exist in CONTEXT (no id), include ONLY the Objective CREATE form now. After it is created, you can propose KR/Task forms in the next turn (they need parent_id).
   - If the Objective exists (has id), you MAY include KR CREATE forms (need parent_objective_id).
   - If a KR exists (has id), you MAY include Task CREATE forms (need parent_kr_id).
-
+ 
 FORM CONTRACT (HTML with hidden inputs only; visible button only)
 - When proposing CREATE/UPDATE/DELETE, output ONE block:
 <ACTION_HTML>
@@ -184,12 +184,12 @@ FORM CONTRACT (HTML with hidden inputs only; visible button only)
   - NOT use the action= attribute.
 - Units: kr_unit ∈ {"count","%","$","hrs"} (choose correctly for the description).
 - Use ACTUAL IDs from CONTEXT when referencing existing items (not placeholder text).
-
+ 
 Exact API endpoints
 - CREATE any OKRT:        POST   /api/okrt
 - UPDATE a specific OKRT: PUT    /api/okrt/[id]
 - DELETE a specific OKRT: DELETE /api/okrt/[id]
-
+ 
 Required fields by intent (and hidden inputs to include)
 - CREATE_OBJECTIVE (POST /api/okrt)
   required: type="O", title, description, area, cycle_qtr
@@ -209,9 +209,9 @@ Required fields by intent (and hidden inputs to include)
   required: description
 - DELETE (DELETE /api/okrt/[id])
   no body required
-
+ 
 HTML form templates (emit EXACTLY this shape; hidden inputs only)
-
+ 
 - Create Objective:
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt" data-method="POST">
@@ -227,7 +227,7 @@ HTML form templates (emit EXACTLY this shape; hidden inputs only)
   <button type="submit">Create Objective</button>
 </form>
 </ACTION_HTML>
-
+ 
 - Add Key Result (uses description, not title):
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt" data-method="POST">
@@ -240,7 +240,7 @@ HTML form templates (emit EXACTLY this shape; hidden inputs only)
   <button type="submit">Add Key Result</button>
 </form>
 </ACTION_HTML>
-
+ 
 - Add Task (uses description, not title):
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt" data-method="POST">
@@ -253,13 +253,13 @@ HTML form templates (emit EXACTLY this shape; hidden inputs only)
   <button type="submit">Add Task</button>
 </form>
 </ACTION_HTML>
-
+ 
 IMPORTANT: When generating forms, you MUST replace [PLACEHOLDERS] with actual values:
 - [USE_ACTUAL_KR_UUID_FROM_CONTEXT] → Use the real UUID from CONTEXT (e.g., "test-kr-D60C304C4E35D97B")
 - [REPLACE_WITH_SPECIFIC_TASK_DESCRIPTION] → Write a specific, actionable task description (e.g., "Research AI frameworks and tools", "Set up development environment for first AI project")
-
+ 
 CRITICAL: For CREATE operations, the data-endpoint must be "/api/okrt" (no UUID). The parent_id goes in the hidden input field, NOT in the endpoint URL.
-
+ 
 - Update Task Status:
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt/[TASK_UUID_FROM_CONTEXT]" data-method="PUT">
@@ -267,7 +267,7 @@ CRITICAL: For CREATE operations, the data-endpoint must be "/api/okrt" (no UUID)
   <button type="submit">Update Task Status</button>
 </form>
 </ACTION_HTML>
-
+ 
 - Update KR Progress:
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt/[KR_UUID_FROM_CONTEXT]" data-method="PUT">
@@ -275,7 +275,7 @@ CRITICAL: For CREATE operations, the data-endpoint must be "/api/okrt" (no UUID)
   <button type="submit">Update KR Progress</button>
 </form>
 </ACTION_HTML>
-
+ 
 - Update Description (KR or Task):
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt/[UUID_FROM_CONTEXT]" data-method="PUT">
@@ -283,24 +283,24 @@ CRITICAL: For CREATE operations, the data-endpoint must be "/api/okrt" (no UUID)
   <button type="submit">Update Description</button>
 </form>
 </ACTION_HTML>
-
+ 
 - Delete (any item):
 <ACTION_HTML>
 <form class="coach-form" method="post" data-endpoint="/api/okrt/[UUID_FROM_CONTEXT]" data-method="DELETE">
   <button type="submit">Delete Item</button>
 </form>
 </ACTION_HTML>
-
+ 
 Intent policy
 - Map user requests precisely (e.g., “add a KR” → ADD_KR; “update description” → UPDATE_DESCRIPTION).
 - If ANY required field is missing, ask ONE targeted question and DO NOT output ACTION_HTML yet.
 - Otherwise, output exactly one ACTION_HTML block as the LAST thing in the reply.
 - ALWAYS use actual UUIDs from CONTEXT, never placeholder text like "UUID_FROM_CONTEXT".
-
+ 
 ${timeBlock}${contextBlock}`;
 }
-
-
+ 
+ 
 export async function POST(request) {
   try {
     // Check authentication
@@ -314,23 +314,23 @@ export async function POST(request) {
     }
     
     const userId = parseInt(session.sub);
-
+ 
     const { messages } = await request.json();
-
+ 
     console.log('\n=== LLM Chat Request ===');
     console.log('User ID from session:', userId);
     console.log('Session sub raw:', session.sub);
     console.log('Messages:', JSON.stringify(messages, null, 2));
-
+ 
     
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
     }
-
+ 
     // Get OKRT context
     const okrtContext = await getOKRTContext(userId);
     const systemPrompt = getSystemPrompt(okrtContext);
-
+ 
     console.log('\n=== OKRT Context Debug ===');
     console.log('User ID:', userId);
     console.log('Current Quarter:', getCurrentQuarter());
@@ -340,7 +340,7 @@ export async function POST(request) {
     console.log('CONTEXT section:', systemPrompt.substring(systemPrompt.indexOf('CONTEXT'), systemPrompt.indexOf('CONTEXT') + 500));
     console.log('\nFull system prompt:');
     console.log(systemPrompt);
-
+ 
    
     // Prepare messages for LLM
     const llmMessages = [
@@ -350,7 +350,7 @@ export async function POST(request) {
         content: msg.content
       }))
     ];
-
+ 
     const provider = process.env.LLM_PROVIDER || 'ollama';
     console.log('\n=== LLM Provider Configuration ===');
     console.log('Provider:', provider);
@@ -358,12 +358,12 @@ export async function POST(request) {
     
     if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-
+ 
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
       
       console.log('Ollama URL:', ollamaUrl);
       console.log('Ollama Model:', model);
-
+ 
       
       const response = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
@@ -376,11 +376,11 @@ export async function POST(request) {
           stream: true // Enable streaming
         })
       });
-
+ 
       if (!response.ok) {
         throw new Error(`Ollama API error: ${response.status}`);
       }
-
+ 
       // Create a readable stream for the client
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
@@ -405,9 +405,9 @@ export async function POST(request) {
                   const data = JSON.parse(line);
                   if (data.message?.content) {
                     // Send each content chunk to the client
-                    const streamData = JSON.stringify({ 
-                      type: 'content', 
-                      data: data.message.content 
+                    const streamData = JSON.stringify({
+                      type: 'content',
+                      data: data.message.content
                     }) + '\n';
                     controller.enqueue(encoder.encode(streamData));
                   }
@@ -428,7 +428,7 @@ export async function POST(request) {
           }
         }
       });
-
+ 
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
@@ -460,13 +460,13 @@ export async function POST(request) {
           stream: true
         })
       });
-
+ 
       if (!response.ok) {
         const errorBody = await response.text();
         console.error('OpenAI API Error Details:', errorBody);
         throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
       }
-
+ 
       // Create a readable stream for the client
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
@@ -500,9 +500,9 @@ export async function POST(request) {
                     const parsed = JSON.parse(data);
                     if (parsed.choices?.[0]?.delta?.content) {
                       // Send each content chunk to the client
-                      const streamData = JSON.stringify({ 
-                        type: 'content', 
-                        data: parsed.choices[0].delta.content 
+                      const streamData = JSON.stringify({
+                        type: 'content',
+                        data: parsed.choices[0].delta.content
                       }) + '\n';
                       controller.enqueue(encoder.encode(streamData));
                     }
@@ -518,7 +518,7 @@ export async function POST(request) {
           }
         }
       });
-
+ 
       return new Response(stream, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
@@ -527,15 +527,15 @@ export async function POST(request) {
         },
       });
     } else {
-      return NextResponse.json({ 
-        error: 'Invalid LLM provider' 
+      return NextResponse.json({
+        error: 'Invalid LLM provider'
       }, { status: 400 });
     }
     
   } catch (error) {
     console.error('LLM chat error:', error);
-    return NextResponse.json({ 
-      error: 'Failed to process chat request' 
+    return NextResponse.json({
+      error: 'Failed to process chat request'
     }, { status: 500 });
   }
 }

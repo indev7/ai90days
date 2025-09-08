@@ -5,6 +5,18 @@ import { useRouter } from 'next/navigation';
 import OKRTModal from '@/components/OKRTModal';
 import styles from './page.module.css';
 
+// Date formatting utility
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const year = date.getFullYear();
+  const month = months[date.getMonth()];
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // OKRT item component for hierarchical display
 function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild, onRequestDelete, initialExpanded = false }) {
   const [expanded, setExpanded] = useState(initialExpanded);
@@ -248,9 +260,7 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   {okrt.description && (
                     <p className={styles.okrtDescription}>{okrt.description}</p>
                   )}
-                  {okrt.due_date && (
-                    <span className={styles.dueDate}>Due: {okrt.due_date}</span>
-                  )}
+                  
                   <div className={styles.progressContainer}>
                     <div className={styles.progressBar}>
                       <div 
@@ -259,6 +269,9 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                       ></div>
                     </div>
                     <span className={styles.progressText}>{okrt.progress || 0}%</span>
+                    {okrt.due_date && (
+                    <span className={styles.dueDate}>Due: {formatDate(okrt.due_date)}</span>
+                  )}
                     <button
                       className={styles.progressDeleteButton}
                       title="Delete"
@@ -518,10 +531,7 @@ export default function OKRTPage() {
   };
 
   const handleCreateNew = () => {
-    setEditingOkrt(null);
-    setModalMode('create');
-    setParentOkrt(null);
-    setShowModal(true);
+    router.push('/new');
   };
 
   const handleCreateChild = (parent) => {
@@ -595,16 +605,6 @@ export default function OKRTPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>My Goals</h1>
-        <button 
-          className={styles.createButton}
-          onClick={handleCreateNew}
-        >
-          + Objective
-        </button>
-      </div>
-
       {hierarchicalOkrts.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>🎯</div>
@@ -641,29 +641,6 @@ export default function OKRTPage() {
                   )}
                   <div className={styles.objectiveCardContent}>
                     <div className={styles.objectiveTitle}>{obj.title}</div>
-                    <p className={styles.objectiveDescriptionCard}>{obj.description}</p>
-                    <div className={styles.objectiveMeta}>
-                      <div className={styles.badgeRow}>
-                        {obj.cycle_qtr && <span className={styles.infoBadge}>Quarter: {obj.cycle_qtr}</span>}
-                        {obj.area && <span className={styles.infoBadge}>Area: {obj.area}</span>}
-                      </div>
-                      <div className={styles.badgeRow}>
-                        {obj.visibility && <span className={styles.infoBadge}>
-                          Visibility: {obj.visibility === 'private' ? 'Private' : 
-                           obj.visibility === 'team' ? 'Team' : 
-                           obj.visibility === 'org' ? 'Organization' : obj.visibility}
-                        </span>}
-                        <span className={`${styles.statusBadge} ${statusBadge.className}`}>
-                          Status: {statusBadge.label}
-                        </span>
-                      </div>
-                      <div className={styles.badgeRow}>
-                        <span className={styles.infoBadge}>
-                          Progress: {obj.progress || 0}%
-                        </span>
-                      </div>
-                    </div>
-                    
                   </div>
                 </div>
               );

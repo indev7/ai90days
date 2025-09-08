@@ -6,6 +6,18 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './page.module.css';
 
+// Date formatting utility
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const year = date.getFullYear();
+  const month = months[date.getMonth()];
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function OKRTDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -252,7 +264,7 @@ export default function OKRTDetailPage() {
               {okrt.due_date && (
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Due Date:</span>
-                  <span className={styles.detailValue}>{okrt.due_date}</span>
+                  <span className={styles.detailValue}>{formatDate(okrt.due_date)}</span>
                 </div>
               )}
               {okrt.blocked_by && (
@@ -270,13 +282,13 @@ export default function OKRTDetailPage() {
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Created:</span>
               <span className={styles.detailValue}>
-                {new Date(okrt.created_at).toLocaleDateString()}
+                {formatDate(okrt.created_at)}
               </span>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Updated:</span>
               <span className={styles.detailValue}>
-                {new Date(okrt.updated_at).toLocaleDateString()}
+                {formatDate(okrt.updated_at)}
               </span>
             </div>
           </div>
