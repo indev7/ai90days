@@ -2,6 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useObjective } from '@/contexts/ObjectiveContext';
 
 import styles from './LeftMenu.module.css';
 
@@ -9,7 +11,7 @@ const topMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'profile' },
   { href: '/okrt', label: 'My Goals', icon: 'goals' },
   { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: true },
-  { href: '/new', label: 'New', icon: 'new', disabled: true },
+  { href: '/new', label: '+ New Objective', icon: 'new', disabled: false },
 ];
 
 const bottomMenuItems = [
@@ -88,6 +90,45 @@ function getIcon(iconName) {
  */
 export default function LeftMenu({ isCollapsed = false, onToggle }) {
   const pathname = usePathname();
+  const { selectedObjectiveId, setSelectedObjectiveId } = useObjective();
+  const [isGoalsExpanded, setIsGoalsExpanded] = useState(false);
+  const [objectives, setObjectives] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Auto-expand goals if we're on the okrt page
+  useEffect(() => {
+    if (pathname === '/okrt') {
+      setIsGoalsExpanded(true);
+    }
+  }, [pathname]);
+
+  // Fetch objectives when component mounts
+  useEffect(() => {
+    const fetchObjectives = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/okrt');
+        if (response.ok) {
+          const data = await response.json();
+          // Filter only objectives (type 'O') that have no parent (top-level objectives)
+          const topLevelObjectives = data.okrts.filter(item => 
+            item.type === 'O' && !item.parent_id
+          );
+          setObjectives(topLevelObjectives);
+        }
+      } catch (error) {
+        console.error('Error fetching objectives:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchObjectives();
+  }, []);
+
+  const handleGoalsClick = (e) => {
+    setIsGoalsExpanded(!isGoalsExpanded);
+  };
 
   return (
     <nav className={`${styles.leftMenu} ${isCollapsed ? styles.collapsed : ''}`}>
@@ -96,6 +137,65 @@ export default function LeftMenu({ isCollapsed = false, onToggle }) {
           {topMenuItems.map((item) => {
             const isActive = pathname === item.href;
             const isDisabled = item.disabled;
+
+            // Special handling for "My Goals" item
+            if (item.href === '/okrt') {
+              return (
+                <li key={item.href} className={styles.menuItem}>
+                  <div>
+                    <Link
+                      href={item.href}
+                      onClick={handleGoalsClick}
+                      className={`${styles.menuLink} ${isActive ? styles.active : ''}`}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      <span className={styles.icon}>
+                        {getIcon(item.icon)}
+                      </span>
+                      <span className={styles.label}>{item.label}</span>
+                    </Link>
+                    
+                    {/* Expandable objectives list */}
+                    {isGoalsExpanded && (
+                      <ul className={styles.subMenuList}>
+                        {loading ? (
+                          <li className={styles.subMenuItem}>
+                            <span className={styles.subMenuLink}>
+                              <span className={styles.subMenuLabel}>Loading...</span>
+                            </span>
+                          </li>
+                        ) : objectives.length > 0 ? (
+                          objectives.map((objective) => (
+                            <li key={objective.id} className={styles.subMenuItem}>
+                              <button
+                                onClick={() => {
+                                  setSelectedObjectiveId(objective.id);
+                                  // Navigate to okrt page if not already there
+                                  if (pathname !== '/okrt') {
+                                    window.location.href = '/okrt';
+                                  }
+                                }}
+                                className={`${styles.subMenuLink} ${selectedObjectiveId === objective.id ? styles.active : ''}`}
+                              >
+                                <span className={styles.subMenuLabel} title={objective.title}>
+                                  {objective.title}
+                                </span>
+                              </button>
+                            </li>
+                          ))
+                        ) : (
+                          <li className={styles.subMenuItem}>
+                            <span className={styles.subMenuLink}>
+                              <span className={styles.subMenuLabel}>No objectives yet</span>
+                            </span>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                </li>
+              );
+            }
 
             return (
               <li key={item.href} className={styles.menuItem}>

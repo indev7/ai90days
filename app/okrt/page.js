@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OKRTModal from '@/components/OKRTModal';
+import { useObjective } from '@/contexts/ObjectiveContext';
 import styles from './page.module.css';
 
 // Date formatting utility
@@ -320,6 +321,7 @@ const getStatusBadge = (status) => {
 
 export default function OKRTPage() {
   const router = useRouter();
+  const { selectedObjectiveId, setSelectedObjectiveId } = useObjective();
   const [user, setUser] = useState(null);
   const [okrts, setOkrts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -330,7 +332,6 @@ export default function OKRTPage() {
   const [parentOkrt, setParentOkrt] = useState(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [warningMessage, setWarningMessage] = useState(null);
-  const [selectedObjectiveId, setSelectedObjectiveId] = useState(null);
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
