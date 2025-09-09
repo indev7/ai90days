@@ -163,15 +163,14 @@ TIME CONTEXT:
 STYLE & ADDRESSING
 - Address the user EXACTLY as "${displayName}".
 ACTION GUARDRAILS
-- Ask ONE clarifying question before proposing Objectives/KRs/Tasks.
-- Only call "emit_actions" after explicit user confirmation to create/update/delete.
+- Ask clarifying questions before proposing Objectives/KRs/Tasks. Do not exceed three clafifications.
 
 STRICT JSON CONTRACT FOR ACTIONS
 - Emit via the tool only: { "actions": [ ... ] } with required keys.
 
 SCOPE & DATA MODEL
 - Single table "okrt" with types O/K/T and parent_id hierarchy.
-- Propagate progress upwards using weighted sum.
+- If the user intend to update task progress, then propagate progress upwards to KR and to Objective using weighted sum.
 - Types: Objective (O), Key Result (K), Task (T). Hierarchy via parent_id.
 - Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D-Draft/A-Active/C-Complete), visibility (private/team/org), objective_kind (committed/stretch), progress (0–100).
 - Key Result (K): description (required), kr_target_number, kr_unit ∈ {count, %, $, hrs}, kr_baseline_number?, weight (default 1.0), progress (0–100).
@@ -185,6 +184,16 @@ OUTPUT CONTRACT
 
 ID SAFETY (MANDATORY)
 - For UPDATE_OKRT and DELETE_OKRT you MUST copy IDs exactly as they appear in CONTEXT. Never modify, shorten, or reformat IDs.
+- For every CREATE_OKRT payload you MUST include an "id".
+- New IDs must be in gen-XXXXXXXX format where X is a lowercase letter or digit.
+- When creating new OKRTs for an existing parent, use the exact parent id and set it in childrens parent_id field 
+- Parent chaining for a newly created tree:
+  - Objective: id = gen-XXXXXXXX
+  - Each KR:   id = gen-XXXXXXXX, parent_id = <Objective's gen-XXXXXXXX>
+  - Each Task: id = gen-XXXXXXXX, parent_id = <its KR's gen-XXXXXXXX>
+- Emit actions in strict parent→child order (Objective, then its KRs, then their Tasks).
+- Output the entire tool_call arguments JSON in a single contiguous block (do not split keys/values across deltas).
+
 
 ${timeBlock}${contextBlock}`;
 }
@@ -193,6 +202,9 @@ ${timeBlock}${contextBlock}`;
    Tool (Responses API shape)
    ========================= */
 function getActionsTool() {
+  const uuidV4 = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$';
+  const genId  = '^gen-[a-z0-9]{8}$';
+
   return {
     type: "function",
     name: "emit_actions",
@@ -205,32 +217,49 @@ function getActionsTool() {
           minItems: 1,
           items: {
             type: "object",
+            required: ["intent", "endpoint", "method", "payload"],
             properties: {
-              intent: { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
+              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
               endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
-              method: { type: "string", enum: ["POST", "PUT", "DELETE"] },
+              method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
               payload: {
                 type: "object",
                 properties: {
-                  id: { type: "string" },
+                  id: {
+                    allOf: [
+                      { anyOf: [
+                          { type: "string", pattern: uuidV4 },
+                          { type: "string", pattern: genId }
+                        ]
+                      }
+                    ]
+                  },
                   type: { type: "string", enum: ["O","K","T"] },
-                  owner_id: { type: "integer" },
-                  parent_id: { type: "string" },
+                  owner_id: { type: "integer" }, // (server should ignore/overwrite)
+                  parent_id: {
+                    allOf: [
+                      { anyOf: [
+                          { type: "string", pattern: uuidV4 },
+                          { type: "string", pattern: genId }
+                        ]
+                      }
+                    ]
+                  },
                   description: { type: "string" },
-                  progress: { type: "number" },
+                  progress:    { type: "number" },
                   order_index: { type: "integer" },
                   task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
                   title: { type: "string" },
-                  area: { type: "string" },
+                  area:  { type: "string" },
                   visibility: { type: "string", enum: ["private","team","org"] },
                   objective_kind: { type: "string", enum: ["committed","stretch"] },
                   status: { type: "string", enum: ["D","A","C"] },
                   cycle_qtr: { type: "string" },
-                  kr_target_number: { type: "number" },
-                  kr_unit: { type: "string", enum: ["%","$","count","hrs"] },
+                  kr_target_number:   { type: "number" },
+                  kr_unit:            { type: "string", enum: ["%","$","count","hrs"] },
                   kr_baseline_number: { type: "number" },
-                  weight: { type: "number" },
-                  due_date: { type: "string" },
+                  weight:     { type: "number" },
+                  due_date:   { type: "string" },
                   recurrence_json: { type: "string" },
                   blocked_by: { type: "string" },
                   repeat: { type: "string", enum: ["Y","N"] }
@@ -238,7 +267,6 @@ function getActionsTool() {
                 additionalProperties: true
               }
             },
-            required: ["intent", "endpoint", "method", "payload"],
             additionalProperties: true
           }
         }
@@ -248,6 +276,7 @@ function getActionsTool() {
     }
   };
 }
+
 
 /* =========================
    Helpers: tool args parsing
@@ -393,6 +422,10 @@ export async function POST(request) {
           const toolBuffers = new Map(); // id -> string[]
           const toolNames = new Map();   // id -> name
           let actionsPayloads = [];      // aggregated
+          
+          // Logging variables
+          let fullTextResponse = '';
+          let hasLoggedTextResponse = false;
 
           const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
           const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
@@ -446,10 +479,22 @@ export async function POST(request) {
                 const textDelta = typeof data === 'string' ? (() => {
                   try { const inner = JSON.parse(data); return inner?.delta ?? data; } catch { return data; }
                 })() : (data?.delta ?? '');
-                if (textDelta) send({ type: 'content', data: textDelta });
+                if (textDelta) {
+                  fullTextResponse += textDelta;
+                  send({ type: 'content', data: textDelta });
+                }
                 break;
               }
-              case 'response.output_text.done': break;
+              case 'response.output_text.done': {
+                // Log complete text response when text generation is done
+                if (fullTextResponse.trim() && !hasLoggedTextResponse) {
+                  console.log('=== OPENAI FULL TEXT RESPONSE ===');
+                  console.log(fullTextResponse);
+                  console.log('=== END OPENAI TEXT RESPONSE ===');
+                  hasLoggedTextResponse = true;
+                }
+                break;
+              }
 
               case 'response.tool_call.created': {
                 const { id, type, name } = (typeof data === 'object' && data) || {};
@@ -474,7 +519,13 @@ export async function POST(request) {
                 if (id && finalArgs != null) toolBuffers.set(id, [String(finalArgs)]);
                 if (id && name) toolNames.set(id, name);
                 flushAllTools();
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+                if (actionsPayloads.length) {
+                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
+                  console.log(JSON.stringify(actionsPayloads, null, 2));
+                  console.log('=== END OPENAI TOOL RESPONSE ===');
+                  prep();
+                  send({ type: 'actions', data: actionsPayloads });
+                }
                 break;
               }
 
@@ -493,7 +544,13 @@ export async function POST(request) {
                 const { item_id, arguments: finalArgs } = (typeof data === 'object' && data) || {};
                 if (item_id && finalArgs != null) toolBuffers.set(item_id, [String(finalArgs)]);
                 flushAllTools();
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+                if (actionsPayloads.length) {
+                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
+                  console.log(JSON.stringify(actionsPayloads, null, 2));
+                  console.log('=== END OPENAI TOOL RESPONSE ===');
+                  prep();
+                  send({ type: 'actions', data: actionsPayloads });
+                }
                 break;
               }
 
@@ -501,7 +558,13 @@ export async function POST(request) {
               case 'response.output_item.done': {
                 const item = (typeof data === 'object' && (data.item || data)) || null;
                 handleFunctionCallItem(item);
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: dedupe(actionsPayloads) }); }
+                if (actionsPayloads.length) {
+                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
+                  console.log(JSON.stringify(dedupe(actionsPayloads), null, 2));
+                  console.log('=== END OPENAI TOOL RESPONSE ===');
+                  prep();
+                  send({ type: 'actions', data: dedupe(actionsPayloads) });
+                }
                 break;
               }
 
@@ -510,7 +573,19 @@ export async function POST(request) {
                   handleResponseCompletedOutput(data);
                 }
                 flushAllTools();
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: dedupe(actionsPayloads) }); }
+                if (actionsPayloads.length) {
+                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
+                  console.log(JSON.stringify(dedupe(actionsPayloads), null, 2));
+                  console.log('=== END OPENAI TOOL RESPONSE ===');
+                  prep();
+                  send({ type: 'actions', data: dedupe(actionsPayloads) });
+                }
+                // Log complete text response if not already logged
+                if (fullTextResponse.trim() && !hasLoggedTextResponse) {
+                  console.log('=== OPENAI FULL TEXT RESPONSE ===');
+                  console.log(fullTextResponse);
+                  console.log('=== END OPENAI TEXT RESPONSE ===');
+                }
                 send({ type: 'done' });
                 return 'CLOSE';
               }
