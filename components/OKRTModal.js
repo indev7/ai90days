@@ -303,13 +303,13 @@ export default function OKRTModal({
 
           {/* Title (for Objectives) */}
           {formData.type === 'O' && (
-            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>
+            <div className={`${styles.objectiveFormGroup} ${styles.fullWidth}`}>
+              <label className={styles.objectiveLabel}>
                 Title <span className={styles.required}>*</span>
               </label>
               <input
                 type="text"
-                className={`${styles.input} ${errors.title ? styles.inputError : ''}`}
+                className={`${styles.objectiveInput} ${errors.title ? styles.inputError : ''}`}
                 value={formData.title}
                 onChange={e => handleInputChange('title', e.target.value)}
                 placeholder="Enter objective title"
@@ -335,11 +335,11 @@ export default function OKRTModal({
 
           {/* Area and Cycle (Objectives only) */}
           {formData.type === 'O' && (
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Area</label>
+            <div className={styles.objectiveFormRowThree}>
+              <div className={styles.objectiveFormGroup}>
+                <label className={styles.objectiveLabel}>Area</label>
                 <select
-                  className={styles.select}
+                  className={styles.objectiveSelect}
                   value={formData.area}
                   onChange={e => handleInputChange('area', e.target.value)}
                 >
@@ -350,10 +350,10 @@ export default function OKRTModal({
                 </select>
               </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Cycle Quarter</label>
+              <div className={styles.objectiveFormGroup}>
+                <label className={styles.objectiveLabel}>Cycle Quarter</label>
                 <select
-                  className={styles.select}
+                  className={styles.objectiveSelect}
                   value={formData.cycle_qtr}
                   onChange={e => handleInputChange('cycle_qtr', e.target.value)}
                 >
@@ -363,16 +363,27 @@ export default function OKRTModal({
                   ))}
                 </select>
               </div>
-            </div>
-          )}
 
-          {/* Visibility and Status (Objectives only) */}
-          {formData.type === 'O' && (
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Visibility</label>
+              <div className={styles.objectiveFormGroup}>
+                <label className={styles.objectiveLabel}>Progress (%)</label>
+                <div>
+                  <input
+                    type="range"
+                    className={styles.objectiveProgressSlider}
+                    value={formData.progress}
+                    onChange={e => handleInputChange('progress', Number(e.target.value))}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                  <div className={styles.objectiveHelperText}>{formData.progress}%</div>
+                </div>
+              </div>
+
+              <div className={styles.objectiveFormGroup}>
+                <label className={styles.objectiveLabel}>Visibility</label>
                 <select
-                  className={styles.select}
+                  className={styles.objectiveSelect}
                   value={formData.visibility}
                   onChange={e => handleInputChange('visibility', e.target.value)}
                 >
@@ -384,10 +395,10 @@ export default function OKRTModal({
                 </select>
               </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Status</label>
+              <div className={styles.objectiveFormGroup}>
+                <label className={styles.objectiveLabel}>Status</label>
                 <select
-                  className={styles.select}
+                  className={styles.objectiveSelect}
                   value={formData.status}
                   onChange={e => handleInputChange('status', e.target.value)}
                 >
@@ -399,23 +410,25 @@ export default function OKRTModal({
             </div>
           )}
 
+          
+
           {/* Header image (Objectives only) */}
           {formData.type === 'O' && (
-            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>Header Image</label>
+            <div className={`${styles.objectiveFormGroup} ${styles.fullWidth}`}>
+              <label className={styles.objectiveLabel}>Header Image</label>
               
               {/* Input mode toggle */}
-              <div className={styles.imageInputToggle}>
+              <div className={styles.objectiveImageInputToggle}>
                 <button
                   type="button"
-                  className={`${styles.toggleButton} ${imageInputMode === 'url' ? styles.active : ''}`}
+                  className={`${styles.objectiveToggleButton} ${imageInputMode === 'url' ? styles.active : ''}`}
                   onClick={() => setImageInputMode('url')}
                 >
                   URL
                 </button>
                 <button
                   type="button"
-                  className={`${styles.toggleButton} ${imageInputMode === 'upload' ? styles.active : ''}`}
+                  className={`${styles.objectiveToggleButton} ${imageInputMode === 'upload' ? styles.active : ''}`}
                   onClick={() => setImageInputMode('upload')}
                 >
                   Upload
@@ -426,7 +439,7 @@ export default function OKRTModal({
               {imageInputMode === 'url' && (
                 <input
                   type="url"
-                  className={`${styles.input} ${errors.header_image_url ? styles.inputError : ''}`}
+                  className={`${styles.objectiveInput} ${errors.header_image_url ? styles.inputError : ''}`}
                   value={formData.header_image_url}
                   onChange={e => handleInputChange('header_image_url', e.target.value)}
                   placeholder="https://..."
@@ -435,16 +448,16 @@ export default function OKRTModal({
 
               {/* File Upload */}
               {imageInputMode === 'upload' && (
-                <div className={styles.fileUploadArea}>
+                <div className={styles.objectiveFileUploadArea}>
                   <input
                     type="file"
                     id="headerImageUpload"
-                    className={styles.fileInput}
+                    className={styles.objectiveFileInput}
                     accept="image/*"
                     onChange={handleFileUpload}
                     disabled={uploadingImage}
                   />
-                  <label htmlFor="headerImageUpload" className={styles.fileUploadLabel}>
+                  <label htmlFor="headerImageUpload" className={styles.objectiveFileUploadLabel}>
                     {uploadingImage ? (
                       'Uploading...'
                     ) : (
@@ -455,7 +468,7 @@ export default function OKRTModal({
                           <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                         </svg>
                         Click to upload image or drag and drop
-                        <span className={styles.fileUploadHint}>PNG, JPG, GIF, WebP up to 5MB</span>
+                        <span className={styles.objectiveFileUploadHint}>PNG, JPG, GIF, WebP up to 5MB</span>
                       </>
                     )}
                   </label>
@@ -470,16 +483,16 @@ export default function OKRTModal({
               {/* Image preview */}
               {formData.header_image_url && (
                 <>
-                  <div className={styles.helperText}>Preview:</div>
-                  <div className={styles.imagePreviewContainer}>
+                  <div className={styles.objectiveHelperText}>Preview:</div>
+                  <div className={styles.objectiveImagePreviewContainer}>
                     <img
                       src={formData.header_image_url}
                       alt="Header preview"
-                      className={styles.imagePreview}
+                      className={styles.objectiveImagePreview}
                     />
                     <button
                       type="button"
-                      className={styles.removeImageButton}
+                      className={styles.objectiveRemoveImageButton}
                       onClick={() => handleInputChange('header_image_url', '')}
                       title="Remove image"
                     >
@@ -491,32 +504,15 @@ export default function OKRTModal({
             </div>
           )}
 
-          {/* Progress (full width) */}
-          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-            <label className={styles.label}>Progress (%)</label>
-            <div>
-              <input
-                type="range"
-                className={styles.input}
-                value={formData.progress}
-                onChange={e => handleInputChange('progress', Number(e.target.value))}
-                min={0}
-                max={100}
-                step={1}
-              />
-              <div className={styles.helperText}>{formData.progress}%</div>
-            </div>
-          </div>
-
           {/* Type-specific fields */}
           
           {/* Objective-specific fields */}
           {formData.type === 'O' && (
             <>
-              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                <label className={styles.label}>Objective Kind</label>
-                <div className={styles.radioGroup}>
-                  <label className={styles.radioLabel}>
+              <div className={`${styles.objectiveFormGroup} ${styles.fullWidth}`}>
+                <label className={styles.objectiveLabel}>Objective Kind</label>
+                <div className={styles.objectiveRadioGroup}>
+                  <label className={styles.objectiveRadioLabel}>
                     <input
                       type="radio"
                       name="objective_kind"
@@ -526,7 +522,7 @@ export default function OKRTModal({
                     />
                     Committed
                   </label>
-                  <label className={styles.radioLabel}>
+                  <label className={styles.objectiveRadioLabel}>
                     <input
                       type="radio"
                       name="objective_kind"
@@ -544,14 +540,14 @@ export default function OKRTModal({
           {/* Key Result-specific fields */}
           {formData.type === 'K' && (
             <>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>
+              <div className={styles.krFormRowThree}>
+                <div className={styles.krFormGroup}>
+                  <label className={styles.krLabel}>
                     Target Number <span className={styles.required}>*</span>
                   </label>
                   <input
                     type="number"
-                    className={`${styles.input} ${errors.kr_target_number ? styles.inputError : ''}`}
+                    className={`${styles.krInput} ${errors.kr_target_number ? styles.inputError : ''}`}
                     value={formData.kr_target_number}
                     onChange={e => handleInputChange('kr_target_number', Number(e.target.value))}
                     min={0}
@@ -561,10 +557,10 @@ export default function OKRTModal({
                   )}
                 </div>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Unit</label>
+                <div className={styles.krFormGroup}>
+                  <label className={styles.krLabel}>Unit</label>
                   <select
-                    className={styles.select}
+                    className={styles.krSelect}
                     value={formData.kr_unit}
                     onChange={e => handleInputChange('kr_unit', e.target.value)}
                   >
@@ -573,14 +569,12 @@ export default function OKRTModal({
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className={styles.formRow}>
-                <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                  <label className={styles.label}>Weight</label>
+                <div className={styles.krFormGroup}>
+                  <label className={styles.krLabel}>Weight</label>
                   <input
                     type="number"
-                    className={styles.input}
+                    className={styles.krInput}
                     value={formData.weight}
                     onChange={e => handleInputChange('weight', Number(e.target.value))}
                     min={0.1}
@@ -588,18 +582,37 @@ export default function OKRTModal({
                     step={0.1}
                   />
                 </div>
+
+                <div className={styles.krFormGroup}>
+                <label className={styles.krLabel}>Progress (%)</label>
+                <div>
+                  <input
+                    type="range"
+                    className={styles.krProgressSlider}
+                    value={formData.progress}
+                    onChange={e => handleInputChange('progress', Number(e.target.value))}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                  <div className={styles.krHelperText}>{formData.progress}%</div>
+                </div>
               </div>
+              
+              </div>
+
+              
             </>
           )}
 
           {/* Task-specific fields */}
           {formData.type === 'T' && (
             <>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Task Status</label>
+              <div className={styles.taskFormRowThree}>
+                <div className={styles.taskFormGroup}>
+                  <label className={styles.taskLabel}>Task Status</label>
                   <select
-                    className={styles.select}
+                    className={styles.taskSelect}
                     value={formData.task_status}
                     onChange={e => handleInputChange('task_status', e.target.value)}
                   >
@@ -610,11 +623,11 @@ export default function OKRTModal({
                   </select>
                 </div>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Weight</label>
+                <div className={styles.taskFormGroup}>
+                  <label className={styles.taskLabel}>Weight</label>
                   <input
                     type="number"
-                    className={styles.input}
+                    className={styles.taskInput}
                     value={formData.weight}
                     onChange={e => handleInputChange('weight', Number(e.target.value))}
                     min={0.1}
@@ -622,18 +635,36 @@ export default function OKRTModal({
                     step={0.1}
                   />
                 </div>
+
+                <div className={styles.taskFormGroup}>
+                  <label className={styles.taskLabel}>Due Date</label>
+                  <input
+                    type="date"
+                    className={`${styles.taskInput} ${errors.due_date ? styles.inputError : ''}`}
+                    value={formData.due_date}
+                    onChange={e => handleInputChange('due_date', e.target.value)}
+                  />
+                  {errors.due_date && <span className={styles.errorText}>{errors.due_date}</span>}
+                </div>
+
+                <div className={styles.taskFormGroup}>
+                <label className={styles.taskLabel}>Progress (%)</label>
+                <div>
+                  <input
+                    type="range"
+                    className={styles.taskProgressSlider}
+                    value={formData.progress}
+                    onChange={e => handleInputChange('progress', Number(e.target.value))}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                  <div className={styles.taskHelperText}>{formData.progress}%</div>
+                </div>
+              </div>
               </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Due Date</label>
-                <input
-                  type="date"
-                  className={`${styles.input} ${errors.due_date ? styles.inputError : ''}`}
-                  value={formData.due_date}
-                  onChange={e => handleInputChange('due_date', e.target.value)}
-                />
-                {errors.due_date && <span className={styles.errorText}>{errors.due_date}</span>}
-              </div>
+              
             </>
           )}
         </div>
