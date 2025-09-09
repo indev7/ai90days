@@ -91,7 +91,7 @@
 }
 
 .menuLink.active {
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(111, 78, 55, 0.12); /* Coffee highlight */
   color: var(--brand-primary);
   box-shadow: none;
   font-weight: 600;

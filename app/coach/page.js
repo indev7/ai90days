@@ -51,6 +51,30 @@ function normalizeActions(rawActions = []) {
 
 function ActionButtons({ actions, onActionClick, onRunAll }) {
   if (!actions || actions.length === 0) return null;
+  const [descriptions, setDescriptions] = useState({});
+
+  useEffect(() => {
+    const fetchDescriptions = async () => {
+      const newDescriptions = {};
+      for (const action of actions) {
+        if ((action.method === 'PUT' || action.method === 'DELETE') && action.body?.id) {
+          const okrt = await fetchOKRTById(action.body.id);
+          if (okrt) {
+            let typeLabel = 'OKRT';
+            if (okrt.type === 'T') typeLabel = 'Task';
+            else if (okrt.type === 'K') typeLabel = 'KR';
+            else if (okrt.type === 'O') typeLabel = 'Objective';
+
+            const content = okrt.type === 'O' ? okrt.title : okrt.description;
+            newDescriptions[action.key] = `${action.method === 'PUT' ? 'Update' : 'Delete'} ${typeLabel}: ${content || 'Untitled'}`;
+          }
+        }
+      }
+      setDescriptions(newDescriptions);
+    };
+    fetchDescriptions();
+  }, [actions]);
+
   return (
     <table className={styles.actionButtons}>
       <tbody>
@@ -60,10 +84,10 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
             if (action.body?.type === 'O') description = `Create Objective: ${action.body?.title || ''}`;
             else if (action.body?.type === 'K') description = `Create KR: ${action.body?.description || ''}`;
             else if (action.body?.type === 'T') description = `Create Task: ${action.body?.description || ''}`;
-          } else if (action.method === 'PUT') {
-            description = `Update ${action.body?.title || action.body?.description || 'OKRT'}`;
-          } else if (action.method === 'DELETE') {
-            description = `Delete ${action.body?.title || action.body?.description || 'OKRT'}`;
+          } else if (action.method === 'PUT' || action.method === 'DELETE') {
+            description =
+              descriptions[action.key] ||
+              `${action.method === 'PUT' ? 'Update' : 'Delete'} ${action.body?.title || action.body?.description || 'OKRT'}`;
           }
           return (
             <tr key={action.key}>
@@ -180,6 +204,25 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
       </div>
     </div>
   );
+}
+
+/* ---------- helpers for API ---------- */
+
+async function fetchOKRTById(id) {
+ try {
+   const res = await fetch(`/api/okrt/${id}`, {
+     method: 'GET',
+     headers: { 'Content-Type': 'application/json' },
+   });
+   if (!res.ok) {
+     throw new Error(`Failed to fetch OKRT with id ${id}. Status: ${res.status}`);
+   }
+   const data = await res.json();
+   return data?.okrt || null;
+ } catch (err) {
+   console.error('fetchOKRTById error:', err);
+   return null;
+ }
 }
 
 /* ---------- Page ---------- */
@@ -370,10 +413,7 @@ export default function CoachPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Coach</h1>
-        <p className={styles.subtitle}>Your OKRT Coach</p>
-      </div>
+
 
       <div className={styles.messagesContainer}>
         {messages.length === 0 && (

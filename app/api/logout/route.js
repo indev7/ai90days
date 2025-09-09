@@ -3,9 +3,20 @@ import { clearSession } from '@/lib/auth';
 
 export async function POST() {
   try {
+    const response = NextResponse.json({ success: true });
+    
+    // Clear the session cookie with proper attributes
+    response.cookies.set('sid', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      expires: new Date(0), // Set to past date to delete
+    });
+    
     await clearSession();
     
-    return NextResponse.json({ success: true });
+    return response;
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(

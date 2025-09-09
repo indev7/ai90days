@@ -183,6 +183,9 @@ OUTPUT CONTRACT
 1) Stream a short paragraph of coaching text.
 2) If changes are requested, call "emit_actions" once with an ordered "actions" array.
 
+ID SAFETY (MANDATORY)
+- For UPDATE_OKRT and DELETE_OKRT you MUST copy IDs exactly as they appear in CONTEXT. Never modify, shorten, or reformat IDs.
+
 ${timeBlock}${contextBlock}`;
 }
 

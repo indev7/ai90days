@@ -9,7 +9,18 @@ export default function MessageMarkdown({ children }) {
   if (!text) return null;
   return (
     <div className="md-wrap">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({node, ...props}) => (
+            <a {...props} target="_blank" rel="noopener noreferrer">
+              {props.children}
+            </a>
+          )
+        }}
+      >
+        {text}
+      </ReactMarkdown>
       <style jsx>{`
         .md-wrap :global(h1,h2,h3){ margin: 0.4rem 0 0.2rem; }
         .md-wrap :global(p){ margin: 0.35rem 0; line-height: 1.45; }

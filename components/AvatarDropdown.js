@@ -67,24 +67,30 @@ export default function AvatarDropdown({ user }) {
   };
 
   const handleLogout = async () => {
+    setIsOpen(false);
+    
     try {
+      // Wait for logout API to complete
       const response = await fetch('/api/logout', {
         method: 'POST',
+        credentials: 'include', // Ensure cookies are sent
       });
 
-      // Always redirect to home, even if logout request fails
-      // Clear any client-side auth state
-      window.localStorage.setItem('authChange', Date.now().toString());
-      window.localStorage.removeItem('authChange');
-      
-      // Force a hard redirect to clear all state
-      window.location.href = '/';
+      if (response.ok) {
+        console.log('Logout successful');
+      } else {
+        console.warn('Logout API failed, but proceeding with client-side cleanup');
+      }
     } catch (error) {
       console.error('Logout error:', error);
-      // Even on error, redirect to home
-      window.location.href = '/';
     }
-    setIsOpen(false);
+
+    // Clear any client-side auth state
+    window.localStorage.setItem('authChange', Date.now().toString());
+    window.localStorage.removeItem('authChange');
+    
+    // Force a hard redirect to login page to clear all state
+    window.location.href = '/login';
   };
 
   const handleMenuItemClick = () => {

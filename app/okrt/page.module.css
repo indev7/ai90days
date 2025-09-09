@@ -100,16 +100,14 @@
 /* OKRT Item */
 .okrtItem {
   background: var(--surface-1);
-  border: 2px solid var(--border-light);
+  border: 0px solid var(--border-light);
   border-radius: 12px;
   margin-bottom: 1rem;
   transition: all 0.2s ease;
   overflow: hidden;
 }
 
-.okrtItem:hover {
-  border-color: var(--accent-color);
-}
+
 
 .okrtHeader {
   padding: 0.2rem;
@@ -515,7 +513,7 @@
 /* Children */
 .okrtChildren {
   padding-left: 0rem;
-  border-left: 2px solid var(--border-light);
+  border-left: 0px solid var(--border-light);
   margin-left: 2.5rem;
 }
 

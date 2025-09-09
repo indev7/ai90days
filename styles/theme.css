@@ -1,43 +1,43 @@
 /* 90 Days App - Microsoft Forms / Fluent-inspired Theme */
 
 :root {
-  /* Brand Colors (Communication Blue ramp) */
-  --brand-primary: #0078d4; /* Communication Blue (primary CTA) */
-  --brand-secondary: #2b88d8; /* Lighter blue for secondary accents */
-  --brand-accent: #00b7c3; /* Teal accent used across M365 visuals */
-  --brand-success: #107c10; /* Fluent success green */
+  /* Brand Colors (Coffee Brown ramp) */
+  --brand-primary: #6f4e37; /* Coffee brown primary */
+  --brand-secondary: #a1866f; /* Light coffee secondary */
+  --brand-accent: #c4a484; /* Latte accent */
+  --brand-success: #8c7a50; /* Muted earthy green-brown */
 
   /* Extended Brand Palette (Fluent-style tints/shades) */
-  --brand-50:  #eff6fc;  /* Lighter Alt */
-  --brand-100: #deecf9;  /* Lighter */
-  --brand-200: #c7e0f4;  /* Light */
-  --brand-500: #2b88d8;  /* Secondary */
-  --brand-600: #106ebe;  /* Dark Alt (hover) */
-  --brand-700: #005a9e;  /* Dark (active) */
-  --brand-900: #004578;  /* Darker (pressed/depth) */
+  --brand-50:  #f9f6f2;  /* Lighter Alt */
+  --brand-100: #f2e8dc;  /* Lighter */
+  --brand-200: #e6d5c3;  /* Light */
+  --brand-500: #a1866f;  /* Secondary */
+  --brand-600: #8b6b52;  /* Dark Alt (hover) */
+  --brand-700: #6f4e37;  /* Dark (active) */
+  --brand-900: #3e2c23;  /* Darker (pressed/depth) */
 
   /* Surfaces (light, airy sections like the Forms page) */
-  --bg:        linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+  --bg:        linear-gradient(135deg, #fdfbf9 0%, #f5f0eb 100%);
   --bg-solid:  #ffffff;
   --surface:   #ffffff;
   --surface-elevated: #ffffff;
   --card:      #ffffff;
-  --border:    #edebe9;   /* Office neutral border */
-  --border-light: #f3f2f1; 
+  --border:    #e1d8d1;   /* Coffee neutral border */
+  --border-light: #f0e6de;
 
   /* Text (Fluent neutrals) */
-  --text: #242424;              /* Neutral foreground strong */
-  --text-secondary: #3b3a39;    /* Secondary */
-  --muted: #605e5c;             /* Muted */
-  --muted-light: #8a8886;       /* Subtle */
+  --text: #2c1e16;              /* Dark coffee text */
+  --text-secondary: #5a4637;    /* Secondary */
+  --muted: #7b6758;             /* Muted */
+  --muted-light: #a1866f;       /* Subtle */
 
   /* Status (Fluent shared/semantic) */
-  --success: #107c10;
-  --success-light: #dff6dd;
-  --warn: #fde300;         /* Caution yellow */
-  --warn-light: #fff8cc;
-  --danger: #d13438;       /* Fluent red */
-  --danger-light: #fde7e9;
+  --success: #8c7a50;
+  --success-light: #efe8d8;
+  --warn: #c9a227;         /* Toasted yellow */
+  --warn-light: #f9f4e3;
+  --danger: #a14d3a;       /* Rustic red-brown */
+  --danger-light: #f3e0db;
 
   /* Progress & Accents */
   --progress-obj: var(--brand-primary);
@@ -80,6 +80,7 @@
   --accent-color: var(--brand-primary);
   --accent-color-dark: var(--brand-600);
   --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  --highlight: var(--brand-accent); /* Menu & selection highlight */
   --success-color: var(--brand-success);
   --error-color: var(--danger);
   --text-primary: var(--text);
@@ -90,33 +91,46 @@
   --border-subtle: var(--border);
 }
 
-/* Dark Mode – Fluent-style neutrals + brighter brand tokens */
+/* Selection & active states */
+::selection {
+  background: var(--highlight);
+  color: var(--surface-0);
+}
+
+/* Active menu highlight */
+.menu-item.active,
+.nav-item.active {
+  background-color: var(--highlight) !important;
+  color: var(--surface-0) !important;
+}
+
+/* Dark Mode – Coffee-style neutrals */
 html[data-theme="dark"] {
   /* Surfaces */
-  --bg: linear-gradient(135deg, #11100f 0%, #1b1a19 100%);
-  --bg-solid: #11100f;
-  --surface: #1f1e1d;
-  --surface-elevated: #252423;
-  --card: #1f1e1d;
-  --border: #323130;
-  --border-light: #3b3a39;
+  --bg: linear-gradient(135deg, #2a1f1a 0%, #1e1713 100%);
+  --bg-solid: #1e1713;
+  --surface: #2c221d;
+  --surface-elevated: #3b2e26;
+  --card: #2c221d;
+  --border: #4b3b30;
+  --border-light: #5a4637;
 
   /* Text */
-  --text: #f3f2f1;
-  --text-secondary: #c8c6c4;
-  --muted: #a19f9d;
-  --muted-light: #8a8886;
+  --text: #f5f0eb;
+  --text-secondary: #d9cfc7;
+  --muted: #b8a89d;
+  --muted-light: #a1866f;
 
-  /* Brand (slightly lighter for dark backgrounds) */
-  --brand-primary: #2b88d8;
-  --brand-secondary: #71afe5;
-  --brand-accent: #3dd5df;
+  /* Brand (lighter browns for dark backgrounds) */
+  --brand-primary: #a1866f;
+  --brand-secondary: #c4a484;
+  --brand-accent: #e6d5c3;
 
   /* Status */
-  --success: #3db83d;
-  --success-light: #0b2f0b;
-  --warn: #f9cc2e;
-  --warn-light: #3a3000;
-  --danger: #ff6161;
-  --danger-light: #5a1a1c;
+  --success: #a58b67;
+  --success-light: #3a2f26;
+  --warn: #d4b85c;
+  --warn-light: #4a4020;
+  --danger: #c97a65;
+  --danger-light: #5a2f26;
 }
