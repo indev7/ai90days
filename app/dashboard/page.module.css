@@ -5,7 +5,7 @@
 }
 
 .content {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -26,27 +26,156 @@
   margin: 0;
 }
 
-.card {
-  background: linear-gradient(135deg, 
-    var(--surface) 0%, 
-    rgba(255, 255, 255, 0.95) 100%
-  );
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  padding: var(--space-10);
-  box-shadow: var(--shadow-3);
-  position: relative;
-  overflow: hidden;
+.loading {
+  text-align: center;
+  padding: var(--space-8);
+  font-size: var(--text-lg);
+  color: var(--muted);
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+.error {
+  text-align: center;
+  padding: var(--space-8);
+  font-size: var(--text-lg);
+  color: var(--error);
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--space-12);
+}
+
+.emptyIcon {
+  font-size: 4rem;
+  margin-bottom: var(--space-4);
+}
+
+.emptyState h2 {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: var(--space-2);
+}
+
+.emptyState p {
+  font-size: var(--text-lg);
+  color: var(--muted);
+  margin-bottom: var(--space-6);
+}
+
+.createButton {
   background: var(--brand-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.createButton:hover {
+  background: var(--brand-primary-hover);
+}
+
+.cardsHeaderRow {
+  margin-bottom: var(--space-6);
+}
+
+.sectionTitle {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 280px);
+  gap: 2rem;
+  justify-content: start;
+  padding: 1rem 0;
+}
+
+.objectiveCard {
+  background: var(--surface-1);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  width: 280px;
+  height: 230px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.objectiveCard:hover { 
+  transform: scale(1.007);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.295);
+  border-color: var(--accent-color);
+}
+
+.objectiveImage {
+  width: 280px;
+  height: 160px;
+  background: linear-gradient(135deg, rgba(124,58,237,.15), rgba(16,185,129,.15));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+.objectiveCardContent {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.objectiveTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.statusContainer {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.statusDraft {
+  background: rgba(156, 163, 175, 0.1);
+  color: rgb(75, 85, 99);
+  border: 1px solid rgba(156, 163, 175, 0.2);
+}
+
+.statusActive {
+  background: rgba(34, 197, 94, 0.1);
+  color: rgb(21, 128, 61);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.statusComplete {
+  background: rgba(59, 130, 246, 0.1);
+  color: rgb(29, 78, 216);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .section {

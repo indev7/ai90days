@@ -96,7 +96,7 @@
   border-radius: 12px;
   padding: 0.75rem;
   margin-bottom: 1.25rem;
-  height: 48vh;
+  height: calc(100vh - 120px);
   overflow: auto;
 }
 

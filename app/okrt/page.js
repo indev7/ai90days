@@ -619,35 +619,9 @@ export default function OKRTPage() {
           </button>
         </div>
       ) : (
-        <>
-          <div className={styles.detailPane}>
-            {renderSelectedObjective(selectedObjective)}
-          </div>
-          <div className={styles.cardsHeaderRow}>
-            <h2 className={styles.sectionTitle}>All Goals</h2>
-          </div>
-          <div className={styles.cardsGrid}>
-            {rootObjectives.map(obj => {
-              const statusBadge = getStatusBadge(obj.status);
-              return (
-                <div 
-                  key={obj.id} 
-                  className={`${styles.objectiveCard} ${selectedObjectiveId === obj.id ? styles.cardSelected : ''}`}
-                  onClick={() => setSelectedObjectiveId(obj.id)}
-                >
-                  {obj.header_image_url ? (
-                    <div className={styles.objectiveImage} style={{backgroundImage:`url(${obj.header_image_url})`}} />
-                  ) : (
-                    <div className={styles.objectiveImage} />
-                  )}
-                  <div className={styles.objectiveCardContent}>
-                    <div className={styles.objectiveTitle}>{obj.title}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
+        <div className={styles.detailPane}>
+          {renderSelectedObjective(selectedObjective)}
+        </div>
       )}
 
       <OKRTModal
