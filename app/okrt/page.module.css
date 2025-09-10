@@ -398,8 +398,9 @@
   flex-shrink: 0;
   white-space: nowrap;
   max-width: 80px;
-  margin-right: 38px;
+/*   margin-right: 38px; */
   margin-left: 0;
+  max-width: 74px;
 }
 
 .taskMetaRow .progressContainer {
@@ -681,6 +682,30 @@
 
 .okrtChildren .okrtItem:last-child {
   margin-bottom: 0;
+}
+
+.objProgressWrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.objProgress {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.progressLabel {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.progressRing {
+  width: auto;
+  height: auto;
+}
+.progressRingLabel {
+  font-size: 0.7rem;
+  fill: #0f172a;
+  font-weight: 500;
 }
 
 /* Responsive */

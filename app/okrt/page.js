@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import OKRTModal from '@/components/OKRTModal';
 import { useObjective } from '@/contexts/ObjectiveContext';
 import styles from './page.module.css';
+import { Calendar } from "lucide-react";
 
 // Date formatting utility
 const formatDate = (dateString) => {
@@ -12,11 +13,49 @@ const formatDate = (dateString) => {
   const date = new Date(dateString);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const year = date.getFullYear();
   const month = months[date.getMonth()];
   const day = date.getDate().toString().padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return `${month}-${day}`;
 };
+
+//ring progress component
+function ProgressRing({ value = 62, size = 40, stroke = 6, color = "#6366f1" }) {
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - value / 100);
+  return (
+    <svg width={size} height={size} className={styles.progressRing}>
+      <circle
+        stroke="#E5E7EB"
+        fill="transparent"
+        strokeWidth={stroke}
+        r={radius}
+        cx={size / 2}
+        cy={size / 2}
+      />
+      <circle
+        stroke={color}
+        fill="transparent"
+        strokeLinecap="round"
+        strokeWidth={stroke}
+        r={radius}
+        cx={size / 2}
+        cy={size / 2}
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={offset}
+      />
+      <text
+        x="50%"
+        y="50%"
+        dominantBaseline="central"
+        textAnchor="middle"
+        className={styles.progressRingLabel}
+      >
+        {Math.round(value)}%
+      </text>
+    </svg>
+  );
+}
 
 // OKRT item component for hierarchical display
 function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild, onRequestDelete, initialExpanded = false }) {
@@ -133,13 +172,12 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               </span>
             </div>
             <div className={styles.progressContainer}>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${okrt.progress || 0}%` }}
-                ></div>
+              <div className={styles.objProgressWrapper}>
+                <div className={styles.objProgress}>
+                  <ProgressRing value={okrt.progress} size={35} stroke={3.5} />
+                  {/* <div className={styles.progressLabel}>progress</div> */}
+                </div>
               </div>
-              <span className={styles.progressText}>{okrt.progress || 0}%</span>
               <button 
                 className={styles.addChildButton}
                 onClick={(e) => {
@@ -193,14 +231,11 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               )}
               <div className={styles.krDetails}></div>
             </div>
-            <div className={styles.progressContainer}>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${okrt.progress || 0}%` }}
-                ></div>
-              </div>
-              <span className={styles.progressText}>{okrt.progress || 0}%</span>
+            <div className={styles.objProgressWrapper}>
+                <div className={styles.objProgress}>
+                  <ProgressRing value={okrt.progress} size={35} stroke={3.5} />
+                  {/* <div className={styles.progressLabel}>progress</div> */}
+                </div>
               <button 
                 className={styles.addChildButton}
                 onClick={(e) => {
@@ -262,16 +297,13 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                     <p className={styles.okrtDescription}>{okrt.description}</p>
                   )}
                   
-                  <div className={styles.progressContainer}>
-                    <div className={styles.progressBar}>
-                      <div 
-                        className={styles.progressFill} 
-                        style={{ width: `${okrt.progress || 0}%` }}
-                      ></div>
-                    </div>
-                    <span className={styles.progressText}>{okrt.progress || 0}%</span>
+                  <div className={styles.objProgressWrapper}>
+                <div className={styles.objProgress}>
+                  <ProgressRing value={okrt.progress} size={35} stroke={3.5} />
+                  {/* <div className={styles.progressLabel}>progress</div> */}
+                </div>
                     {okrt.due_date && (
-                    <span className={styles.dueDate}>Due: {formatDate(okrt.due_date)}</span>
+                    <span className={styles.dueDate}> <Calendar />{formatDate(okrt.due_date)}</span>
                   )}
                     <button
                       className={styles.progressDeleteButton}
