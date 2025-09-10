@@ -11,7 +11,7 @@ const topMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'profile' },
   { href: '/okrt', label: 'My Goals', icon: 'goals' },
   { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: true },
-  { href: '/new', label: '+ New Objective', icon: 'new', disabled: false },
+  { href: '/new', label: 'New Objective', icon: 'new', disabled: false },
 ];
 
 const bottomMenuItems = [
