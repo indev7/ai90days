@@ -4,6 +4,27 @@ import { getSession } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
 
 /* =========================
+   Utility functions
+   ========================= */
+function logHumanReadable(title, obj) {
+  console.log(`=== ${title} ===`);
+  
+  // First stringify normally, then replace escape sequences with actual characters
+  let jsonString = JSON.stringify(obj, null, 2);
+  
+  // Replace escaped characters with actual characters for better readability
+  jsonString = jsonString
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\r/g, '\r')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\');
+  
+  console.log(jsonString);
+  console.log(`=== END ${title} ===`);
+}
+
+/* =========================
    Time/Quarter helpers
    ========================= */
 function getCurrentQuarter() {
@@ -308,7 +329,10 @@ export async function POST(request) {
     }
     const userId = parseInt(session.sub, 10);
 
-    const { messages } = await request.json();
+    const requestBody = await request.json();
+    logHumanReadable('COMPLETE API REQUEST JSON', requestBody);
+    
+    const { messages } = requestBody;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
     }
@@ -328,10 +352,13 @@ export async function POST(request) {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
 
+      const ollamaPayload = { model, messages: llmMessages, stream: true };
+      logHumanReadable('OLLAMA API PAYLOAD', ollamaPayload);
+
       const response = await fetch(`${ollamaUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, messages: llmMessages, stream: true })
+        body: JSON.stringify(ollamaPayload)
       });
       if (!response.ok) throw new Error(`Ollama API error: ${response.status}`);
 
@@ -392,13 +419,16 @@ export async function POST(request) {
         return { role, content: [{ type: partType, text: String(m.content ?? '') }] };
       });
 
+      const openaiPayload = { model, input, tools: [getActionsTool()], tool_choice: "auto", stream: true };
+      logHumanReadable('OPENAI API PAYLOAD', openaiPayload);
+
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({ model, input, tools: [getActionsTool()], tool_choice: "auto", stream: true })
+        body: JSON.stringify(openaiPayload)
       });
 
       if (!response.ok) {
