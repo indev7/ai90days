@@ -316,7 +316,12 @@
 
 /* Emoji status background colors */
 .emojiTodo {
-  background: #fef3c7;
+  background: #f0f0f0;
+  border: #cccccc;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 10px;
+  
 }
 
 .emojiInProgress {
@@ -376,7 +381,7 @@
   -ms-flex-align: center;
   align-items: center;
   gap: 1rem;
-  margin-top: 0.5rem;
+  margin-top: 0.2rem;
   -ms-flex-wrap: nowrap;
   flex-wrap: nowrap;
   width: 100%;
@@ -394,13 +399,16 @@
 }
 
 .taskMetaRow .dueDate {
-  -ms-flex-negative: 0;
-  flex-shrink: 0;
-  white-space: nowrap;
-  max-width: 80px;
-/*   margin-right: 38px; */
-  margin-left: 0;
-  max-width: 74px;
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  align-items: center;
+  color: #27292e;
+  width: 80px;
+  height: 26px;
+  justify-content: center;
+  align-items: center;
+  /* margin-left: 10px; */
 }
 
 .taskMetaRow .progressContainer {
@@ -433,7 +441,7 @@
 .progressDeleteButton {
   background: transparent;
   border: none;
-  padding: 0.2rem;
+  /* padding: 0.2rem; */
   cursor: pointer;
   color: var(--text-secondary);
   border-radius: 4px;
@@ -526,21 +534,26 @@
 }
 
 .statusBadge, .taskStatusBadge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
   font-weight: 500;
   letter-spacing: 0.05em;
+  height: 28px;
 }
 
 .infoBadge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
   font-weight: 500;
   background: #f8fafc;
   color: #475569;
-  border: 1px solid #e2e8f0;
+  height: 28px;
 }
 
 .statusDraft {
@@ -594,6 +607,9 @@
   cursor: pointer;
   transition: all 0.2s ease;
   width:80px;
+  height: 26px;
+  justify-content: center;
+  align-items: center;
 }
 
 .addChildButton:hover {
@@ -687,9 +703,32 @@
 .objProgressWrapper {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 .objProgress {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.krProgressWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.krProgress {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.tProgressWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 185px;
+}
+.tProgress {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -704,8 +743,16 @@
 }
 .progressRingLabel {
   font-size: 0.7rem;
-  fill: #0f172a;
+  fill: #0f172ad7;
   font-weight: 500;
+}
+
+.calendarIcon{
+  width: 18px;
+  height: 18px;
+  /* margin-right: 14px;
+  margin-bottom: -2px; */
+  color: #0e0e0ee1;
 }
 
 /* Responsive */

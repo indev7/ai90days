@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation';
 import OKRTModal from '@/components/OKRTModal';
 import { useObjective } from '@/contexts/ObjectiveContext';
 import styles from './page.module.css';
-import { Calendar } from "lucide-react";
+import { Calendar, Trash2, TrophyIcon, Flag, ClipboardList } from "lucide-react";
 
 // Date formatting utility
 const formatDate = (dateString) => {
-  if (!dateString) return '';
+  if (!dateString) return ' ';
   const date = new Date(dateString);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const month = months[date.getMonth()];
   const day = date.getDate().toString().padStart(2, '0');
-  return `${month}-${day}`;
+  return `${month} ${day}`;
 };
 
 //ring progress component
@@ -63,9 +63,9 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
   const hasChildren = Array.isArray(children) && children.length > 0;
   const getIcon = (type) => {
     switch (type) {
-      case 'O': return '🏆';
-      case 'K': return '⛳';
-      case 'T': return '🏌️';
+      case 'O': return <TrophyIcon size={26} strokeWidth={1.5} />/*{'🏆'}*/;
+      case 'K': return <Flag size={20} strokeWidth={2} />/*{'⛳'}*/;
+      case 'T': return <ClipboardList size={20} strokeWidth={2} />/*{'🏌️'}*/;
       default: return '';
     }
   };
@@ -177,7 +177,7 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   <ProgressRing value={okrt.progress} size={35} stroke={3.5} />
                   {/* <div className={styles.progressLabel}>progress</div> */}
                 </div>
-              </div>
+              
               <button 
                 className={styles.addChildButton}
                 onClick={(e) => {
@@ -186,7 +186,8 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 }}
                 title="Add Key Result"
               >
-                + KR
+              <span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>+ KR</span>
+
               </button>
               <button
                 className={styles.progressDeleteButton}
@@ -194,12 +195,13 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                 onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
                 aria-label="Delete"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                   <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+                </svg> */}
+                <Trash2 size={16} />
               </button>
               
               <span className={styles.toggleSpan}>{hasChildren && (
@@ -215,6 +217,7 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   {expanded ? <img style={{width: '30px', height: '30px', alignSelf: 'center', marginTop: '5px'}} className="styles.expandImage" src="/expand-up-svgrepo-com.svg"/> : <img style={{width: '30px', height: '30px', alignSelf: 'center', marginTop: '5px'}} className="styles.toggleButton" src="/expand-down-svgrepo-com.svg"/>}
                 </button>
               )}</span>
+              </div>
             </div>
           </div>
         ) : okrt.type === 'K' ? (
@@ -231,8 +234,8 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
               )}
               <div className={styles.krDetails}></div>
             </div>
-            <div className={styles.objProgressWrapper}>
-                <div className={styles.objProgress}>
+            <div className={styles.krProgressWrapper}>
+                <div className={styles.krProgress}>
                   <ProgressRing value={okrt.progress} size={35} stroke={3.5} />
                   {/* <div className={styles.progressLabel}>progress</div> */}
                 </div>
@@ -243,21 +246,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                   onCreateChild(okrt);
                 }}
                 title="Add Task"
-              >
-                + Task
-              </button>
-              <button
+                >
+                <span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>+ Task</span>
+                </button>
+                <button
                 className={styles.progressDeleteButton}
                 title="Delete"
                 onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
                 aria-label="Delete"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                  <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+                <Trash2 size={16} />
               </button>
               
               <span className={styles.toggleSpan}>{hasChildren && (
@@ -279,13 +277,16 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
           <div className={styles.okrtMain}>
             <span className={`${styles.okrtIcon} ${getEmojiStatusClass(okrt.type, okrt, childrenData)}`}>{getIcon(okrt.type)}</span>
             <div className={styles.okrtContent}>
+              {okrt.title &&
               <div 
                 className={styles.okrtTitleRow} 
                 onClick={() => onEdit(okrt)} 
                 style={{ cursor: 'pointer' }}
               >
-                {okrt.title && <h3 className={styles.okrtTitle}>{okrt.title}</h3>}
-              </div>
+                 <h3 className={styles.okrtTitle}>{okrt.title}</h3>
+                 </div>
+                 }
+              
               
               {okrt.type === 'T' && (
                 <div 
@@ -297,26 +298,21 @@ function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChil
                     <p className={styles.okrtDescription}>{okrt.description}</p>
                   )}
                   
-                  <div className={styles.objProgressWrapper}>
-                <div className={styles.objProgress}>
+                  <div className={styles.tProgressWrapper}>
+                <div className={styles.tProgress}>
                   <ProgressRing value={okrt.progress} size={35} stroke={3.5} />
                   {/* <div className={styles.progressLabel}>progress</div> */}
                 </div>
-                    {okrt.due_date && (
-                    <span className={styles.dueDate}> <Calendar />{formatDate(okrt.due_date)}</span>
-                  )}
+                    
+                    <span className={styles.dueDate}> <Calendar className={styles.calendarIcon} />{formatDate(okrt.due_date)}</span>
+                
                     <button
                       className={styles.progressDeleteButton}
                       title="Delete"
                       onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
                       aria-label="Delete"
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      </svg>
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
