@@ -188,7 +188,7 @@
   background: var(--border-light);
 }
 
-.focusButton {
+.editButton {
   padding: 0.75rem 1.5rem;
   background: var(--text);
   color: var(--surface);
@@ -200,7 +200,7 @@
   transition: all 0.2s ease;
 }
 
-.focusButton:hover {
+.editButton:hover {
   background: var(--text-secondary);
 }
 
@@ -209,17 +209,18 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 1.5rem;
+  align-items: start;
 }
 
 .keyResultCard {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  padding: 1.5rem;
-  text-align: left;
-  cursor: pointer;
+  overflow: hidden;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-1);
+  height: fit-content;
+  align-self: start;
 }
 
 .keyResultCard:hover {
@@ -234,13 +235,23 @@
 
 .keyResultCard.atRisk {
   border-color: var(--warn);
-  background: var(--warn-light);
+/*   background: var(--warn-light); */
+}
+
+.cardButton {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
 }
 
 .cardHeader {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
+  padding: 1.5rem;
 }
 
 .cardIcon {
@@ -449,6 +460,7 @@
   
   .keyResultsGrid {
     grid-template-columns: 1fr;
+    align-items: start;
   }
   
   .cardHeader {
@@ -482,4 +494,144 @@
   .keyResultCard {
     padding: 1rem;
   }
+}
+
+/* Task Section Styles */
+.taskSection {
+  border-top: 1px solid var(--border-light);
+}
+
+.expandButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface-2);
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover {
+  background: var(--border-light);
+}
+
+.taskCount {
+  font-weight: 500;
+}
+
+.expandIcon {
+  transition: transform 0.2s ease;
+  color: var(--muted);
+}
+
+.expandIconOpen {
+  transform: rotate(180deg);
+}
+
+/* Task List */
+.taskList {
+  background: var(--bg-solid);
+  border-top: 1px solid var(--border-light);
+}
+
+.taskItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-light);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.taskItem:hover {
+  background: var(--surface-2);
+}
+
+.taskItem:last-child {
+  border-bottom: none;
+}
+
+.taskIcon {
+  font-size: 1rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.taskContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.taskTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.taskMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.taskStatusBadge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.375rem;
+}
+
+.taskTodo {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.taskInProgress {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.taskDone {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.taskBlocked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.taskDueDate,
+.taskProgress {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.emptyTasks {
+  padding: 1rem 1.5rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.emptyTasks p {
+  margin: 0;
 }
