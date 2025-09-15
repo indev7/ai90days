@@ -1,0 +1,66 @@
+/* Coffee Theme - Light and Dark variants */
+
+:root,
+html[data-theme="coffee"] {
+  /* Brand Colors (Coffee Brown ramp) */
+  --brand-primary: #6f4e37; /* Coffee brown primary */
+  --brand-secondary: #a1866f; /* Light coffee secondary */
+  --brand-accent: #c4a484; /* Latte accent */
+  --brand-success: #8c7a50; /* Muted earthy green-brown */
+
+  /* Extended Brand Palette (Fluent-style tints/shades) */
+  --brand-50:  #f9f6f2;  /* Lighter Alt */
+  --brand-100: #f2e8dc;  /* Lighter */
+  --brand-200: #e6d5c3;  /* Light */
+  --brand-500: #a1866f;  /* Secondary */
+  --brand-600: #8b6b52;  /* Dark Alt (hover) */
+  --brand-700: #6f4e37;  /* Dark (active) */
+  --brand-900: #3e2c23;  /* Darker (pressed/depth) */
+
+  /* Surfaces (light, airy sections like the Forms page) */
+  --bg:        linear-gradient(135deg, #fdfbf9 0%, #f5f0eb 100%);
+  --bg-solid:  #ffffff;
+  --surface:   #ffffff;
+  --surface-elevated: #ffffff;
+  --card:      #ffffff;
+  --border:    #e1d8d1;   /* Coffee neutral border */
+  --border-light: #f0e6de;
+
+  /* Text (Fluent neutrals) */
+  --text: #2c1e16;              /* Dark coffee text */
+  --text-secondary: #5a4637;    /* Secondary */
+  --muted: #7b6758;             /* Muted */
+  --muted-light: #a1866f;       /* Subtle */
+
+  /* Status (Fluent shared/semantic) */
+  --success: #8c7a50;
+  --success-light: #efe8d8;
+  --warn: #c9a227;         /* Toasted yellow */
+  --warn-light: #f9f4e3;
+  --danger: #a14d3a;       /* Rustic red-brown */
+  --danger-light: #f3e0db;
+
+  /* Progress & Accents */
+  --progress-obj: var(--brand-primary);
+  --progress-kr:  var(--brand-secondary);
+
+  /* Theme-specific shadows */
+  --shadow-brand: 0 4px 16px rgba(111, 78, 55, 0.25);
+  --shadow-glow:  0 0 24px rgba(111, 78, 55, 0.18);
+
+  /* Semantic Aliases */
+  --accent-color: var(--brand-primary);
+  --accent-color-dark: var(--brand-600);
+  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  --highlight: var(--brand-accent); /* Menu & selection highlight */
+  --success-color: var(--brand-success);
+  --error-color: var(--danger);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --surface-0: var(--bg-solid);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-elevated);
+  --border-subtle: var(--border);
+}
+
+/* Coffee Brown Light Theme - Only light mode supported */

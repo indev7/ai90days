@@ -2,6 +2,10 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import styles from './page.module.css';
+import { GoTrophy } from "react-icons/go";
+import { GiGolfFlag } from "react-icons/gi";
+import { LiaGolfBallSolid } from "react-icons/lia";
+import OKRTModal from '../../components/OKRTModal';
 
 /* =========================
    Utility Components
@@ -74,7 +78,7 @@ function ProgressBar({ value }) {
    Main Components
    ========================= */
 
-function ObjectiveHeader({ objective }) {
+function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpanded }) {
   const getStatusVariant = (status) => {
     switch (status) {
       case 'A': return 'active';
@@ -94,32 +98,30 @@ function ObjectiveHeader({ objective }) {
   };
 
   return (
-    <div className={styles.objectiveHeader}>
+    <div className={`${styles.objectiveHeader} ${!isExpanded ? styles.collapsed : ''}`}>
       <div className={styles.objectiveMainContent}>
         <div className={styles.objectiveInfo}>
           <div className={styles.objectiveIcon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-              <line x1="4" y1="22" x2="4" y2="15"/>
-            </svg>
+            <GoTrophy size={20} />
           </div>
           <div>
-            <h1 className={styles.objectiveTitle}>{objective.title}</h1>
+            <h1
+              className={styles.objectiveTitle}
+              onClick={() => onEditObjective(objective)}
+            >
+              {objective.title}
+            </h1>
             <div className={styles.objectiveMeta}>
-              <div className={styles.chipGroup}>
-                <div className={styles.chipLabel}>Quarter</div>
+              <div className={styles.chipGroup} title={`Quarter: ${objective.cycle_qtr}`}>
                 <Chip text={objective.cycle_qtr} variant="default" />
               </div>
-              <div className={styles.chipGroup}>
-                <div className={styles.chipLabel}>Area</div>
+              <div className={styles.chipGroup} title={`Area: ${objective.area || "Personal"}`}>
                 <Chip text={objective.area || "Personal"} variant="area" />
               </div>
-              <div className={styles.chipGroup}>
-                <div className={styles.chipLabel}>Visibility</div>
+              <div className={styles.chipGroup} title="Visibility: Team">
                 <Chip text="Team" variant="team" />
               </div>
-              <div className={styles.chipGroup}>
-                <div className={styles.chipLabel}>Status</div>
+              <div className={styles.chipGroup} title={`Status: ${getStatusLabel(objective.status)}`}>
                 <Chip text={getStatusLabel(objective.status)} variant={getStatusVariant(objective.status)} />
               </div>
             </div>
@@ -142,12 +144,29 @@ function ObjectiveHeader({ objective }) {
               <polyline points="16,6 12,2 8,6"/>
               <line x1="12" y1="2" x2="12" y2="15"/>
             </svg>
-            Share (read-only)
+            Share)
           </button>
           <button className={styles.focusButton}>Focus</button>
+          <button
+            className={styles.objectiveToggleButton}
+            onClick={onToggleExpanded}
+            aria-label={isExpanded ? 'Collapse objective' : 'Expand objective'}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`${styles.objectiveChevron} ${isExpanded ? styles.objectiveChevronExpanded : ''}`}
+            >
+              <polyline points="6,9 12,15 18,9"/>
+            </svg>
+          </button>
         </div>
       </div>
-      {objective.description && (
+      {isExpanded && objective.description && (
         <div className={styles.objectiveDescriptionContainer}>
           <p className={styles.objectiveDescription}>{objective.description}</p>
         </div>
@@ -156,7 +175,8 @@ function ObjectiveHeader({ objective }) {
   );
 }
 
-function KeyResultCard({ kr, selected, onOpen }) {
+function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, tasks = [] }) {
+  const [expanded, setExpanded] = useState(false);
   const atRisk = kr.progress < 35;
   
   const formatDate = (dateStr) => {
@@ -169,20 +189,41 @@ function KeyResultCard({ kr, selected, onOpen }) {
     }
   };
 
+  const handleCardClick = (e) => {
+    // Only open modal if not clicking on expand button or KR title
+    if (!e.target.closest(`.${styles.expandButton}`) && !e.target.closest(`.${styles.cardTitle}`)) {
+      onOpen(kr);
+    }
+  };
+
+  const handleExpandClick = (e) => {
+    e.stopPropagation();
+    setExpanded(!expanded);
+  };
+
+  const handleKRTitleClick = (e) => {
+    e.stopPropagation();
+    onEditKR(kr);
+  };
+
+  const handleTaskClick = (e, task) => {
+    e.stopPropagation();
+    onEditTask(task);
+  };
+
   return (
-    <button
-      onClick={() => onOpen(kr)}
-      className={`${styles.keyResultCard} ${selected ? styles.selected : ''} ${atRisk ? styles.atRisk : ''}`}
-    >
-      <div className={styles.cardHeader}>
+    <div className={`${styles.keyResultCard} ${selected ? styles.selected : ''} ${atRisk ? styles.atRisk : ''}`}>
+      <div className={styles.cardHeader} onClick={handleCardClick}>
         <div className={styles.cardIcon}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22,4 12,14.01 9,11.01"/>
-          </svg>
+          <GiGolfFlag size={20} />
         </div>
         <div className={styles.cardContent}>
-          <div className={styles.cardTitle}>{kr.description}</div>
+          <div
+            className={styles.cardTitle}
+            onClick={handleKRTitleClick}
+          >
+            {kr.description}
+          </div>
           <div className={styles.cardProgress}>
             <ProgressBar value={kr.progress / 100} />
           </div>
@@ -208,17 +249,69 @@ function KeyResultCard({ kr, selected, onOpen }) {
             )}
           </div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.chevron}>
-          <polyline points="9,18 15,12 9,6"/>
-        </svg>
+        {tasks.length > 0 && (
+          <button
+            className={styles.expandButton}
+            onClick={handleExpandClick}
+            aria-label={expanded ? 'Collapse tasks' : 'Expand tasks'}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`${styles.chevron} ${expanded ? styles.chevronExpanded : ''}`}
+            >
+              <polyline points="9,18 15,12 9,6"/>
+            </svg>
+          </button>
+        )}
       </div>
-    </button>
+      
+      {expanded && tasks.length > 0 && (
+        <div className={styles.tasksList}>
+          <div className={styles.tasksHeader}>TASKS</div>
+          {tasks.map((task) => (
+            <div key={task.id} className={styles.taskItem}>
+              <div className={styles.taskIcon}>
+                <LiaGolfBallSolid size={20} />
+              </div>
+              <div className={styles.taskContent}>
+                <span
+                  className={`${styles.taskText} ${task.task_status === 'done' ? styles.taskTextCompleted : ''}`}
+                  onClick={(e) => handleTaskClick(e, task)}
+                >
+                  {task.description || task.title}
+                </span>
+                <div className={styles.taskMeta}>
+                  {task.due_date && (
+                    <span>Due: {formatDate(task.due_date)}</span>
+                  )}
+                  {task.due_date && task.task_status && <span>•</span>}
+                  {task.task_status && (
+                    <span>{task.task_status.replace('_', ' ')}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          <button className={styles.addTaskButton} onClick={(e) => {
+            e.stopPropagation();
+            onAddTask(kr);
+          }}>
+            + Add task
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
-function AddKeyResultCard() {
+function AddKeyResultCard({ onAddKeyResult }) {
   return (
-    <button className={styles.addKeyResultCard}>
+    <button className={styles.addKeyResultCard} onClick={onAddKeyResult}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <line x1="12" y1="5" x2="12" y2="19"/>
         <line x1="5" y1="12" x2="19" y2="12"/>
@@ -281,8 +374,16 @@ const demoData = {
 export default function PrototypePage() {
   const [objectives, setObjectives] = useState([]);
   const [keyResults, setKeyResults] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openKR, setOpenKR] = useState(null);
+  const [expandedObjectives, setExpandedObjectives] = useState(new Set());
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    mode: 'create',
+    okrt: null,
+    parentOkrt: null
+  });
 
   // Fetch OKRT data using the same pattern as the working OKRT page
   useEffect(() => {
@@ -296,9 +397,11 @@ export default function PrototypePage() {
           const allItems = data.okrts || [];
           const objs = allItems.filter(item => item.type === 'O');
           const krs = allItems.filter(item => item.type === 'K');
+          const tsks = allItems.filter(item => item.type === 'T');
           
           setObjectives(objs);
           setKeyResults(krs);
+          setTasks(tsks);
         } else {
           console.error('API Error:', data.error || 'Failed to fetch OKRTs');
         }
@@ -312,9 +415,150 @@ export default function PrototypePage() {
     fetchData();
   }, []);
 
+  // Listen for create objective events from LeftMenu
+  useEffect(() => {
+    const handleCreateObjectiveEvent = () => {
+      handleCreateObjective();
+    };
+
+    window.addEventListener('createObjective', handleCreateObjectiveEvent);
+    
+    return () => {
+      window.removeEventListener('createObjective', handleCreateObjectiveEvent);
+    };
+  }, []);
+
+  // Initialize all objectives as expanded when data loads
+  useEffect(() => {
+    if (objectives.length > 0) {
+      setExpandedObjectives(new Set(objectives.map(obj => obj.id)));
+    }
+  }, [objectives]);
+
   // Group key results by their parent objective
   const getKeyResultsForObjective = (objId) => {
     return keyResults.filter(kr => kr.parent_id === objId);
+  };
+
+  // Group tasks by their parent key result
+  const getTasksForKeyResult = (krId) => {
+    return tasks.filter(task => task.parent_id === krId);
+  };
+
+  // Modal handlers
+  const handleEditObjective = (objective) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      okrt: objective,
+      parentOkrt: null
+    });
+  };
+
+  const handleEditKR = (kr) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      okrt: kr,
+      parentOkrt: null
+    });
+  };
+
+  const handleEditTask = (task) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      okrt: task,
+      parentOkrt: null
+    });
+  };
+
+  const handleAddKeyResult = (objective) => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: objective
+    });
+  };
+
+  const handleAddTask = (keyResult) => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: keyResult
+    });
+  };
+
+  const handleCreateObjective = () => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleCloseModal = () => {
+    setModalState({
+      isOpen: false,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleSaveOkrt = async (okrtData) => {
+    try {
+      const url = modalState.mode === 'edit'
+        ? `/api/okrt/${modalState.okrt.id}`
+        : '/api/okrt';
+      
+      const method = modalState.mode === 'edit' ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(okrtData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save OKRT');
+      }
+
+      // Refresh data after successful save
+      const fetchResponse = await fetch('/api/okrt');
+      const data = await fetchResponse.json();
+      
+      if (fetchResponse.ok) {
+        const allItems = data.okrts || [];
+        const objs = allItems.filter(item => item.type === 'O');
+        const krs = allItems.filter(item => item.type === 'K');
+        const tsks = allItems.filter(item => item.type === 'T');
+        
+        setObjectives(objs);
+        setKeyResults(krs);
+        setTasks(tsks);
+      }
+    } catch (error) {
+      console.error('Error saving OKRT:', error);
+      throw error;
+    }
+  };
+
+  const handleToggleObjective = (objectiveId) => {
+    setExpandedObjectives(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(objectiveId)) {
+        newSet.delete(objectiveId);
+      } else {
+        newSet.add(objectiveId);
+      }
+      return newSet;
+    });
   };
 
   if (loading) {
@@ -338,23 +582,6 @@ export default function PrototypePage() {
 
   return (
     <div className={styles.container}>
-      {/* Header */}
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.menuButton}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
-          </button>
-          <div className={styles.logo}>OKRT</div>
-        </div>
-        <div className={styles.headerRight}>
-          <span className={styles.quarter}>2025-Q3</span>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className={styles.main}>
         {/* Stack all objectives vertically */}
@@ -363,24 +590,45 @@ export default function PrototypePage() {
           
           return (
             <div key={objective.id} className={styles.objectiveSection}>
-              <ObjectiveHeader objective={objective} />
+              <ObjectiveHeader
+                objective={objective}
+                onEditObjective={handleEditObjective}
+                isExpanded={expandedObjectives.has(objective.id)}
+                onToggleExpanded={() => handleToggleObjective(objective.id)}
+              />
 
-              {/* Key Results Grid for this objective */}
-              <div className={styles.keyResultsGrid}>
-                {objectiveKRs.map((kr) => (
-                  <KeyResultCard
-                    key={kr.id}
-                    kr={kr}
-                    selected={openKR?.id === kr.id}
-                    onOpen={setOpenKR}
-                  />
-                ))}
-                <AddKeyResultCard />
-              </div>
+              {/* Key Results Grid for this objective - only show when expanded */}
+              {expandedObjectives.has(objective.id) && (
+                <div className={styles.keyResultsGrid}>
+                  {objectiveKRs.map((kr) => (
+                    <KeyResultCard
+                      key={kr.id}
+                      kr={kr}
+                      selected={openKR?.id === kr.id}
+                      onOpen={setOpenKR}
+                      onEditKR={handleEditKR}
+                      onEditTask={handleEditTask}
+                      onAddTask={handleAddTask}
+                      tasks={getTasksForKeyResult(kr.id)}
+                    />
+                  ))}
+                  <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
+                </div>
+              )}
             </div>
           );
         })}
       </main>
+
+      {/* OKRT Modal */}
+      <OKRTModal
+        isOpen={modalState.isOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveOkrt}
+        okrt={modalState.okrt}
+        parentOkrt={modalState.parentOkrt}
+        mode={modalState.mode}
+      />
     </div>
   );
 }

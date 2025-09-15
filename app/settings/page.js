@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { themes, loadTheme, getCurrentTheme, getThemesByFamily } from '@/lib/themeManager';
 import styles from './page.module.css';
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState('coffee');
+  const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,14 +33,24 @@ export default function SettingsPage() {
     fetchUser();
 
     // Get current theme
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const currentTheme = getCurrentTheme();
     setTheme(currentTheme);
   }, [router]);
 
-  const handleThemeChange = (newTheme) => {
-    setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
+  const handleThemeChange = async (newTheme) => {
+    setIsLoadingTheme(true);
+    try {
+      const success = await loadTheme(newTheme);
+      if (success) {
+        setTheme(newTheme);
+      } else {
+        console.error('Failed to load theme:', newTheme);
+      }
+    } catch (error) {
+      console.error('Error changing theme:', error);
+    } finally {
+      setIsLoadingTheme(false);
+    }
   };
 
   if (isLoading) {
@@ -69,39 +81,38 @@ export default function SettingsPage() {
               <div className={styles.settingInfo}>
                 <label className={styles.settingLabel}>Theme</label>
                 <p className={styles.settingDescription}>
-                  Choose between light and dark mode
+                  Choose between Coffee Brown Light and Microsoft Light themes
                 </p>
               </div>
               
               <div className={styles.themeToggle}>
-                <button
-                  className={`${styles.themeOption} ${theme === 'light' ? styles.active : ''}`}
-                  onClick={() => handleThemeChange('light')}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2" />
-                    <path d="M12 20v2" />
-                    <path d="M4.93 4.93l1.41 1.41" />
-                    <path d="M17.66 17.66l1.41 1.41" />
-                    <path d="M2 12h2" />
-                    <path d="M20 12h2" />
-                    <path d="M6.34 17.66l-1.41 1.41" />
-                    <path d="M19.07 4.93l-1.41 1.41" />
-                  </svg>
-                  Light
-                </button>
-                
-                <button
-                  className={`${styles.themeOption} ${theme === 'dark' ? styles.active : ''}`}
-                  onClick={() => handleThemeChange('dark')}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                  </svg>
-                  Dark
-                </button>
+                {themes.map((themeOption) => (
+                  <button
+                    key={themeOption.id}
+                    className={`${styles.themeOption} ${theme === themeOption.id ? styles.active : ''}`}
+                    onClick={() => handleThemeChange(themeOption.id)}
+                    disabled={isLoadingTheme}
+                  >
+                    <div
+                      className={styles.themePreview}
+                      style={{
+                        backgroundColor: themeOption.preview,
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        marginRight: '8px'
+                      }}
+                    />
+                    <span>{themeOption.name}</span>
+                  </button>
+                ))}
               </div>
+              
+              {isLoadingTheme && (
+                <div className={styles.loadingIndicator}>
+                  Loading theme...
+                </div>
+              )}
             </div>
           </div>
 

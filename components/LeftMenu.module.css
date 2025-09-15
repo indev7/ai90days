@@ -18,6 +18,22 @@
   width: 80px;
 }
 
+.leftMenu.desktopCollapsed {
+  width: 80px;
+}
+
+.leftMenu.desktopCollapsed .label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.leftMenu.desktopCollapsed .menuLink {
+  justify-content: center;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
 
 
 .menuContent {
@@ -190,14 +206,18 @@
   }
 }
 
-/* Desktop - always expanded */
+/* Desktop - always expanded unless desktopCollapsed */
 @media (min-width: 1024px) {
   .leftMenu {
     position: fixed;
     width: 240px;
   }
   
-  .leftMenu .label {
+  .leftMenu.desktopCollapsed {
+    width: 80px;
+  }
+  
+  .leftMenu:not(.desktopCollapsed) .label {
     opacity: 1 !important;
     width: auto !important;
     overflow: visible !important;

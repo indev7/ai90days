@@ -1,630 +1,602 @@
+/* OKRT Prototype Page Styles */
+
 .container {
+  min-height: 100vh;
+  background: var(--bg-solid);
+  color: var(--text);
+}
+
+
+.main {
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+.objectiveSection {
+  margin-bottom: 3rem;
 }
 
-.title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.createButton {
-  background: transparent;
-  color: var(--success-color);
-  border: 1px solid var(--success-color);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.75rem;
-  width: 100px;
-}
-
-.createButton:hover {
-  background: var(--success-color);
-  color: white;
-}
-
-.loading, .error {
-  text-align: center;
-  padding: 3rem;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-}
-
-.error {
-  color: var(--error-color);
-}
-
-/* Empty State */
-.emptyState {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: var(--surface-1);
-  border-radius: 12px;
-  border: 1px solid var(--border-light);
-}
-
-.emptyIcon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-}
-
-.emptyState h2 {
-  font-size: 1.5rem;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.emptyState p {
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
-}
-
-.createButtonPrimary {
-  background: var(--accent-gradient);
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
-}
-
-.createButtonPrimary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
-}
-
-/* OKRT List */
-.okrtList {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-/* OKRT Item */
-.okrtItem {
-  background: var(--surface-1);
-  border: 0px solid var(--border-light);
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  transition: all 0.2s ease;
-  overflow: hidden;
-}
-
-
-
-.okrtHeader {
-  padding: 0.2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-/* Override for objectives - let objectiveLayout handle the spacing */
-.objectiveHeader {
-  justify-content: flex-start;
-}
-
-.okrtMain {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  flex: 1;
-}
-
-/* Special horizontal layout for Objectives */
-.objectiveLayout {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  padding-right:5px;
-}
-
-/* Special horizontal layout for Key Results */
-.keyResultLayout {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-.okrtTitleSection {
-  flex: 1;
-  min-width: 0;
-}
-
-.objectiveDescription {
-  margin-top: -.2rem;
-  margin-left: 3.7rem;
-}
-
-.taskStatusFirst {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.okrtIcon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: background-color 0.2s ease;
-}
-
-/* Emoji status background colors */
-.emojiTodo {
-  background: #ececec;
-}
-
-.emojiInProgress {
-  background: #dbeafe;
-}
-
-.emojiDone {
-  background: #d1fae5;
-}
-
-.emojiBlocked {
-  background: #fee2e2;
-}
-
-.okrtContent {
-  flex: 1;
-  min-width: 0;
-}
-
-.okrtTitleRow {
-  margin-bottom: 0.5rem;
-}
-
-.okrtTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.okrtDescription {
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.krDetails {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.actionsRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.taskMetaRow {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 0.5rem;
-  -ms-flex-wrap: nowrap;
-  flex-wrap: nowrap;
-  width: 100%;
-}
-
-.taskMetaRow .okrtDescription {
-  margin: 0;
-  -webkit-box-flex: 1;
-  -ms-flex: 1 1 auto;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.taskMetaRow .dueDate {
-  -ms-flex-negative: 0;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.taskMetaRow .progressContainer {
-  -ms-flex-negative: 0;
-  flex-shrink: 0;
-}
-
-.krTarget, .krBaseline, .dueDate {
-  background: var(--surface-2);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* OKRT Meta */
-.okrtMeta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.75rem;
-  min-width: 200px;
-}
-
-.progressContainer {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.progressDeleteButton {
-  background: transparent;
-  border: none;
-  padding: 0.2rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.progressDeleteButton:hover {
-  background: var(--surface-2);
-  color: var(--error-color);
-}
-
-/* Confirm modal */
-.confirmOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.confirmModal {
-  background: var(--surface-0);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  width: 90%;
-  max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-}
-
-.confirmTitle {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-}
-
-.confirmText {
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-}
-
-.confirmButtons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.deleteConfirmButton {
-  background: var(--error-color);
-  color: white;
-  border: none;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.deleteConfirmButton:hover { opacity: 0.9; }
-
-.progressBar {
-  width: 120px;
-  height: 8px;
-  background: var(--surface-2);
-  border-radius: 4px;
-  overflow: hidden;
-  border-width: 1px;
-  border-color: rgb(208, 208, 208);
-  border-style: solid;
-}
-
-.progressFill {
-  height: 100%;
-  background: var(--accent-gradient);
-  transition: width 0.3s ease;
-}
-
-.progressText {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  min-width: 35px;
-}
-
-.badges {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.statusBadge, .taskStatusBadge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.statusDraft {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.statusActive {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.statusComplete {
-  background: #d1fae5;
-  color: #059669;
-}
-
-.taskTodo {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.taskInProgress {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-.taskDone {
-  background: #d1fae5;
-  color: #059669;
-}
-
-.taskBlocked {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.addChildButton {
-  background: transparent;
-  color: var(--success-color);
-  border: 1px solid var(--success-color);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width:100px;
-}
-
-.addChildButton:hover {
-  background: var(--success-color);
-  color: white;
-}
-
-.toggleButton {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-light);
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.iconButton {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-light);
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.iconButton:hover {
-  background: var(--surface-2);
-  color: var(--text-primary);
-}
-
-.deleteButton {
-  color: var(--error-color);
-  border-color: var(--error-color);
-}
-
-.deleteButton:hover {
-  background: var(--error-color);
-  color: white;
-}
-
-.toggleButton:hover {
-  background: var(--surface-2);
-  color: var(--text-primary);
-}
-
-.editButton {
-  background: transparent;
-  color: var(--accent-color);
-  border: 1px solid var(--accent-color);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.editButton:hover {
-  background: var(--accent-color);
-  color: white;
-}
-
-/* Children */
-.okrtChildren {
-  padding-left: 0rem;
-  border-left: 0px solid var(--border-light);
-  margin-left: 2.5rem;
-}
-
-.okrtChildren .okrtItem {
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
-}
-
-.okrtChildren .okrtItem:last-child {
+.objectiveSection:last-child {
   margin-bottom: 0;
 }
 
-/* Responsive */
+/* Objective Header */
+.objectiveHeader {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-1);
+  transition: padding 0.2s ease;
+}
+
+.objectiveHeader.collapsed {
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.objectiveMainContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.objectiveInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.objectiveDescriptionContainer {
+  border-top: 1px solid var(--border-light);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.objectiveIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: var(--brand-100);
+  color: var(--brand-primary);
+  border-radius: 1rem;
+}
+
+.objectiveTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.objectiveTitle:hover {
+  color: var(--brand-primary);
+}
+
+.objectiveDescription {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.objectiveMeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chipGroup {
+  display: flex;
+  align-items: center;
+  cursor: help;
+}
+
+.objectiveActions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.progressSection {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.progressItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.progressLabel {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.shareButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shareButton:hover {
+  background: var(--border-light);
+}
+
+.focusButton {
+  padding: 0.75rem 1.5rem;
+  background: var(--text);
+  color: var(--surface);
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.focusButton:hover {
+  background: var(--text-secondary);
+}
+
+.objectiveToggleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.objectiveToggleButton:hover {
+  background: var(--border-light);
+  color: var(--text);
+}
+
+.objectiveChevron {
+  color: inherit;
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg); /* Point right when collapsed */
+}
+
+.objectiveChevronExpanded {
+  transform: rotate(0deg); /* Point down when expanded */
+}
+
+/* Key Results Grid */
+.keyResultsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+.keyResultCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+  text-align: left;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.keyResultCard:hover {
+  background: var(--bg-solid);
+  border-color: var(--border-light);
+}
+
+.keyResultCard.selected {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px var(--brand-100);
+}
+
+.keyResultCard.atRisk {
+  outline: 1px solid var(--warn);
+  outline-offset: -1px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.cardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--border-light);
+  color: var(--text-secondary);
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+
+.cardContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.375;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.cardTitle:hover {
+  color: var(--brand-primary);
+}
+
+.cardProgress {
+  margin-bottom: 0.5rem;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.warningIcon {
+  color: var(--warn);
+}
+
+.atRiskText {
+  color: var(--warn);
+  font-weight: 500;
+}
+
+.expandButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover {
+  background: var(--border-light);
+  color: var(--text);
+}
+
+.chevron {
+  color: inherit;
+  transition: transform 0.2s ease;
+}
+
+.chevronExpanded {
+  transform: rotate(90deg);
+}
+
+.addKeyResultCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: 1rem;
+  padding: 2rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 120px;
+}
+
+.addKeyResultCard:hover {
+  border-color: var(--brand-200);
+  color: var(--text-secondary);
+}
+
+/* Tasks List */
+.tasksList {
+  margin-top: 1.25rem;
+}
+
+.tasksHeader {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  margin-bottom: 0.5rem;
+}
+
+.taskItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgb(248 250 252);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.taskIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: var(--border-light);
+  color: var(--text-secondary);
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+
+.taskContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.taskText {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.taskText:hover {
+  color: var(--brand-primary);
+}
+
+.taskMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.taskTextCompleted {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.addTaskButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 0.75rem;
+}
+
+.addTaskButton:hover {
+  background: var(--bg-solid);
+}
+
+/* Progress Components */
+.progressRing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressSvg {
+  flex-shrink: 0;
+}
+
+.progressCircle {
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.progressText {
+  font-size: 0.75rem;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.progressBar {
+  width: 100%;
+  height: 0.5rem;
+  background: var(--border-light);
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: var(--brand-primary);
+  border-radius: 0.25rem;
+  transition: width 0.3s ease;
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 1rem;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.chipGroup:hover .chip {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chip--default {
+  background: var(--brand-100);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.chip--area {
+  background: var(--brand-100);
+ color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.chip--team {
+  background: var(--brand-100);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.chip--active {
+  background: var(--brand-100);
+  color: var(--brand-700);
+  border-color: var(--brand-200);
+}
+
+.chip--complete {
+  background: var(--brand-100);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.chip--draft {
+ background: var(--brand-100);
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* Loading and Empty States */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.emptyText {
+  color: var(--text-secondary);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .container {
+  .main {
     padding: 1rem;
   }
   
-  .header {
+  .objectiveMainContent {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 1rem;
   }
   
-  .okrtHeader {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-  }
-  
-  .okrtMeta {
-    flex-direction: row;
+  .objectiveActions {
+    width: 100%;
     justify-content: space-between;
-    align-items: center;
-    min-width: auto;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   
-  .badges {
-    justify-content: flex-start;
+  .keyResultsGrid {
+    grid-template-columns: 1fr;
   }
   
-  .okrtChildren {
-    padding-left: 1rem;
-    margin-left: 1.5rem;
+  .cardHeader {
+    flex-direction: column;
+    gap: 0.75rem;
   }
-
-  /* Mobile-first reflow: Title on first line, Status on second aligned with title, then progress/actions */
-  .objectiveLayout {
-    display: grid;
-    grid-template-columns: 2.75rem 1fr;
-    grid-template-areas:
-      "icon title"
-      "icon status"
-      "icon desc"
-      "icon progress"
-      "icon actions";
-    gap: 0.5rem 0.75rem;
-    align-items: start;
+  
+  .chevron {
+    align-self: flex-end;
+    margin-left: 0;
   }
-  .objectiveLayout .okrtIcon { grid-area: icon; }
-  .objectiveLayout .okrtTitleSection { display: contents; }
-  .objectiveLayout .okrtTitle { grid-area: title; margin: 0; }
-  .objectiveLayout .objectiveDesc { grid-area: desc; }
-  .objectiveLayout .badges { grid-area: status; justify-content: flex-start; }
-  .objectiveLayout .progressContainer { grid-area: progress; width: 100%; }
-  .objectiveLayout .actionsRow { grid-area: actions; justify-self: end; }
+}
 
-  .keyResultLayout {
-    display: grid;
-    grid-template-columns: 2.75rem 1fr;
-    grid-template-areas:
-      "icon title"
-      "icon desc"
-      "icon status"
-      "icon details"
-      "icon actions";
-    gap: 0.5rem 0.75rem;
-    align-items: start;
+@media (max-width: 480px) {
+  .header {
+    padding: 0.75rem 1rem;
   }
-  .keyResultLayout .okrtIcon { grid-area: icon; }
-  .keyResultLayout .okrtTitleSection { display: contents; }
-  .keyResultLayout .okrtTitle { grid-area: title; margin: 0; }
-  .keyResultLayout .okrtDescription { grid-area: desc; }
-  .keyResultLayout .krDetails { grid-area: details; }
-  .keyResultLayout .progressContainer { grid-area: status; width: 100%; }
-  .keyResultLayout .actionsRow { grid-area: actions; justify-self: end; }
-
-  .okrtMain {
-    display: grid;
-    grid-template-columns: 2.75rem 1fr;
-    grid-template-areas:
-      "icon title"
-      "icon desc"
-      "icon status"
-      "icon due";
-    gap: 0.5rem 0.75rem;
-    align-items: start;
+  
+  .logo {
+    font-size: 1.25rem;
   }
-  .okrtMain .okrtIcon { grid-area: icon; }
-  .okrtMain .okrtContent { display: contents; }
-  .okrtMain .okrtTitleRow { grid-area: title; margin: 0; }
-  .okrtMain .taskMetaRow { display: contents; }
-  .okrtMain .taskMetaRow .progressContainer { grid-area: status; width: 100%; }
-  .okrtMain .okrtDescription { grid-area: desc; }
-  .okrtMain .dueDate { grid-area: due; }
-  .okrtMain .actionsRow { grid-area: actions; justify-self: end; }
-
-  .okrtTitle { font-size: 1.1rem; }
-  .progressContainer { margin-top: 0.1rem; width: 100%; }
-  .progressBar { width: 120px; height: 8px; }
-  .progressText { text-align: right; }
-  .objectiveDescription { margin-left: 0; margin-top: 0.25rem; }
-  .addChildButton { width: auto; padding: 0.35rem 0.7rem; }
+  
+  .objectiveTitle {
+    font-size: 1.25rem;
+  }
+  
+  .objectiveHeader {
+    padding: 1rem;
+  }
+  
+  .keyResultCard {
+    padding: 1rem;
+  }
 }

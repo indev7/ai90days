@@ -1,0 +1,65 @@
+/* Purple Theme - Based on screenshot colors */
+
+html[data-theme="purple"] {
+  /* Brand Colors (Purple palette from screenshot) */
+  --brand-primary: #6366f1; /* Vibrant purple from progress bars */
+  --brand-secondary: #8b5cf6; /* Light purple secondary */
+  --brand-accent: #a78bfa; /* Lavender accent */
+  --brand-success: #10b981; /* Emerald green for success */
+
+  /* Extended Brand Palette */
+  --brand-50:  #f8fafc;  /* Very light background */
+  --brand-100: #f1f5f9;  /* Light background */
+  --brand-200: #e2e8f0;  /* Light border */
+  --brand-500: #6366f1;  /* Primary purple */
+  --brand-600: #4f46e5;  /* Darker purple (hover) */
+  --brand-700: #4338ca;  /* Dark purple (active) */
+  --brand-900: #312e81;  /* Darkest purple */
+
+  /* Surfaces (Clean modern feel from screenshot) */
+  --bg:        linear-gradient(135deg, #fefbff 0%, #f8fafc 100%);
+  --bg-solid:  #ffffff;
+  --surface:   #ffffff;
+  --surface-elevated: #ffffff;
+  --card:      #ffffff;
+  --border:    #dbdcde;   /* Light gray border */
+  --border-light: #f1f5f9;
+
+  /* Text (Clean neutrals from screenshot) */
+  --text: #1e293b;              /* Dark slate text */
+  --text-secondary: #64748b;    /* Medium gray text */
+  --muted: #454c55;             /* Light gray text */
+  --muted-light: #cbd5e1;       /* Very light gray */
+
+  /* Status Colors (From screenshot) */
+  --success: #10b981;           /* Green for completed */
+  --success-light: #ecfdf5;
+  --warn: #f59e0b;              /* Orange for at-risk (from screenshot) */
+  --warn-light: #fef3c7;
+  --danger: #ef4444;            /* Red for errors */
+  --danger-light: #fef2f2;
+
+  /* Progress & Accents */
+  --progress-obj: var(--brand-primary);
+  --progress-kr:  var(--brand-secondary);
+
+  /* Theme-specific shadows */
+  --shadow-brand: 0 4px 16px rgba(99, 102, 241, 0.25);
+  --shadow-glow:  0 0 24px rgba(99, 102, 241, 0.18);
+
+  /* Semantic Aliases */
+  --accent-color: var(--brand-primary);
+  --accent-color-dark: var(--brand-600);
+  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  --highlight: var(--brand-accent); /* Menu & selection highlight */
+  --success-color: var(--brand-success);
+  --error-color: var(--danger);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --surface-0: var(--bg-solid);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-elevated);
+  --border-subtle: var(--border);
+}
+
+/* Purple Theme - Clean and modern like the screenshot */

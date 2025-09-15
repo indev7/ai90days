@@ -7,17 +7,28 @@ import HeaderBar from '@/components/HeaderBar';
 import LeftMenu from '@/components/LeftMenu';
 import { CoachProvider } from '@/contexts/CoachContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { initializeTheme } from '@/lib/themeManager';
 import '@/styles/theme.css';
+import '@/styles/themes/coffee.css';
+import '@/styles/themes/microsoft.css';
+import '@/styles/themes/purple.css';
+import '@/styles/themes/nature.css';
 import '@/styles/app.css';
 
 export default function RootLayout({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(true);
+  const [isDesktopMenuCollapsed, setIsDesktopMenuCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+
+  // Initialize theme system
+  useEffect(() => {
+    initializeTheme();
+  }, []);
 
   // Fetch current user on mount and path changes
   useEffect(() => {
@@ -76,6 +87,10 @@ export default function RootLayout({ children }) {
     setIsMenuCollapsed(!isMenuCollapsed);
   };
 
+  const handleDesktopMenuToggle = () => {
+    setIsDesktopMenuCollapsed(!isDesktopMenuCollapsed);
+  };
+
   if (isAuthPage) {
     return (
       <html lang="en">
@@ -121,14 +136,19 @@ export default function RootLayout({ children }) {
       <body>
         <SessionProvider>
           <CoachProvider>
-            <HeaderBar user={user} />
-            <LeftMenu 
-              isCollapsed={isDesktop ? false : isMenuCollapsed} 
+            <HeaderBar
+              user={user}
+              isDesktopMenuCollapsed={isDesktopMenuCollapsed}
+              onDesktopMenuToggle={isDesktop ? handleDesktopMenuToggle : undefined}
+            />
+            <LeftMenu
+              isCollapsed={isDesktop ? false : isMenuCollapsed}
               onToggle={isDesktop ? undefined : handleMenuToggle}
+              isDesktopCollapsed={isDesktop ? isDesktopMenuCollapsed : false}
             />
             <main style={{
               paddingTop: '72px',
-              paddingLeft: isDesktop ? '260px' : 
+              paddingLeft: isDesktop ? (isDesktopMenuCollapsed ? '80px' : '240px') :
                           isTablet && !isMenuCollapsed ? '260px' :
                           isTablet ? '80px' : '0'
             }}>

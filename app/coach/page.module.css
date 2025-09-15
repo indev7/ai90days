@@ -4,7 +4,7 @@
   height: calc(100vh - 72px); /* Account for header height */
   max-width: 1200px;
   margin: 0 auto;
-  background: var(--background);
+  background: var(--bg-solid);
   position: relative;
 }
 
@@ -237,12 +237,27 @@
 .inputForm {
   position: fixed;
   bottom: 0;
-  left: 400px;
-  right: 200px;
+  left: 0;
+  right: 0;
   padding: 1rem;
   border-top: 1px solid var(--border-light);
   background: var(--surface-1);
   z-index: 10;
+  margin-left: 0;
+}
+
+/* Desktop - account for left menu */
+@media (min-width: 1024px) {
+  .inputForm {
+    left: 240px;
+  }
+}
+
+/* Tablet - account for collapsed/expanded menu */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .inputForm {
+    left: 80px;
+  }
 }
 
 .inputContainer {
@@ -258,7 +273,7 @@
   padding: 0.75rem 1rem;
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  background: var(--background);
+  background: var(--bg-solid);
   color: var(--text-primary);
   font-family: inherit;
   font-size: 1rem;
@@ -330,6 +345,8 @@
   
   .inputForm {
     padding: 0.75rem;
+    left: 0;
+    margin-left: 0;
   }
   
   .inputContainer {

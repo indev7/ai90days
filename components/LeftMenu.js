@@ -2,15 +2,22 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { AiOutlineDashboard } from 'react-icons/ai';
+import { GoGoal } from 'react-icons/go';
+import { RiUserSharedLine } from 'react-icons/ri';
+import { ImTree } from 'react-icons/im';
+import { IoMdNotificationsOutline } from 'react-icons/io';
+import { IoChatboxEllipsesOutline } from 'react-icons/io5';
+import { IoAdd } from 'react-icons/io5';
 
 import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'profile' },
+  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { href: '/okrt', label: 'My Goals', icon: 'goals' },
-  { href: '/prototype', label: 'Prototype', icon: 'prototype' },
   { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: true },
-  { href: '/new', label: 'New', icon: 'new', disabled: true },
+  { href: '/groups', label: 'Groups', icon: 'groups', disabled: true },
+  { href: '/new', label: 'New', icon: 'new', isAction: true },
 ];
 
 const bottomMenuItems = [
@@ -18,109 +25,74 @@ const bottomMenuItems = [
   { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: true },
 ];
 
-function getIcon(iconName) {
+function getIcon(iconName, isCollapsed = false) {
+  const iconSize = isCollapsed ? 24 : 20;
   const icons = {
-    profile: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-        <polyline points="16 7 22 7 22 13" />
-      </svg>
-    ),
-    goals: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10" />
-        <circle cx="12" cy="12" r="6" />
-        <circle cx="12" cy="12" r="2" />
-        <path d="M7 7l10 10" />
-        <path d="M14 7l3 0l0 3" />
-      </svg>
-    ),
-    shared: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="8" r="6" />
-        <circle cx="12" cy="8" r="3" />
-        <circle cx="12" cy="8" r="1" />
-        <path d="M14 6l4-2" />
-        <path d="M18 4l-1 1" />
-        <circle cx="6" cy="18" r="2" />
-        <circle cx="12" cy="18" r="2" />
-        <circle cx="18" cy="18" r="2" />
-        <path d="M6 16v-1" />
-        <path d="M12 16v-1" />
-        <path d="M18 16v-1" />
-      </svg>
-    ),
-    new: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 5v14" />
-        <path d="M5 12h14" />
-      </svg>
-    ),
-    coach: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-    ),
-    notifications: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-    ),
-    prototype: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
-        <circle cx="7" cy="8" r="1" />
-        <circle cx="12" cy="8" r="1" />
-        <circle cx="17" cy="8" r="1" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    ),
-    settings: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-    ),
+    dashboard: <AiOutlineDashboard size={iconSize} />,
+    goals: <GoGoal size={iconSize} />,
+    shared: <RiUserSharedLine size={iconSize} />,
+    groups: <ImTree size={iconSize} />,
+    new: <IoAdd size={iconSize} />,
+    coach: <IoChatboxEllipsesOutline size={iconSize} />,
+    notifications: <IoMdNotificationsOutline size={iconSize} />,
   };
   return icons[iconName] || null;
 }
 
 /**
  * @typedef {Object} LeftMenuProps
- * @property {boolean} [isCollapsed] - Whether the menu is in collapsed state (tablet portrait)
+ * @property {boolean} [isCollapsed] - Whether the menu is in collapsed state
  * @property {function} [onToggle] - Toggle handler for collapsed state
+ * @property {boolean} [isDesktopCollapsed] - Whether desktop menu is in icon-only mode
  */
 
 /**
  * Left navigation menu for tablet/desktop
  * @param {LeftMenuProps} props
  */
-export default function LeftMenu({ isCollapsed = false, onToggle }) {
+export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopCollapsed = false }) {
   const pathname = usePathname();
 
+  const handleNewClick = () => {
+    // Dispatch a custom event that the My Goals page can listen to
+    if (pathname === '/okrt') {
+      window.dispatchEvent(new CustomEvent('createObjective'));
+    }
+  };
+
   return (
-    <nav className={`${styles.leftMenu} ${isCollapsed ? styles.collapsed : ''}`}>
+    <nav className={`${styles.leftMenu} ${isCollapsed ? styles.collapsed : ''} ${isDesktopCollapsed ? styles.desktopCollapsed : ''}`}>
       <div className={styles.menuContent}>
         <ul className={styles.menuList}>
           {topMenuItems.map((item) => {
             const isActive = pathname === item.href;
             const isDisabled = item.disabled;
+            const isAction = item.isAction;
 
             return (
               <li key={item.href} className={styles.menuItem}>
                 {isDisabled ? (
-                  <span 
+                  <span
                     className={`${styles.menuLink} ${styles.disabled}`}
                     title={`${item.label} (Coming Soon)`}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon)}
+                      {getIcon(item.icon, isDesktopCollapsed)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </span>
+                ) : isAction ? (
+                  <button
+                    className={styles.menuLink}
+                    onClick={handleNewClick}
+                    title="Create New Objective"
+                    disabled={pathname !== '/okrt'}
+                  >
+                    <span className={styles.icon}>
+                      {getIcon(item.icon, isDesktopCollapsed)}
+                    </span>
+                    <span className={styles.label}>{item.label}</span>
+                  </button>
                 ) : (
                   <Link
                     href={item.href}
@@ -128,7 +100,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle }) {
                     aria-current={isActive ? 'page' : undefined}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon)}
+                      {getIcon(item.icon, isDesktopCollapsed)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </Link>
@@ -153,7 +125,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle }) {
                     title={`${item.label} (Coming Soon)`}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon)}
+                      {getIcon(item.icon, isDesktopCollapsed)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </span>
@@ -164,7 +136,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle }) {
                     aria-current={isActive ? 'page' : undefined}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon)}
+                      {getIcon(item.icon, isDesktopCollapsed)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </Link>

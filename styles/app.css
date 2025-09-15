@@ -45,7 +45,7 @@ input, textarea, select {
 
 /* Focus styles */
 *:focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--brand-primary);
   outline-offset: 2px;
 }
 
@@ -65,7 +65,7 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
 textarea:focus {
-  border-color: var(--brand);
+  border-color: var(--brand-primary);
   outline: none;
 }
 

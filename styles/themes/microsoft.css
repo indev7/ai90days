@@ -1,0 +1,65 @@
+/* Microsoft Blue Theme - Light and Dark variants */
+
+html[data-theme="microsoft"] {
+  /* Brand Colors (Microsoft Blue palette) */
+  --brand-primary: #0078d4; /* Microsoft Blue primary */
+  --brand-secondary: #106ebe; /* Darker blue secondary */
+  --brand-accent: #40e0d0; /* Complementary accent */
+  --brand-success: #107c10; /* Microsoft Green */
+
+  /* Extended Brand Palette */
+  --brand-50:  #f3f9fd;  /* Lightest blue */
+  --brand-100: #e1effa;  /* Very light blue */
+  --brand-200: #c7e0f4;  /* Light blue */
+  --brand-500: #0078d4;  /* Primary blue */
+  --brand-600: #106ebe;  /* Medium blue */
+  --brand-700: #005a9e;  /* Dark blue */
+  --brand-900: #004578;  /* Darkest blue */
+
+  /* Surfaces (Microsoft Fluent Design) */
+  --bg:        linear-gradient(135deg, #faf9f8 0%, #f3f2f1 100%);
+  --bg-solid:  #ffffff;
+  --surface:   #ffffff;
+  --surface-elevated: #ffffff;
+  --card:      #ffffff;
+  --border:    #edebe9;   /* Microsoft neutral border */
+  --border-light: #f3f2f1;
+
+  /* Text (Microsoft Fluent neutrals) */
+  --text: #323130;              /* Dark neutral text */
+  --text-secondary: #605e5c;    /* Secondary text */
+  --muted: #8a8886;             /* Muted text */
+  --muted-light: #c8c6c4;       /* Light muted */
+
+  /* Status Colors (Microsoft semantic) */
+  --success: #107c10;
+  --success-light: #f3f9f3;
+  --warn: #ffb900;         /* Microsoft yellow */
+  --warn-light: #fff8f0;
+  --danger: #d13438;       /* Microsoft red */
+  --danger-light: #fdf3f4;
+
+  /* Progress & Accents */
+  --progress-obj: var(--brand-primary);
+  --progress-kr:  var(--brand-secondary);
+
+  /* Theme-specific shadows */
+  --shadow-brand: 0 4px 16px rgba(0, 120, 212, 0.25);
+  --shadow-glow:  0 0 24px rgba(0, 120, 212, 0.18);
+
+  /* Semantic Aliases */
+  --accent-color: var(--brand-primary);
+  --accent-color-dark: var(--brand-600);
+  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  --highlight: var(--brand-accent); /* Menu & selection highlight */
+  --success-color: var(--brand-success);
+  --error-color: var(--danger);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --surface-0: var(--bg-solid);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-elevated);
+  --border-subtle: var(--border);
+}
+
+/* Microsoft Light Theme - Only light mode supported */

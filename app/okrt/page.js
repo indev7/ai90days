@@ -1,563 +1,634 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import OKRTModal from '@/components/OKRTModal';
+import React, { useMemo, useState, useEffect } from "react";
 import styles from './page.module.css';
+import { GoTrophy } from "react-icons/go";
+import { GiGolfFlag } from "react-icons/gi";
+import { LiaGolfBallSolid } from "react-icons/lia";
+import OKRTModal from '../../components/OKRTModal';
 
-// OKRT item component for hierarchical display
-function OKRTItem({ okrt, children, childrenData, onEdit, onDelete, onCreateChild, onRequestDelete, initialExpanded = false }) {
-  const [expanded, setExpanded] = useState(initialExpanded);
-  const hasChildren = Array.isArray(children) && children.length > 0;
-  const getIcon = (type) => {
-    switch (type) {
-      case 'O': return '🏆';
-      case 'K': return '⛳';
-      case 'T': return '🏌️';
-      default: return '';
-    }
-  };
+/* =========================
+   Utility Components
+   ========================= */
 
-  // Determine status for KR based on child tasks
-  const getKRStatus = (krItem, childTasks) => {
-    if (!childTasks || childTasks.length === 0) {
-      return 'todo'; // Default if no tasks
-    }
-    
-    const hasInProgress = childTasks.some(task => task.task_status === 'in_progress');
-    if (hasInProgress) return 'in_progress';
-    
-    return 'todo';
-  };
+const Chip = ({ text, variant = "default" }) => (
+  <span className={`${styles.chip} ${styles[`chip--${variant}`]}`}>
+    {text}
+  </span>
+);
 
-  // Determine status for Objective based on child KRs
-  const getObjectiveStatus = (objectiveItem, childKRs) => {
-    if (!childKRs || childKRs.length === 0) {
-      return 'todo'; // Default if no KRs
-    }
-    
-    const hasInProgress = childKRs.some(kr => {
-      const krStatus = getKRStatus(kr, kr.children);
-      return krStatus === 'in_progress';
-    });
-    if (hasInProgress) return 'in_progress';
-    
-    return 'todo';
-  };
-
-  // Get the appropriate status class for emoji background
-  const getEmojiStatusClass = (type, item, childrenData) => {
-    let status;
-    
-    if (type === 'T') {
-      status = item.task_status || 'todo';
-    } else if (type === 'K') {
-      status = getKRStatus(item, childrenData);
-    } else if (type === 'O') {
-      status = getObjectiveStatus(item, childrenData);
-    } else {
-      status = 'todo';
-    }
-    
-    switch (status) {
-      case 'todo': return styles.emojiTodo;
-      case 'in_progress': return styles.emojiInProgress;
-      case 'done': return styles.emojiDone;
-      case 'blocked': return styles.emojiBlocked;
-      default: return styles.emojiTodo;
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      'D': { label: 'Draft', className: styles.statusDraft },
-      'A': { label: 'Active', className: styles.statusActive },
-      'C': { label: 'Complete', className: styles.statusComplete }
-    };
-    return badges[status] || { label: 'Unknown', className: '' };
-  };
-
-  const getTaskStatus = (taskStatus) => {
-    const statuses = {
-      'todo': { label: 'To Do', className: styles.taskTodo },
-      'in_progress': { label: 'In Progress', className: styles.taskInProgress },
-      'done': { label: 'Done', className: styles.taskDone },
-      'blocked': { label: 'Blocked', className: styles.taskBlocked }
-    };
-    return statuses[taskStatus] || null;
-  };
-
-  const statusBadge = getStatusBadge(okrt.status);
-  const taskStatus = okrt.type === 'T' ? getTaskStatus(okrt.task_status) : null;
+function ProgressRing({ value = 0, size = 40, stroke = 6, color = "var(--brand-primary)" }) {
+  const v = Math.max(0, Math.min(1, value ?? 0));
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - v) + 0.0001;
 
   return (
-    <div className={styles.okrtItem}>
-      <div className={`${styles.okrtHeader} ${(okrt.type === 'O' || okrt.type === 'K') ? styles.objectiveHeader : ''}`}>
-        {okrt.type === 'O' ? (
-          <div className={styles.objectiveLayout}>
-            <span className={`${styles.okrtIcon} ${getEmojiStatusClass(okrt.type, okrt, childrenData)}`}>{getIcon(okrt.type)}</span>
-            <div 
-              className={styles.okrtTitleSection} 
-              onClick={() => onEdit(okrt)} 
-              style={{ cursor: 'pointer' }}
-            >
-              {okrt.title && <h3 className={styles.okrtTitle}>{okrt.title}</h3>}
-              {okrt.description && (
-                <p className={`${styles.okrtDescription} ${styles.objectiveDesc}`}>{okrt.description}</p>
-              )}
-            </div>
-            <div className={styles.badges}>
-              <span className={`${styles.statusBadge} ${statusBadge.className}`}>
-                {statusBadge.label}
-              </span>
-            </div>
-            <div className={styles.progressContainer}>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${okrt.progress || 0}%` }}
-                ></div>
-              </div>
-              <span className={styles.progressText}>{okrt.progress || 0}%</span>
-              <button
-                className={styles.progressDeleteButton}
-                title="Delete"
-                onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
-                aria-label="Delete"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                  <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-              </button>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Key Result"
-              >
-                + Add KR
-              </button>
-              {hasChildren && (
-                <button 
-                  className={styles.toggleButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(prev => !prev);
-                  }}
-                  title={expanded ? 'Collapse' : 'Expand'}
-                  aria-label="Toggle children"
-                >
-                  {expanded ? '▾' : '▸'}
-                </button>
-              )}
-            </div>
-          </div>
-        ) : okrt.type === 'K' ? (
-          <div className={styles.keyResultLayout}>
-            <span className={`${styles.okrtIcon} ${getEmojiStatusClass(okrt.type, okrt, childrenData)}`}>{getIcon(okrt.type)}</span>
-            <div 
-              className={styles.okrtTitleSection} 
-              onClick={() => onEdit(okrt)} 
-              style={{ cursor: 'pointer' }}
-            >
-              {okrt.title && <h3 className={styles.okrtTitle}>{okrt.title}</h3>}
-              {okrt.description && (
-                <p className={styles.okrtDescription}>{okrt.description}</p>
-              )}
-              <div className={styles.krDetails}>
-                
-                {okrt.kr_baseline_number && (
-                  <span className={styles.krBaseline}>
-                    | Baseline: {okrt.kr_baseline_number} {okrt.kr_unit}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className={styles.progressContainer}>
-              <div className={styles.progressBar}>
-                <div 
-                  className={styles.progressFill} 
-                  style={{ width: `${okrt.progress || 0}%` }}
-                ></div>
-              </div>
-              <span className={styles.progressText}>{okrt.progress || 0}%</span>
-              <button
-                className={styles.progressDeleteButton}
-                title="Delete"
-                onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
-                aria-label="Delete"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                  <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-              </button>
-              <button 
-                className={styles.addChildButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateChild(okrt);
-                }}
-                title="Add Task"
-              >
-                + Add Task
-              </button>
-              {hasChildren && (
-                <button 
-                  className={styles.toggleButton}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(prev => !prev);
-                  }}
-                  title={expanded ? 'Collapse' : 'Expand'}
-                  aria-label="Toggle children"
-                >
-                  {expanded ? '▾' : '▸'}
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.okrtMain}>
-            <span className={`${styles.okrtIcon} ${getEmojiStatusClass(okrt.type, okrt, childrenData)}`}>{getIcon(okrt.type)}</span>
-            <div className={styles.okrtContent}>
-              <div 
-                className={styles.okrtTitleRow} 
-                onClick={() => onEdit(okrt)} 
-                style={{ cursor: 'pointer' }}
-              >
-                {okrt.title && <h3 className={styles.okrtTitle}>{okrt.title}</h3>}
-              </div>
-              
-              {okrt.type === 'T' && (
-                <div 
-                  className={styles.taskMetaRow}
-                  onClick={() => onEdit(okrt)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  {okrt.description && (
-                    <p className={styles.okrtDescription}>{okrt.description}</p>
-                  )}
-                  {okrt.due_date && (
-                    <span className={styles.dueDate}>Due: {okrt.due_date}</span>
-                  )}
-                  <div className={styles.progressContainer}>
-                    <div className={styles.progressBar}>
-                      <div 
-                        className={styles.progressFill} 
-                        style={{ width: `${okrt.progress || 0}%` }}
-                      ></div>
-                    </div>
-                    <span className={styles.progressText}>{okrt.progress || 0}%</span>
-                    <button
-                      className={styles.progressDeleteButton}
-                      title="Delete"
-                      onClick={(e) => { e.stopPropagation(); onRequestDelete(okrt); }}
-                      aria-label="Delete"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M8 6l1-2h6l1 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {okrt.type !== 'T' && okrt.description && (
-                <p className={styles.okrtDescription}>{okrt.description}</p>
-              )}
-              
+    <div className={styles.progressRing}>
+      <svg width={size} height={size} className={styles.progressSvg}>
+        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+          <circle
+            stroke="var(--border-light)"
+            strokeOpacity="0.3"
+            fill="transparent"
+            strokeWidth={stroke}
+            r={radius}
+            cx={size / 2}
+            cy={size / 2}
+          />
+          <circle
+            stroke={color}
+            fill="transparent"
+            strokeLinecap="round"
+            strokeWidth={stroke}
+            r={radius}
+            cx={size / 2}
+            cy={size / 2}
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={offset}
+            className={styles.progressCircle}
+          />
+        </g>
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="central"
+          textAnchor="middle"
+          className={styles.progressText}
+        >
+          {Math.round(v * 100)}%
+        </text>
+      </svg>
+    </div>
+  );
+}
 
+function ProgressBar({ value }) {
+  return (
+    <div className={styles.progressBar}>
+      <div
+        className={styles.progressBarFill}
+        style={{ width: `${Math.min(100, Math.max(0, Math.round((value || 0) * 100)))}%` }}
+      />
+    </div>
+  );
+}
+
+/* =========================
+   Main Components
+   ========================= */
+
+function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpanded }) {
+  const getStatusVariant = (status) => {
+    switch (status) {
+      case 'A': return 'active';
+      case 'C': return 'complete';
+      case 'D': return 'draft';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'A': return 'in progress';
+      case 'C': return 'Complete';
+      case 'D': return 'Draft';
+      default: return 'Unknown';
+    }
+  };
+
+  return (
+    <div className={`${styles.objectiveHeader} ${!isExpanded ? styles.collapsed : ''}`}>
+      <div className={styles.objectiveMainContent}>
+        <div className={styles.objectiveInfo}>
+          <div className={styles.objectiveIcon}>
+            <GoTrophy size={20} />
+          </div>
+          <div>
+            <h1
+              className={styles.objectiveTitle}
+              onClick={() => onEditObjective(objective)}
+            >
+              {objective.title}
+            </h1>
+            <div className={styles.objectiveMeta}>
+              <div className={styles.chipGroup} title={`Quarter: ${objective.cycle_qtr}`}>
+                <Chip text={objective.cycle_qtr} variant="default" />
+              </div>
+              <div className={styles.chipGroup} title={`Area: ${objective.area || "Personal"}`}>
+                <Chip text={objective.area || "Personal"} variant="area" />
+              </div>
+              <div className={styles.chipGroup} title="Visibility: Team">
+                <Chip text="Team" variant="team" />
+              </div>
+              <div className={styles.chipGroup} title={`Status: ${getStatusLabel(objective.status)}`}>
+                <Chip text={getStatusLabel(objective.status)} variant={getStatusVariant(objective.status)} />
+              </div>
             </div>
           </div>
-        )}
+        </div>
+        <div className={styles.objectiveActions}>
+          <div className={styles.progressSection}>
+            <div className={styles.progressItem}>
+              <ProgressRing value={(objective.confidence || 30) / 100} size={64} color="var(--brand-secondary)" />
+              <div className={styles.progressLabel}>confidence</div>
+            </div>
+            <div className={styles.progressItem}>
+              <ProgressRing value={objective.progress / 100} size={64} color="var(--brand-primary)" />
+              <div className={styles.progressLabel}>progress</div>
+            </div>
+          </div>
+          <button className={styles.shareButton}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16,6 12,2 8,6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            Share
+          </button>
+          <button className={styles.focusButton}>Focus</button>
+          <button
+            className={styles.objectiveToggleButton}
+            onClick={onToggleExpanded}
+            aria-label={isExpanded ? 'Collapse objective' : 'Expand objective'}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`${styles.objectiveChevron} ${isExpanded ? styles.objectiveChevronExpanded : ''}`}
+            >
+              <polyline points="6,9 12,15 18,9"/>
+            </svg>
+          </button>
+        </div>
       </div>
-      
-      {hasChildren && expanded && (
-        <div className={styles.okrtChildren}>
-          {children}
+      {isExpanded && objective.description && (
+        <div className={styles.objectiveDescriptionContainer}>
+          <p className={styles.objectiveDescription}>{objective.description}</p>
         </div>
       )}
     </div>
   );
 }
 
-export default function OKRTPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [okrts, setOkrts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('create');
-  const [editingOkrt, setEditingOkrt] = useState(null);
-  const [parentOkrt, setParentOkrt] = useState(null);
-  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
+function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, tasks = [] }) {
+  const [expanded, setExpanded] = useState(false);
+  const atRisk = kr.progress < 35;
+  
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'No due date';
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
 
+  const handleCardClick = (e) => {
+    // Only open modal if not clicking on expand button or KR title
+    if (!e.target.closest(`.${styles.expandButton}`) && !e.target.closest(`.${styles.cardTitle}`)) {
+      onOpen(kr);
+    }
+  };
+
+  const handleExpandClick = (e) => {
+    e.stopPropagation();
+    setExpanded(!expanded);
+  };
+
+  const handleKRTitleClick = (e) => {
+    e.stopPropagation();
+    onEditKR(kr);
+  };
+
+  const handleTaskClick = (e, task) => {
+    e.stopPropagation();
+    onEditTask(task);
+  };
+
+  return (
+    <div className={`${styles.keyResultCard} ${selected ? styles.selected : ''} ${atRisk ? styles.atRisk : ''}`}>
+      <div className={styles.cardHeader} onClick={handleCardClick}>
+        <div className={styles.cardIcon}>
+          <GiGolfFlag size={20} />
+        </div>
+        <div className={styles.cardContent}>
+          <div
+            className={styles.cardTitle}
+            onClick={handleKRTitleClick}
+          >
+            {kr.description}
+          </div>
+          <div className={styles.cardProgress}>
+            <ProgressBar value={kr.progress / 100} />
+          </div>
+          <div className={styles.cardMeta}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>{formatDate(kr.due_date)}</span>
+            <span>•</span>
+            <span>in progress</span>
+            {atRisk && (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.warningIcon}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span className={styles.atRiskText}>at-risk</span>
+              </>
+            )}
+          </div>
+        </div>
+        {tasks.length > 0 && (
+          <button
+            className={styles.expandButton}
+            onClick={handleExpandClick}
+            aria-label={expanded ? 'Collapse tasks' : 'Expand tasks'}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`${styles.chevron} ${expanded ? styles.chevronExpanded : ''}`}
+            >
+              <polyline points="9,18 15,12 9,6"/>
+            </svg>
+          </button>
+        )}
+      </div>
+      
+      {expanded && tasks.length > 0 && (
+        <div className={styles.tasksList}>
+          <div className={styles.tasksHeader}>TASKS</div>
+          {tasks.map((task) => (
+            <div key={task.id} className={styles.taskItem}>
+              <div className={styles.taskIcon}>
+                <LiaGolfBallSolid size={20} />
+              </div>
+              <div className={styles.taskContent}>
+                <span
+                  className={`${styles.taskText} ${task.task_status === 'done' ? styles.taskTextCompleted : ''}`}
+                  onClick={(e) => handleTaskClick(e, task)}
+                >
+                  {task.description || task.title}
+                </span>
+                <div className={styles.taskMeta}>
+                  {task.due_date && (
+                    <span>Due: {formatDate(task.due_date)}</span>
+                  )}
+                  {task.due_date && task.task_status && <span>•</span>}
+                  {task.task_status && (
+                    <span>{task.task_status.replace('_', ' ')}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          <button className={styles.addTaskButton} onClick={(e) => {
+            e.stopPropagation();
+            onAddTask(kr);
+          }}>
+            + Add task
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddKeyResultCard({ onAddKeyResult }) {
+  return (
+    <button className={styles.addKeyResultCard} onClick={onAddKeyResult}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Key Result
+    </button>
+  );
+}
+
+/* =========================
+   Demo Data (fallback)
+   ========================= */
+
+const demoData = {
+  objectives: [
+    {
+      id: "demo-obj-1",
+      title: "Start My AI-first App Development Journey",
+      description: "Build foundational knowledge and practical experience in AI/ML development by creating a working application and completing structured learning. This objective focuses on hands-on learning through building, experimenting, and documenting the development process.",
+      type: "O",
+      cycle_qtr: "2025-Q3",
+      visibility: "team",
+      status: "A",
+      progress: 30,
+      area: "Work"
+    }
+  ],
+  keyResults: [
+    {
+      id: "demo-kr-1",
+      parent_id: "demo-obj-1",
+      type: "K",
+      description: "Brainstorm simple app ideas (chatbot, recommendation tool, etc.)",
+      progress: 90,
+      due_date: "2025-09-30"
+    },
+    {
+      id: "demo-kr-2",
+      parent_id: "demo-obj-1",
+      type: "K",
+      description: "Build a basic AI-powered app and share a demo or code online",
+      progress: 30,
+      due_date: "2025-10-10"
+    },
+    {
+      id: "demo-kr-3",
+      parent_id: "demo-obj-1",
+      type: "K",
+      description: "Complete an Intro course on AI/ML (Coursera/Udemy) and notes",
+      progress: 0,
+      due_date: "2025-10-25"
+    }
+  ]
+};
+
+/* =========================
+   Main Page Component
+   ========================= */
+
+export default function OKRTPage() {
+  const [objectives, setObjectives] = useState([]);
+  const [keyResults, setKeyResults] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [openKR, setOpenKR] = useState(null);
+  const [expandedObjectives, setExpandedObjectives] = useState(new Set());
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    mode: 'create',
+    okrt: null,
+    parentOkrt: null
+  });
+
+  // Fetch OKRT data using the same pattern as the working OKRT page
   useEffect(() => {
-    const checkAuthAndFetchData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/me');
+        const response = await fetch('/api/okrt');
+        const data = await response.json();
+        
         if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-          fetchOkrts();
+          console.log('API Response:', data); // Debug log
+          const allItems = data.okrts || [];
+          const objs = allItems.filter(item => item.type === 'O');
+          const krs = allItems.filter(item => item.type === 'K');
+          const tsks = allItems.filter(item => item.type === 'T');
+          
+          setObjectives(objs);
+          setKeyResults(krs);
+          setTasks(tsks);
         } else {
-          router.push('/login');
+          console.error('API Error:', data.error || 'Failed to fetch OKRTs');
         }
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        router.push('/login');
+      } catch (error) {
+        console.error('Error fetching OKRT data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkAuthAndFetchData();
-  }, [router]);
+    fetchData();
+  }, []);
 
-  const fetchOkrts = async () => {
-    try {
-      const response = await fetch('/api/okrt');
-      const data = await response.json();
-      
-      if (response.ok) {
-        setOkrts(data.okrts || []);
-      } else {
-        setError(data.error || 'Failed to fetch OKRTs');
-      }
-    } catch (err) {
-      setError('Network error while fetching OKRTs');
-    } finally {
-      setLoading(false);
+  // Listen for create objective events from LeftMenu
+  useEffect(() => {
+    const handleCreateObjectiveEvent = () => {
+      handleCreateObjective();
+    };
+
+    window.addEventListener('createObjective', handleCreateObjectiveEvent);
+    
+    return () => {
+      window.removeEventListener('createObjective', handleCreateObjectiveEvent);
+    };
+  }, []);
+
+  // Initialize all objectives as expanded when data loads
+  useEffect(() => {
+    if (objectives.length > 0) {
+      setExpandedObjectives(new Set(objectives.map(obj => obj.id)));
     }
+  }, [objectives]);
+
+  // Group key results by their parent objective
+  const getKeyResultsForObjective = (objId) => {
+    return keyResults.filter(kr => kr.parent_id === objId);
   };
 
-  const buildHierarchy = (items) => {
-    const itemMap = {};
-    const rootItems = [];
+  // Group tasks by their parent key result
+  const getTasksForKeyResult = (krId) => {
+    return tasks.filter(task => task.parent_id === krId);
+  };
 
-    // First pass: create map
-    items.forEach(item => {
-      itemMap[item.id] = { ...item, children: [] };
+  // Modal handlers
+  const handleEditObjective = (objective) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      okrt: objective,
+      parentOkrt: null
     });
+  };
 
-    // Second pass: build hierarchy
-    items.forEach(item => {
-      if (item.parent_id && itemMap[item.parent_id]) {
-        itemMap[item.parent_id].children.push(itemMap[item.id]);
-      } else {
-        rootItems.push(itemMap[item.id]);
-      }
+  const handleEditKR = (kr) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      okrt: kr,
+      parentOkrt: null
     });
-
-    return rootItems;
   };
 
-  const renderOkrtTree = (items, isRoot = false) => {
-    return items.map((item, index) => (
-      <OKRTItem
-        key={item.id}
-        okrt={item}
-        childrenData={item.children}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreateChild={handleCreateChild}
-        onRequestDelete={openDeleteConfirm}
-        initialExpanded={isRoot && index === 0}
-      >
-        {item.children && item.children.length > 0 && renderOkrtTree(item.children, false)}
-      </OKRTItem>
-    ));
+  const handleEditTask = (task) => {
+    setModalState({
+      isOpen: true,
+      mode: 'edit',
+      okrt: task,
+      parentOkrt: null
+    });
   };
 
-  const handleEdit = (okrt) => {
-    setEditingOkrt(okrt);
-    setModalMode('edit');
-    setParentOkrt(null);
-    setShowModal(true);
+  const handleAddKeyResult = (objective) => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: objective
+    });
   };
 
-  const openDeleteConfirm = (okrt) => {
-    setDeleteConfirmItem(okrt);
+  const handleAddTask = (keyResult) => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: keyResult
+    });
   };
 
-  const performDelete = async (okrt) => {
-    try {
-      const response = await fetch(`/api/okrt/${okrt.id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        fetchOkrts();
-      } else {
-        const data = await response.json();
-        alert('Failed to delete OKRT: ' + (data.error || 'Unknown error'));
-      }
-    } catch (err) {
-      alert('Network error while deleting OKRT');
-    } finally {
-      setDeleteConfirmItem(null);
-    }
+  const handleCreateObjective = () => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
   };
 
-  const handleDelete = async (okrt) => {
-    if (!confirm('Are you sure you want to delete this OKRT? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/okrt/${okrt.id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        // Refresh the list
-        fetchOkrts();
-      } else {
-        const data = await response.json();
-        alert('Failed to delete OKRT: ' + (data.error || 'Unknown error'));
-      }
-    } catch (err) {
-      alert('Network error while deleting OKRT');
-    }
-  };
-
-  const handleCreateNew = () => {
-    setEditingOkrt(null);
-    setModalMode('create');
-    setParentOkrt(null);
-    setShowModal(true);
-  };
-
-  const handleCreateChild = (parent) => {
-    setEditingOkrt(null);
-    setModalMode('create');
-    setParentOkrt(parent);
-    setShowModal(true);
+  const handleCloseModal = () => {
+    setModalState({
+      isOpen: false,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
   };
 
   const handleSaveOkrt = async (okrtData) => {
     try {
-      let response;
+      const url = modalState.mode === 'edit'
+        ? `/api/okrt/${modalState.okrt.id}`
+        : '/api/okrt';
       
-      if (modalMode === 'edit') {
-        // Update existing OKRT
-        response = await fetch(`/api/okrt/${editingOkrt.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(okrtData)
-        });
-      } else {
-        // Create new OKRT
-        response = await fetch('/api/okrt', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(okrtData)
-        });
-      }
+      const method = modalState.mode === 'edit' ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(okrtData),
+      });
 
       if (!response.ok) {
-        const data = await response.json();
-        console.error('API Error:', data);
-        throw new Error(data.error || `Failed to ${modalMode === 'edit' ? 'update' : 'create'} OKRT`);
+        throw new Error('Failed to save OKRT');
       }
 
-      // Close modal and refresh the list
-      setShowModal(false);
-      fetchOkrts();
+      // Refresh data after successful save
+      const fetchResponse = await fetch('/api/okrt');
+      const data = await fetchResponse.json();
+      
+      if (fetchResponse.ok) {
+        const allItems = data.okrts || [];
+        const objs = allItems.filter(item => item.type === 'O');
+        const krs = allItems.filter(item => item.type === 'K');
+        const tsks = allItems.filter(item => item.type === 'T');
+        
+        setObjectives(objs);
+        setKeyResults(krs);
+        setTasks(tsks);
+      }
     } catch (error) {
-      console.error('Save OKRT error:', error);
-      throw error; // Re-throw so modal can handle it
+      console.error('Error saving OKRT:', error);
+      throw error;
     }
+  };
+
+  const handleToggleObjective = (objectiveId) => {
+    setExpandedObjectives(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(objectiveId)) {
+        newSet.delete(objectiveId);
+      } else {
+        newSet.add(objectiveId);
+      }
+      return newSet;
+    });
   };
 
   if (loading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Loading your OKRTs...</div>
+      <div className={styles.loading}>
+        <div>Loading OKRT data...</div>
       </div>
     );
   }
 
-  if (error) {
+  if (objectives.length === 0) {
     return (
-      <div className={styles.container}>
-        <div className={styles.error}>Error: {error}</div>
+      <div className={styles.empty}>
+        <div>
+          <div className={styles.emptyTitle}>No objectives found</div>
+          <div className={styles.emptyText}>Create your first objective to get started.</div>
+        </div>
       </div>
     );
   }
-
-  const hierarchicalOkrts = buildHierarchy(okrts);
-
-  // Helper for type label
-  const typeLabel = (t) => (t === 'O' ? 'Objective' : t === 'K' ? 'Key Result' : 'Task');
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>My Goals (OKRTs)</h1>
-        <button 
-          className={styles.createButton}
-          onClick={handleCreateNew}
-        >
-          + Add Objective
-        </button>
-      </div>
+      {/* Main Content */}
+      <main className={styles.main}>
+        {/* Stack all objectives vertically */}
+        {objectives.map((objective) => {
+          const objectiveKRs = getKeyResultsForObjective(objective.id);
+          
+          return (
+            <div key={objective.id} className={styles.objectiveSection}>
+              <ObjectiveHeader
+                objective={objective}
+                onEditObjective={handleEditObjective}
+                isExpanded={expandedObjectives.has(objective.id)}
+                onToggleExpanded={() => handleToggleObjective(objective.id)}
+              />
 
-      {hierarchicalOkrts.length === 0 ? (
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>🎯</div>
-          <h2>No goals yet</h2>
-          <p>Create your first Objective, Key Result, or Task to get started.</p>
-          <button 
-            className={styles.createButtonPrimary}
-            onClick={handleCreateNew}
-          >
-            Create Your First Goal
-          </button>
-        </div>
-      ) : (
-        <div className={styles.okrtList}>
-          {renderOkrtTree(hierarchicalOkrts, true)}
-        </div>
-      )}
-
-      <OKRTModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSave={handleSaveOkrt}
-        okrt={editingOkrt}
-        parentOkrt={parentOkrt}
-        mode={modalMode}
-      />
-
-      {deleteConfirmItem && (
-        <div className={styles.confirmOverlay} onClick={() => setDeleteConfirmItem(null)}>
-          <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.confirmTitle}>Confirm Delete</h3>
-            <p className={styles.confirmText}>
-              Do you want to delete this {typeLabel(deleteConfirmItem.type)}: {deleteConfirmItem.description || deleteConfirmItem.title || ''}?
-            </p>
-            <div className={styles.confirmButtons}>
-              <button className={styles.cancelButton} onClick={() => setDeleteConfirmItem(null)}>Cancel</button>
-              <button className={styles.deleteConfirmButton} onClick={() => performDelete(deleteConfirmItem)}>Delete</button>
+              {/* Key Results Grid for this objective - only show when expanded */}
+              {expandedObjectives.has(objective.id) && (
+                <div className={styles.keyResultsGrid}>
+                  {objectiveKRs.map((kr) => (
+                    <KeyResultCard
+                      key={kr.id}
+                      kr={kr}
+                      selected={openKR?.id === kr.id}
+                      onOpen={setOpenKR}
+                      onEditKR={handleEditKR}
+                      onEditTask={handleEditTask}
+                      onAddTask={handleAddTask}
+                      tasks={getTasksForKeyResult(kr.id)}
+                    />
+                  ))}
+                  <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </main>
+
+      {/* OKRT Modal */}
+      <OKRTModal
+        isOpen={modalState.isOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveOkrt}
+        okrt={modalState.okrt}
+        parentOkrt={modalState.parentOkrt}
+        mode={modalState.mode}
+      />
     </div>
   );
 }

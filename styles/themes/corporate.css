@@ -1,0 +1,101 @@
+/* Corporate Purple Theme - Light and Dark variants */
+
+:root {
+  /* Brand Colors (Corporate Purple palette) */
+  --brand-primary: #6b46c1; /* Deep purple primary */
+  --brand-secondary: #8b5cf6; /* Medium purple secondary */
+  --brand-accent: #a78bfa; /* Light purple accent */
+  --brand-success: #10b981; /* Professional green */
+
+  /* Extended Brand Palette */
+  --brand-50:  #faf5ff;  /* Lightest purple */
+  --brand-100: #f3e8ff;  /* Very light purple */
+  --brand-200: #e9d5ff;  /* Light purple */
+  --brand-500: #8b5cf6;  /* Medium purple */
+  --brand-600: #7c3aed;  /* Darker purple */
+  --brand-700: #6b46c1;  /* Deep purple */
+  --brand-900: #4c1d95;  /* Darkest purple */
+
+  /* Surfaces (Corporate, professional feel) */
+  --bg:        linear-gradient(135deg, #fdfcff 0%, #f8f6ff 100%);
+  --bg-solid:  #ffffff;
+  --surface:   #ffffff;
+  --surface-elevated: #ffffff;
+  --card:      #ffffff;
+  --border:    #e5e7eb;   /* Professional neutral border */
+  --border-light: #f3f4f6;
+
+  /* Text (Corporate neutrals) */
+  --text: #1f2937;              /* Dark professional text */
+  --text-secondary: #4b5563;    /* Secondary gray text */
+  --muted: #6b7280;             /* Muted gray */
+  --muted-light: #9ca3af;       /* Light gray */
+
+  /* Status Colors (Corporate-appropriate) */
+  --success: #10b981;
+  --success-light: #ecfdf5;
+  --warn: #f59e0b;         /* Professional amber */
+  --warn-light: #fffbeb;
+  --danger: #ef4444;       /* Professional red */
+  --danger-light: #fef2f2;
+
+  /* Progress & Accents */
+  --progress-obj: var(--brand-primary);
+  --progress-kr:  var(--brand-secondary);
+
+  /* Theme-specific shadows */
+  --shadow-brand: 0 4px 16px rgba(107, 70, 193, 0.25);
+  --shadow-glow:  0 0 24px rgba(107, 70, 193, 0.18);
+
+  /* Semantic Aliases */
+  --accent-color: var(--brand-primary);
+  --accent-color-dark: var(--brand-600);
+  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  --highlight: var(--brand-accent); /* Menu & selection highlight */
+  --success-color: var(--brand-success);
+  --error-color: var(--danger);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --surface-0: var(--bg-solid);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-elevated);
+  --border-subtle: var(--border);
+}
+
+/* Dark Mode – Corporate Dark Theme */
+html[data-theme="corporate-dark"] {
+  /* Surfaces (Corporate dark) */
+  --bg: linear-gradient(135deg, #1e1b2e 0%, #161320 100%);
+  --bg-solid: #161320;
+  --surface: #1e1b2e;
+  --surface-elevated: #2a2438;
+  --card: #1e1b2e;
+  --border: #374151;
+  --border-light: #4b5563;
+
+  /* Text (Light on corporate dark) */
+  --text: #f9fafb;
+  --text-secondary: #e5e7eb;
+  --muted: #d1d5db;
+  --muted-light: #9ca3af;
+
+  /* Brand (adjusted for dark backgrounds) */
+  --brand-primary: #a78bfa; /* Lighter purple for dark */
+  --brand-secondary: #8b5cf6; /* Medium purple */
+  --brand-accent: #c4b5fd; /* Light purple accent */
+
+  /* Status (Corporate Dark) */
+  --success: #34d399;
+  --success-light: #1f2937;
+  --warn: #fbbf24;
+  --warn-light: #374151;
+  --danger: #f87171;
+  --danger-light: #374151;
+
+  /* Update semantic aliases for dark mode */
+  --accent-color: var(--brand-primary);
+  --accent-color-dark: var(--brand-secondary);
+  --highlight: var(--brand-accent);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+}
