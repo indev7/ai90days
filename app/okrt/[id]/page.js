@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { Share2 } from 'lucide-react';
+import ShareModal from '@/components/ShareModal';
 import styles from './page.module.css';
 
 export default function OKRTDetailPage() {
@@ -14,6 +16,7 @@ export default function OKRTDetailPage() {
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -147,9 +150,21 @@ export default function OKRTDetailPage() {
         <Link href="/okrt" className={styles.backLink}>
           ← Back to OKRTs
         </Link>
-        <button className={styles.editButton}>
-          Edit
-        </button>
+        <div className={styles.headerActions}>
+          {user && okrt && user.id.toString() === okrt.owner_id && (
+            <button
+              className={styles.shareButton}
+              onClick={() => setShowShareModal(true)}
+              title="Share this objective"
+            >
+              <Share2 className={styles.shareIcon} />
+              Share
+            </button>
+          )}
+          <button className={styles.editButton}>
+            Edit
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -323,6 +338,14 @@ export default function OKRTDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        okrtId={params.id}
+        currentVisibility={okrt?.visibility}
+      />
     </div>
   );
 }

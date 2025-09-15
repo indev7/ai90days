@@ -1,6 +1,7 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AiOutlineDashboard } from 'react-icons/ai';
 import { GoGoal } from 'react-icons/go';
@@ -15,8 +16,16 @@ import styles from './LeftMenu.module.css';
 const topMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { href: '/okrt', label: 'My Goals', icon: 'goals' },
-  { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: true },
-  { href: '/groups', label: 'Groups', icon: 'groups', disabled: true },
+  { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: false },
+  {
+    href: '/groups',
+    label: 'Groups',
+    icon: 'groups',
+    disabled: false,
+    children: [
+      { href: '/groups/create', label: 'Add Group', icon: 'new' }
+    ]
+  },
   { href: '/new', label: 'New', icon: 'new', isAction: true },
 ];
 
@@ -52,12 +61,70 @@ function getIcon(iconName, isCollapsed = false) {
  */
 export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopCollapsed = false }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [expandedItems, setExpandedItems] = useState(new Set());
 
   const handleNewClick = () => {
+    // Close all expanded items when clicking New
+    setExpandedItems(new Set());
     // Dispatch a custom event that the My Goals page can listen to
     if (pathname === '/okrt') {
       window.dispatchEvent(new CustomEvent('createObjective'));
     }
+  };
+
+  const handleAddGroupClick = (e) => {
+    e.preventDefault();
+    // Always dispatch the event to show modal
+    if (pathname === '/groups') {
+      window.dispatchEvent(new CustomEvent('createGroup'));
+    } else {
+      // Navigate to groups page and show modal after navigation
+      router.push('/groups?showAddModal=true');
+    }
+  };
+
+  const isChildActive = (item) => {
+    if (!item.children) return false;
+    return item.children.some(child => pathname === child.href);
+  };
+
+  const toggleExpanded = (itemHref) => {
+    setExpandedItems(prev => {
+      const newSet = new Set();
+      if (!prev.has(itemHref)) {
+        newSet.add(itemHref);
+      }
+      return newSet;
+    });
+  };
+
+  const handleMenuItemClick = (itemHref, hasChildren) => {
+    if (hasChildren) {
+      // For Groups menu item, handle differently based on current page
+      if (itemHref === '/groups') {
+        if (pathname === '/groups') {
+          // If already on groups page, just toggle submenu
+          toggleExpanded(itemHref);
+        } else {
+          // If not on groups page, navigate there using Next.js router
+          router.push(itemHref);
+        }
+      } else {
+        toggleExpanded(itemHref);
+      }
+    } else {
+      // Close all expanded items when clicking on a menu item without children
+      setExpandedItems(new Set());
+    }
+  };
+
+  const isExpanded = (itemHref) => {
+    // Auto-expand Groups submenu when on groups page
+    if (itemHref === '/groups' && pathname === '/groups') {
+      return true;
+    }
+    return expandedItems.has(itemHref);
   };
 
   return (
@@ -66,6 +133,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
         <ul className={styles.menuList}>
           {topMenuItems.map((item) => {
             const isActive = pathname === item.href;
+            const hasActiveChild = isChildActive(item);
             const isDisabled = item.disabled;
             const isAction = item.isAction;
 
@@ -94,16 +162,67 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     <span className={styles.label}>{item.label}</span>
                   </button>
                 ) : (
-                  <Link
-                    href={item.href}
-                    className={`${styles.menuLink} ${isActive ? styles.active : ''}`}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <span className={styles.icon}>
-                      {getIcon(item.icon, isDesktopCollapsed)}
-                    </span>
-                    <span className={styles.label}>{item.label}</span>
-                  </Link>
+                  <>
+                    {item.children ? (
+                      <Link
+                        href={item.href}
+                        className={`${styles.menuLink} ${isActive || hasActiveChild ? styles.active : ''}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => handleMenuItemClick(item.href, true)}
+                      >
+                        <span className={styles.icon}>
+                          {getIcon(item.icon, isDesktopCollapsed)}
+                        </span>
+                        <span className={styles.label}>{item.label}</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className={`${styles.menuLink} ${isActive || hasActiveChild ? styles.active : ''}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => handleMenuItemClick(item.href, false)}
+                      >
+                        <span className={styles.icon}>
+                          {getIcon(item.icon, isDesktopCollapsed)}
+                        </span>
+                        <span className={styles.label}>{item.label}</span>
+                      </Link>
+                    )}
+                    {item.children && !isDesktopCollapsed && !isCollapsed && isExpanded(item.href) && (
+                      <ul className={styles.childMenuList}>
+                        {item.children.map((child) => {
+                          const isChildActiveLink = pathname === child.href;
+                          const isAddGroup = child.href === '/groups/create';
+                          return (
+                            <li key={child.href} className={styles.childMenuItem}>
+                              {isAddGroup ? (
+                                <button
+                                  onClick={handleAddGroupClick}
+                                  className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
+                                >
+                                  <span className={styles.icon}>
+                                    {getIcon(child.icon, false)}
+                                  </span>
+                                  <span className={styles.label}>{child.label}</span>
+                                </button>
+                              ) : (
+                                <Link
+                                  href={child.href}
+                                  className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
+                                  aria-current={isChildActiveLink ? 'page' : undefined}
+                                >
+                                  <span className={styles.icon}>
+                                    {getIcon(child.icon, false)}
+                                  </span>
+                                  <span className={styles.label}>{child.label}</span>
+                                </Link>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </>
                 )}
               </li>
             );
@@ -134,6 +253,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     href={item.href}
                     className={`${styles.menuLink} ${isActive ? styles.active : ''}`}
                     aria-current={isActive ? 'page' : undefined}
+                    onClick={() => handleMenuItemClick(item.href, false)}
                   >
                     <span className={styles.icon}>
                       {getIcon(item.icon, isDesktopCollapsed)}

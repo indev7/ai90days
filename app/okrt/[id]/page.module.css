@@ -11,6 +11,38 @@
   margin-bottom: 2rem;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shareButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.shareButton:hover {
+  background: var(--surface-2);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.shareIcon {
+  width: 16px;
+  height: 16px;
+}
+
 .backLink {
   color: var(--accent-color);
   text-decoration: none;

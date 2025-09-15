@@ -7,8 +7,7 @@ const AREAS = ['Life', 'Work', 'Health', 'Finance', 'Education', 'Relationships'
 const KR_UNITS = ['%', '$', 'count', 'hrs', 'days', 'points', 'users'];
 const VISIBILITY_OPTIONS = [
   { value: 'private', label: 'Private' },
-  { value: 'team', label: 'Team' },
-  { value: 'org', label: 'Organization' }
+  { value: 'shared', label: 'Shared' }
 ];
 
 // Generate quarter options for current and next 2 years
@@ -289,23 +288,8 @@ export default function OKRTModal({
             </div>
           </div>
 
-          {/* Visibility and Progress */}
+          {/* Progress only - visibility will be managed through sharing */}
           <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Visibility</label>
-              <select
-                className={styles.select}
-                value={formData.visibility}
-                onChange={e => handleInputChange('visibility', e.target.value)}
-              >
-                {VISIBILITY_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className={styles.formGroup}>
               <label className={styles.label}>Progress (%)</label>
               <input
