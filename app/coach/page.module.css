@@ -4,7 +4,7 @@
   height: calc(100vh - 72px); /* Account for header height */
   max-width: 1200px;
   margin: 0 auto;
-  background: var(--bg-solid);
+  background: var(--bg);
   position: relative;
 }
 

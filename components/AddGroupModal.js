@@ -181,7 +181,7 @@ export default function AddGroupModal({
               onChange={e => handleInputChange('thumbnail_url', e.target.value)}
               placeholder="https://example.com/image.jpg (optional - will use default if empty)"
             />
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
               Leave empty to use the default 90 Days logo
             </div>
           </div>
@@ -199,13 +199,13 @@ export default function AddGroupModal({
                     height: '60px',
                     borderRadius: '12px',
                     objectFit: 'cover',
-                    border: '1px solid var(--color-border)'
+                    border: '1px solid var(--border)'
                   }}
                   onError={(e) => {
                     e.target.style.display = 'none';
                   }}
                 />
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                   This is how your group thumbnail will appear
                 </span>
               </div>

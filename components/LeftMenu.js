@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { AiOutlineDashboard } from 'react-icons/ai';
 import { GoGoal } from 'react-icons/go';
 import { RiUserSharedLine } from 'react-icons/ri';
-import { ImTree } from 'react-icons/im';
+import { PiTreeViewFill } from "react-icons/pi";
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
@@ -40,7 +40,7 @@ function getIcon(iconName, isCollapsed = false) {
     dashboard: <AiOutlineDashboard size={iconSize} />,
     goals: <GoGoal size={iconSize} />,
     shared: <RiUserSharedLine size={iconSize} />,
-    groups: <ImTree size={iconSize} />,
+    groups: <PiTreeViewFill size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: <IoMdNotificationsOutline size={iconSize} />,

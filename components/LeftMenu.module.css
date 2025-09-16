@@ -46,11 +46,7 @@
   padding: var(--space-5) 0 var(--space-8) 0;
   border-top: 1px solid rgba(248, 250, 252, 0.8);
   margin-top: auto;
-  background: linear-gradient(135deg, 
-    rgba(124, 58, 237, 0.02) 0%, 
-    rgba(168, 85, 247, 0.02) 50%, 
-    rgba(34, 211, 238, 0.02) 100%
-  );
+  background: var(--bg);
   position: relative;
 }
 
@@ -156,7 +152,7 @@
 }
 
 .menuLink.active {
-  background: rgba(111, 78, 55, 0.12); /* Coffee highlight */
+  background: rgba(187, 179, 174, 0.12); 
   color: var(--brand-primary);
   box-shadow: none;
   font-weight: 600;

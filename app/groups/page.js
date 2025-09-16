@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ImTree } from 'react-icons/im';
-import { ChevronDown, ChevronRight, Plus, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Users } from 'lucide-react';
 import { GrTrophy } from 'react-icons/gr';
 import { RiAdminLine } from 'react-icons/ri';
 import { FaRegUser } from 'react-icons/fa';
 import AddGroupModal from '../../components/AddGroupModal';
+import { createTreeLayout } from '../../lib/tidyTree';
 import styles from './page.module.css';
 
 // Progress bar component
@@ -23,15 +24,6 @@ function ProgressBar({ value }) {
   );
 }
 
-// Chip component for group types
-function Chip({ children }) {
-  return (
-    <span className={styles.chip}>
-      {children}
-    </span>
-  );
-}
-
 // Group Node component
 function GroupNode({
   group,
@@ -42,12 +34,24 @@ function GroupNode({
   onToggle,
   children,
   hasChildren,
+  position,
   overlay = false
 }) {
+  const nodeStyle = position ? {
+    position: 'absolute',
+    left: `${position.x}px`,
+    top: `${position.y}px`,
+    width: `${position.width}px`
+  } : {};
+
   return (
-    <div className={`${styles.groupNode} ${overlay && expanded ? styles.overlayExpanded : ''}`}>
+    <div 
+      className={`${styles.groupNode} ${overlay && expanded ? styles.overlayExpanded : ''}`}
+      style={nodeStyle}
+    >
       <div
         className={`${styles.groupCard} ${selected ? styles.selected : ''}`}
+        onClick={() => onSelect()}
       >
         <img
           src={group.thumbnail_url || '/brand/90d-logo.png'}
@@ -57,7 +61,7 @@ function GroupNode({
         <div className={styles.groupInfo}>
           <div className={styles.groupName}>{group.name}</div>
           <div className={styles.groupMeta}>
-            <span className={styles.sharedCount}>{count} shared OKRTs</span>
+            <GrTrophy size={12} /><span className={styles.sharedCount}>{count}</span>
           </div>
         </div>
         <button
@@ -69,9 +73,9 @@ function GroupNode({
           aria-label={expanded ? "Collapse" : "Expand"}
         >
           {expanded ? (
-            <ChevronDown className={styles.chevron} />
+            <ChevronUp className={styles.chevron} />
           ) : (
-            <ChevronRight className={styles.chevron} />
+            <ChevronDown className={styles.chevron} />
           )}
         </button>
       </div>
@@ -80,6 +84,85 @@ function GroupNode({
           {children}
         </div>
       )}
+    </div>
+  );
+}
+
+// Tree Layout Component using Tidy Tree algorithm
+function TreeLayout({
+  layout,
+  groupDetails,
+  selectedId,
+  expanded,
+  onSelect,
+  onToggle,
+  getChildGroups
+}) {
+  const { nodes, edges, bounds } = layout;
+
+  return (
+    <div className={styles.treeLayout} style={{ 
+      width: `${bounds.width}px`, 
+      height: `${bounds.height}px`,
+      position: 'relative'
+    }}>
+      {/* Render edges (connectors) */}
+      <svg 
+        className={styles.treeConnectors} 
+        width={bounds.width} 
+        height={bounds.height}
+        style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+      >
+        {edges.map((edge, index) => {
+          const midY = (edge.fromY + edge.toY) / 2;
+          const path = `M ${edge.fromX},${edge.fromY} V ${midY} H ${edge.toX} V ${edge.toY}`;
+          
+          return (
+            <path
+              key={`${edge.from}-${edge.to}-${index}`}
+              d={path}
+              stroke="var(--border)"
+              strokeWidth={2}
+              fill="none"
+            />
+          );
+        })}
+      </svg>
+
+      {/* Render nodes */}
+      {nodes.map((node) => {
+        const group = node.data;
+        const details = groupDetails[group.id];
+        const children = getChildGroups(group.id);
+        const hasChildren = children.length > 0;
+
+        console.log(`Group ${group.name} (${group.id}): hasChildren=${hasChildren}, children count=${children.length}`);
+
+        return (
+          <GroupNode
+            key={group.id}
+            group={group}
+            count={details?.count || 0}
+            selected={selectedId === group.id}
+            expanded={expanded[group.id]}
+            onSelect={() => onSelect(group.id)}
+            onToggle={() => onToggle(group.id)}
+            hasChildren={hasChildren}
+            position={{
+              x: node.x,
+              y: node.y,
+              width: node.width
+            }}
+            overlay={true}
+          >
+            <ExpandedGroupContent
+              group={group}
+              objectives={details?.objectives || []}
+              members={details?.members || []}
+            />
+          </GroupNode>
+        );
+      })}
     </div>
   );
 }
@@ -139,12 +222,6 @@ export default function GroupsPage() {
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Layout refs for connectors
-  const wrapRef = useRef(null);
-  const pRef = useRef(null);
-  const cRefs = useRef([]);
-  const [paths, setPaths] = useState([]);
-
   useEffect(() => {
     fetchGroups();
     
@@ -167,13 +244,6 @@ export default function GroupsPage() {
     window.addEventListener('createGroup', handleCreateGroup);
     return () => window.removeEventListener('createGroup', handleCreateGroup);
   }, []);
-
-  useEffect(() => {
-    // Redraw connectors when groups change or expansion changes
-    redrawConnectors();
-    window.addEventListener('resize', redrawConnectors);
-    return () => window.removeEventListener('resize', redrawConnectors);
-  }, [groups, expanded]);
 
   const fetchGroups = async () => {
     try {
@@ -218,32 +288,6 @@ export default function GroupsPage() {
     }
   };
 
-  const redrawConnectors = () => {
-    const wrap = wrapRef.current;
-    const p = pRef.current;
-    const cs = cRefs.current;
-    
-    if (!wrap || !p || cs.some(n => !n)) return;
-    
-    const wb = wrap.getBoundingClientRect();
-    const pb = p.getBoundingClientRect();
-    const startX = pb.left - wb.left + pb.width / 2;
-    const startY = pb.top - wb.top + pb.height;
-    const newPaths = [];
-    
-    cs.forEach((node) => {
-      if (!node) return;
-      const cb = node.getBoundingClientRect();
-      const endX = cb.left - wb.left + cb.width / 2;
-      const endY = cb.top - wb.top;
-      const midY = (startY + endY) / 2;
-      const d = `M ${startX},${startY} V ${midY} H ${endX} V ${endY}`;
-      newPaths.push(d);
-    });
-    
-    setPaths(newPaths);
-  };
-
   const handleGroupSelect = (groupId) => {
     setSelectedId(groupId);
     if (!groupDetails[groupId]) {
@@ -286,16 +330,30 @@ export default function GroupsPage() {
     }
   };
 
-  const groupById = useMemo(() => 
-    Object.fromEntries(groups.map(g => [g.id, g])), [groups]
-  );
-
-  const rootGroups = useMemo(() => 
-    groups.filter(g => !g.parent_group_id), [groups]
-  );
-
   const getChildGroups = (parentId) => 
     groups.filter(g => g.parent_group_id === parentId);
+
+  // Generate tree layouts using Tidy Tree algorithm
+  const treeLayouts = useMemo(() => {
+    if (groups.length === 0) return [];
+
+    try {
+      const layouts = createTreeLayout(groups, {
+        nodeWidth: 290,
+        nodeHeight: 80,
+        levelHeight: 120,
+        siblingDistance: 350,
+        subtreeDistance: 350, // Match sibling distance to reduce uneven spacing
+        spacingReduction: 0.7, // Reduce spacing by 30% each level
+        minSpacing: 80 // Minimum spacing to maintain readability
+      });
+
+      return layouts;
+    } catch (error) {
+      console.error('Error creating tree layout:', error);
+      return [];
+    }
+  }, [groups]);
 
   if (loading) {
     return (
@@ -325,14 +383,9 @@ export default function GroupsPage() {
     );
   }
 
-  const selectedGroup = selectedId ? groupById[selectedId] : null;
-  const selectedDetails = selectedId ? groupDetails[selectedId] : null;
-
   return (
     <div className={styles.container}>
       <div className={styles.layout}>
-
-
         {/* Main content */}
         <main className={styles.main}>
           {groups.length === 0 ? (
@@ -346,155 +399,24 @@ export default function GroupsPage() {
               </button>
             </div>
           ) : (
-            <div ref={wrapRef} className={styles.treeContainer}>
-              {/* Root groups */}
-              {rootGroups.map((rootGroup) => {
-                const children = getChildGroups(rootGroup.id);
-                const details = groupDetails[rootGroup.id];
-                
-                return (
-                  <div key={rootGroup.id} className={styles.treeSection}>
-                    {/* Parent row */}
-                    <div className={styles.parentRow}>
-                      <div ref={pRef}>
-                        <GroupNode
-                          group={rootGroup}
-                          count={details?.count || 0}
-                          selected={selectedId === rootGroup.id}
-                          expanded={expanded[rootGroup.id]}
-                          onSelect={() => handleGroupSelect(rootGroup.id)}
-                          onToggle={() => handleToggleExpanded(rootGroup.id)}
-                          hasChildren={children.length > 0}
-                          overlay={true}
-                        >
-                          <ExpandedGroupContent
-                            group={rootGroup}
-                            objectives={details?.objectives || []}
-                            members={details?.members || []}
-                          />
-                        </GroupNode>
-                      </div>
-                    </div>
-
-                    {/* SVG connectors */}
-                    {children.length > 0 && (
-                      <svg className={styles.connectors} fill="none">
-                        {paths.map((d, i) => (
-                          <path key={i} d={d} stroke="#CBD5E1" strokeWidth={2} />
-                        ))}
-                      </svg>
-                    )}
-
-                    {/* Children row - now recursive */}
-                    {children.length > 0 && (
-                      <div className={styles.childrenRow}>
-                        {children.map((child, i) => {
-                          const childDetails = groupDetails[child.id];
-                          const grandChildren = getChildGroups(child.id);
-                          return (
-                            <div key={child.id} className={styles.childNode}>
-                              <div ref={el => cRefs.current[i] = el}>
-                                <GroupNode
-                                  group={child}
-                                  count={childDetails?.count || 0}
-                                  selected={selectedId === child.id}
-                                  expanded={expanded[child.id]}
-                                  onSelect={() => handleGroupSelect(child.id)}
-                                  onToggle={() => handleToggleExpanded(child.id)}
-                                  hasChildren={grandChildren.length > 0}
-                                  overlay={true}
-                                >
-                                  <ExpandedGroupContent
-                                    group={child}
-                                    objectives={childDetails?.objectives || []}
-                                    members={childDetails?.members || []}
-                                  />
-                                </GroupNode>
-                                {/* Render grandchildren automatically like second level */}
-                                {grandChildren.length > 0 && (
-                                  <div className={styles.grandChildrenSection}>
-                                    {/* SVG connectors for grandchildren */}
-                                    <svg className={styles.grandConnectors} fill="none">
-                                      {grandChildren.map((_, i) => {
-                                        // Simple vertical line connectors for now
-                                        const startY = 0;
-                                        const endY = 60;
-                                        const x = 160 + (i * 340); // Approximate positioning
-                                        const d = `M ${x},${startY} V ${endY}`;
-                                        return <path key={i} d={d} stroke="#CBD5E1" strokeWidth={2} />;
-                                      })}
-                                    </svg>
-                                    
-                                    <div className={styles.grandChildrenRow}>
-                                      {grandChildren.map((grandChild) => {
-                                        const grandChildDetails = groupDetails[grandChild.id];
-                                        const greatGrandChildren = getChildGroups(grandChild.id);
-                                        return (
-                                          <div key={grandChild.id} className={styles.grandChildNode}>
-                                            <GroupNode
-                                              group={grandChild}
-                                              count={grandChildDetails?.count || 0}
-                                              selected={selectedId === grandChild.id}
-                                              expanded={expanded[grandChild.id]}
-                                              onSelect={() => handleGroupSelect(grandChild.id)}
-                                              onToggle={() => handleToggleExpanded(grandChild.id)}
-                                              hasChildren={greatGrandChildren.length > 0}
-                                              overlay={true}
-                                            >
-                                              <ExpandedGroupContent
-                                                group={grandChild}
-                                                objectives={grandChildDetails?.objectives || []}
-                                                members={grandChildDetails?.members || []}
-                                              />
-                                            </GroupNode>
-                                            {/* Render great-grandchildren automatically too */}
-                                            {greatGrandChildren.length > 0 && (
-                                              <div className={styles.greatGrandChildrenRow}>
-                                                {greatGrandChildren.map((greatGrandChild) => {
-                                                  const greatGrandChildDetails = groupDetails[greatGrandChild.id];
-                                                  const greatGreatGrandChildren = getChildGroups(greatGrandChild.id);
-                                                  return (
-                                                    <div key={greatGrandChild.id} className={styles.greatGrandChildNode}>
-                                                      <GroupNode
-                                                        group={greatGrandChild}
-                                                        count={greatGrandChildDetails?.count || 0}
-                                                        selected={selectedId === greatGrandChild.id}
-                                                        expanded={expanded[greatGrandChild.id]}
-                                                        onSelect={() => handleGroupSelect(greatGrandChild.id)}
-                                                        onToggle={() => handleToggleExpanded(greatGrandChild.id)}
-                                                        hasChildren={greatGreatGrandChildren.length > 0}
-                                                        overlay={true}
-                                                      >
-                                                        <ExpandedGroupContent
-                                                          group={greatGrandChild}
-                                                          objectives={greatGrandChildDetails?.objectives || []}
-                                                          members={greatGrandChildDetails?.members || []}
-                                                        />
-                                                      </GroupNode>
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className={styles.treeContainer}>
+              {/* Render tree layouts */}
+              {treeLayouts.map((layout, index) => (
+                <div key={index} className={styles.treeSection}>
+                  <TreeLayout
+                    layout={layout}
+                    groupDetails={groupDetails}
+                    selectedId={selectedId}
+                    expanded={expanded}
+                    onSelect={handleGroupSelect}
+                    onToggle={handleToggleExpanded}
+                    getChildGroups={getChildGroups}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </main>
-
       </div>
 
       {/* Add Group Modal */}

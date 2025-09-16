@@ -3,9 +3,11 @@
 import React, { useMemo, useState, useEffect } from "react";
 import styles from './page.module.css';
 import { GoTrophy } from "react-icons/go";
+import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from "react-icons/gi";
 import { LiaGolfBallSolid } from "react-icons/lia";
 import OKRTModal from '../../components/OKRTModal';
+import ShareModal from '../../components/ShareModal';
 
 /* =========================
    Utility Components
@@ -78,7 +80,7 @@ function ProgressBar({ value }) {
    Main Components
    ========================= */
 
-function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpanded }) {
+function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpanded, onShareObjective }) {
   const getStatusVariant = (status) => {
     switch (status) {
       case 'A': return 'active';
@@ -102,7 +104,7 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
       <div className={styles.objectiveMainContent}>
         <div className={styles.objectiveInfo}>
           <div className={styles.objectiveIcon}>
-            <GoTrophy size={20} />
+            <GrTrophy size={20} />
           </div>
           <div>
             <h1
@@ -138,7 +140,11 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
               <div className={styles.progressLabel}>progress</div>
             </div>
           </div>
-          <button className={styles.shareButton}>
+          <button
+            className={styles.shareButton}
+            onClick={() => onShareObjective(objective)}
+            title="Share this objective"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
               <polyline points="16,6 12,2 8,6"/>
@@ -384,6 +390,10 @@ export default function OKRTPage() {
     okrt: null,
     parentOkrt: null
   });
+  const [shareModalState, setShareModalState] = useState({
+    isOpen: false,
+    objective: null
+  });
 
   // Fetch OKRT data using the same pattern as the working OKRT page
   useEffect(() => {
@@ -561,6 +571,20 @@ export default function OKRTPage() {
     });
   };
 
+  const handleShareObjective = (objective) => {
+    setShareModalState({
+      isOpen: true,
+      objective: objective
+    });
+  };
+
+  const handleCloseShareModal = () => {
+    setShareModalState({
+      isOpen: false,
+      objective: null
+    });
+  };
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -595,6 +619,7 @@ export default function OKRTPage() {
                 onEditObjective={handleEditObjective}
                 isExpanded={expandedObjectives.has(objective.id)}
                 onToggleExpanded={() => handleToggleObjective(objective.id)}
+                onShareObjective={handleShareObjective}
               />
 
               {/* Key Results Grid for this objective - only show when expanded */}
@@ -628,6 +653,14 @@ export default function OKRTPage() {
         okrt={modalState.okrt}
         parentOkrt={modalState.parentOkrt}
         mode={modalState.mode}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModalState.isOpen}
+        onClose={handleCloseShareModal}
+        okrtId={shareModalState.objective?.id}
+        currentVisibility={shareModalState.objective?.visibility}
       />
     </div>
   );

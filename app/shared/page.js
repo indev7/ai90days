@@ -63,12 +63,12 @@ export default function SharedGoalsPage() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'A':
-        return 'var(--color-success)';
+        return 'var(--success)';
       case 'C':
-        return 'var(--color-primary)';
+        return 'var(--brand-primary)';
       case 'D':
       default:
-        return 'var(--color-text-secondary)';
+        return 'var(--text-secondary)';
     }
   };
 

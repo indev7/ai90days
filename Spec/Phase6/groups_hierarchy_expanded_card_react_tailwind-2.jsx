@@ -147,7 +147,7 @@ function GroupNode({
           <div className="truncate text-sm font-semibold">{g.name}</div>
           <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
             <Chip>{g.type}</Chip>
-            <span>{count} shared OKRTs</span>
+            <span>{count>Objectives</span>
           </div>
         </div>
         <button

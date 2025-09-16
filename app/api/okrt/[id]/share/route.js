@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     
     // Check if user owns this OKRT
     const okrt = await getOKRTById(id);
@@ -45,7 +45,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     
     // Check if user owns this OKRT
     const okrt = await getOKRTById(id);
@@ -105,7 +105,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const groupOrUserId = searchParams.get('target');
     const shareType = searchParams.get('type');
