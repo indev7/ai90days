@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AiOutlineDashboard } from 'react-icons/ai';
 import { GoGoal } from 'react-icons/go';
 import { RiUserSharedLine } from 'react-icons/ri';
 import { PiTreeViewFill } from "react-icons/pi";
+import { MdOutlinePeopleAlt } from "react-icons/md";
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
@@ -63,6 +64,24 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
   const pathname = usePathname();
   const router = useRouter();
   const [expandedItems, setExpandedItems] = useState(new Set());
+  const [adminGroups, setAdminGroups] = useState([]);
+
+  // Fetch admin groups on component mount
+  useEffect(() => {
+    const fetchAdminGroups = async () => {
+      try {
+        const response = await fetch('/api/groups/admin');
+        if (response.ok) {
+          const data = await response.json();
+          setAdminGroups(data.groups || []);
+        }
+      } catch (error) {
+        console.error('Error fetching admin groups:', error);
+      }
+    };
+
+    fetchAdminGroups();
+  }, []);
 
   const handleNewClick = () => {
     // Close all expanded items when clicking New
@@ -81,6 +100,16 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     } else {
       // Navigate to groups page and show modal after navigation
       router.push('/groups?showAddModal=true');
+    }
+  };
+
+  const handleGroupEditClick = (groupId, e) => {
+    e.preventDefault();
+    // Navigate to groups page with edit mode for specific group
+    if (pathname === '/groups') {
+      window.dispatchEvent(new CustomEvent('editGroup', { detail: { groupId } }));
+    } else {
+      router.push(`/groups?editGroup=${groupId}`);
     }
   };
 
@@ -190,6 +219,23 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     )}
                     {item.children && !isDesktopCollapsed && !isCollapsed && isExpanded(item.href) && (
                       <ul className={styles.childMenuList}>
+                        {/* Show admin groups first */}
+                        {item.href === '/groups' && adminGroups.map((group) => (
+                          <li key={`group-${group.id}`} className={styles.childMenuItem}>
+                            <button
+                              onClick={(e) => handleGroupEditClick(group.id, e)}
+                              className={styles.childMenuLink}
+                              title={`Edit ${group.name}`}
+                            >
+                              <span className={styles.icon}>
+                                <MdOutlinePeopleAlt size={16} />
+                              </span>
+                              <span className={styles.label}>{group.name}</span>
+                            </button>
+                          </li>
+                        ))}
+                        
+                        {/* Show original children */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
                           const isAddGroup = child.href === '/groups/create';

@@ -8,6 +8,7 @@ import {
   addUserToGroup
 } from '@/lib/db';
 import { nanoid } from 'nanoid';
+import { saveGroupAvatar } from '@/lib/avatarGenerator';
 
 export async function GET(request) {
   try {
@@ -57,12 +58,22 @@ export async function POST(request) {
     }
 
     const groupId = nanoid();
+    
+    // Generate avatar if no thumbnail URL provided
+    let finalThumbnailUrl = thumbnail_url;
+    if (!thumbnail_url) {
+      const generatedAvatarPath = saveGroupAvatar(groupId, name);
+      if (generatedAvatarPath) {
+        finalThumbnailUrl = generatedAvatarPath;
+      }
+    }
+    
     const groupData = {
       id: groupId,
       name,
       type,
       parent_group_id: parent_group_id || null,
-      thumbnail_url: thumbnail_url || null
+      thumbnail_url: finalThumbnailUrl
     };
 
     const group = await createGroup(groupData);

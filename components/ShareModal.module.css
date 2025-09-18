@@ -67,8 +67,8 @@
 
 .error {
   padding: 0.75rem;
-  background: var(--error-background, #fef2f2);
-  border: 1px solid var(--error-border, #fecaca);
+  background: var(--bg, #fef2f2);
+  border: 1px solid var(--border, #fecaca);
   border-radius: 6px;
   color: var(--danger);
   font-size: 0.875rem;
@@ -311,7 +311,7 @@
 }
 
 .removeButton:hover {
-  background: var(--error-background, #fef2f2);
+  background: var(--error-color-color-background, #fef2f2);
   color: var(--danger);
 }
 

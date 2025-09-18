@@ -3,12 +3,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ImTree } from 'react-icons/im';
-import { ChevronDown, ChevronUp, Plus, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Users, ChevronRight } from 'lucide-react';
 import { GrTrophy } from 'react-icons/gr';
 import { RiAdminLine } from 'react-icons/ri';
 import { FaRegUser } from 'react-icons/fa';
+import { LuUsers } from 'react-icons/lu';
+import { RiDeleteBin6Line } from 'react-icons/ri';
 import AddGroupModal from '../../components/AddGroupModal';
 import { createTreeLayout } from '../../lib/tidyTree';
+import Avatar from 'boring-avatars';
 import styles from './page.module.css';
 
 // Progress bar component
@@ -44,8 +47,11 @@ function GroupNode({
     width: `${position.width}px`
   } : {};
 
+  // Get member count from group details
+  const memberCount = group.memberCount || 0;
+
   return (
-    <div 
+    <div
       className={`${styles.groupNode} ${overlay && expanded ? styles.overlayExpanded : ''}`}
       style={nodeStyle}
     >
@@ -53,15 +59,33 @@ function GroupNode({
         className={`${styles.groupCard} ${selected ? styles.selected : ''}`}
         onClick={() => onSelect()}
       >
-        <img
-          src={group.thumbnail_url || '/brand/90d-logo.png'}
-          alt="Group thumbnail"
-          className={styles.thumbnail}
-        />
+        <div className={styles.thumbnail}>
+          {group.thumbnail_url ? (
+            <img
+              src={group.thumbnail_url}
+              alt="Group thumbnail"
+            />
+          ) : (
+            <Avatar
+              size={68}
+              name={group.name}
+              variant="marble"
+              colors={['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90']}
+            />
+          )}
+        </div>
         <div className={styles.groupInfo}>
-          <div className={styles.groupName}>{group.name}</div>
-          <div className={styles.groupMeta}>
-            <GrTrophy size={12} /><span className={styles.sharedCount}>{count}</span>
+          <div className={styles.groupName} title={group.name}>{group.name}</div>
+          <div className={styles.groupStats}>
+            <span className={styles.groupStat}>
+              <GrTrophy className={styles.statIcon} />
+              {count}
+            </span>
+            <span className={styles.statDot}>•</span>
+            <span className={styles.groupStat}>
+              <LuUsers className={styles.statIcon} />
+              {memberCount}
+            </span>
           </div>
         </div>
         <button
@@ -69,14 +93,10 @@ function GroupNode({
             e.stopPropagation();
             onToggle();
           }}
-          className={styles.expandButton}
+          className={styles.chevronButton}
           aria-label={expanded ? "Collapse" : "Expand"}
         >
-          {expanded ? (
-            <ChevronUp className={styles.chevron} />
-          ) : (
-            <ChevronDown className={styles.chevron} />
-          )}
+          <ChevronRight className={styles.chevronIcon} />
         </button>
       </div>
       {expanded && children && (
@@ -122,7 +142,7 @@ function TreeLayout({
               key={`${edge.from}-${edge.to}-${index}`}
               d={path}
               stroke="var(--border)"
-              strokeWidth={2}
+              strokeWidth={1}
               fill="none"
             />
           );
@@ -141,7 +161,10 @@ function TreeLayout({
         return (
           <GroupNode
             key={group.id}
-            group={group}
+            group={{
+              ...group,
+              memberCount: details?.memberCount || 0
+            }}
             count={details?.count || 0}
             selected={selectedId === group.id}
             expanded={expanded[group.id]}
@@ -221,14 +244,30 @@ export default function GroupsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState(null);
 
   useEffect(() => {
     fetchGroups();
-    
-    // Check URL parameters for showAddModal
+  }, []);
+
+  useEffect(() => {
+    // Check URL parameters for showAddModal or editGroup
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('showAddModal') === 'true') {
       setShowAddModal(true);
+      // Clean up URL parameter
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    } else if (urlParams.get('editGroup')) {
+      const groupId = urlParams.get('editGroup');
+      const group = groups.find(g => g.id === groupId);
+      if (group) {
+        setEditingGroup(group);
+        setShowEditModal(true);
+      }
       // Clean up URL parameter
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
@@ -236,14 +275,27 @@ export default function GroupsPage() {
   }, []);
 
   useEffect(() => {
-    // Listen for createGroup event from left menu
+    // Listen for createGroup and editGroup events from left menu
     const handleCreateGroup = () => {
       setShowAddModal(true);
     };
 
+    const handleEditGroup = (event) => {
+      const { groupId } = event.detail;
+      const group = groups.find(g => g.id === groupId);
+      if (group) {
+        setEditingGroup(group);
+        setShowEditModal(true);
+      }
+    };
+
     window.addEventListener('createGroup', handleCreateGroup);
-    return () => window.removeEventListener('createGroup', handleCreateGroup);
-  }, []);
+    window.addEventListener('editGroup', handleEditGroup);
+    return () => {
+      window.removeEventListener('createGroup', handleCreateGroup);
+      window.removeEventListener('editGroup', handleEditGroup);
+    };
+  }, [groups]);
 
   const fetchGroups = async () => {
     try {
@@ -251,12 +303,18 @@ export default function GroupsPage() {
       if (response.ok) {
         const data = await response.json();
         setGroups(data.groups);
+        
+        // Fetch details for all groups to show correct counts initially
         if (data.groups.length > 0) {
           const rootGroup = data.groups.find(g => !g.parent_group_id);
           if (rootGroup) {
             setSelectedId(rootGroup.id);
-            fetchGroupDetails(rootGroup.id);
           }
+          
+          // Fetch details for all groups
+          await Promise.all(
+            data.groups.map(group => fetchGroupDetails(group.id))
+          );
         }
       } else {
         const errorData = await response.json();
@@ -279,7 +337,8 @@ export default function GroupsPage() {
           [groupId]: {
             members: data.members || [],
             objectives: data.objectives || [],
-            count: data.objectiveCount || 0
+            count: data.objectiveCount || 0,
+            memberCount: data.members?.length || 0
           }
         }));
       }
@@ -330,6 +389,61 @@ export default function GroupsPage() {
     }
   };
 
+  const handleUpdateGroup = async (groupData) => {
+    try {
+      const response = await fetch(`/api/groups/${editingGroup.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(groupData),
+      });
+
+      if (response.ok) {
+        // Refresh groups list
+        await fetchGroups();
+        setShowEditModal(false);
+        setEditingGroup(null);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update group');
+      }
+    } catch (error) {
+      console.error('Error updating group:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
+
+    try {
+      const response = await fetch(`/api/groups/${groupToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh groups list
+        await fetchGroups();
+        setShowDeleteConfirm(false);
+        setGroupToDelete(null);
+        setShowEditModal(false);
+        setEditingGroup(null);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete group');
+      }
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      setError('Failed to delete group. Please try again.');
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setGroupToDelete(editingGroup);
+    setShowDeleteConfirm(true);
+  };
+
   const getChildGroups = (parentId) => 
     groups.filter(g => g.parent_group_id === parentId);
 
@@ -339,13 +453,13 @@ export default function GroupsPage() {
 
     try {
       const layouts = createTreeLayout(groups, {
-        nodeWidth: 290,
-        nodeHeight: 80,
-        levelHeight: 120,
-        siblingDistance: 350,
-        subtreeDistance: 350, // Match sibling distance to reduce uneven spacing
+        nodeWidth: 250,
+        nodeHeight: 68,
+        levelHeight: 100,
+        siblingDistance: 280,
+        subtreeDistance: 280, // Match sibling distance to reduce uneven spacing
         spacingReduction: 0.7, // Reduce spacing by 30% each level
-        minSpacing: 80 // Minimum spacing to maintain readability
+        minSpacing: 60 // Minimum spacing to maintain readability
       });
 
       return layouts;
@@ -426,6 +540,49 @@ export default function GroupsPage() {
         onSave={handleSaveGroup}
         groups={groups}
       />
+
+      {/* Edit Group Modal */}
+      <AddGroupModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingGroup(null);
+        }}
+        onSave={handleUpdateGroup}
+        groups={groups}
+        editingGroup={editingGroup}
+        onDelete={handleDeleteClick}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className={styles.modalOverlay} onClick={() => setShowDeleteConfirm(false)}>
+          <div className={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.confirmHeader}>
+              <h3>Delete Group</h3>
+            </div>
+            <div className={styles.confirmBody}>
+              <p>Are you sure you want to delete the group "{groupToDelete?.name}"?</p>
+              <p>This action cannot be undone.</p>
+            </div>
+            <div className={styles.confirmFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteButton}
+                onClick={handleDeleteGroup}
+              >
+                <RiDeleteBin6Line />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

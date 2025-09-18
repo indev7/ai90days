@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Avatar from 'boring-avatars';
 import styles from './OKRTModal.module.css'; // Reuse OKRT modal styles
 
 const GROUP_TYPES = [
@@ -13,12 +14,13 @@ const GROUP_TYPES = [
   'Group'
 ];
 
-export default function AddGroupModal({ 
-  isOpen, 
-  onClose, 
+export default function AddGroupModal({
+  isOpen,
+  onClose,
   onSave,
   groups = [], // Available groups for parent selection
-  mode = 'create' // 'create' or 'edit'
+  editingGroup = null, // Group being edited
+  onDelete = null // Delete handler
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -32,15 +34,26 @@ export default function AddGroupModal({
   // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        name: '',
-        type: 'Group',
-        parent_group_id: '',
-        thumbnail_url: ''
-      });
+      if (editingGroup) {
+        // Edit mode - populate with existing data
+        setFormData({
+          name: editingGroup.name || '',
+          type: editingGroup.type || 'Group',
+          parent_group_id: editingGroup.parent_group_id || '',
+          thumbnail_url: editingGroup.thumbnail_url || ''
+        });
+      } else {
+        // Create mode - reset form
+        setFormData({
+          name: '',
+          type: 'Group',
+          parent_group_id: '',
+          thumbnail_url: ''
+        });
+      }
       setErrors({});
     }
-  }, [isOpen]);
+  }, [isOpen, editingGroup]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -85,9 +98,9 @@ export default function AddGroupModal({
         saveData.parent_group_id = null;
       }
       
-      // Use default thumbnail if none provided
+      // Remove empty thumbnail_url so API can generate avatar
       if (!saveData.thumbnail_url) {
-        saveData.thumbnail_url = '/brand/90d-logo.png';
+        delete saveData.thumbnail_url;
       }
       
       await onSave(saveData);
@@ -106,8 +119,8 @@ export default function AddGroupModal({
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h2>Create New Group</h2>
-          <button 
+          <h2>{editingGroup ? 'Edit Group' : 'Create New Group'}</h2>
+          <button
             className={styles.closeButton}
             onClick={onClose}
             disabled={saving}
@@ -179,34 +192,50 @@ export default function AddGroupModal({
               className={styles.input}
               value={formData.thumbnail_url}
               onChange={e => handleInputChange('thumbnail_url', e.target.value)}
-              placeholder="https://example.com/image.jpg (optional - will use default if empty)"
+              placeholder="https://example.com/image.jpg (optional - will generate avatar if empty)"
             />
             <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
-              Leave empty to use the default 90 Days logo
+              Leave empty to auto-generate a unique avatar based on the group name
             </div>
           </div>
 
-          {/* Preview thumbnail if URL provided */}
-          {formData.thumbnail_url && (
+          {/* Preview thumbnail */}
+          {(formData.thumbnail_url || formData.name) && (
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>Preview</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <img
-                  src={formData.thumbnail_url}
-                  alt="Thumbnail preview"
-                  style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '12px',
-                    objectFit: 'cover',
-                    border: '1px solid var(--border)'
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
+                {formData.thumbnail_url ? (
+                  <img
+                    src={formData.thumbnail_url}
+                    alt="Thumbnail preview"
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '12px',
+                      objectFit: 'cover',
+                      border: '1px solid var(--border)'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : formData.name ? (
+                  <Avatar
+                    size={60}
+                    name={formData.name}
+                    variant="marble"
+                    colors={['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90']}
+                    style={{
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)'
+                    }}
+                  />
+                ) : null}
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  This is how your group thumbnail will appear
+                  {formData.thumbnail_url
+                    ? 'This is how your group thumbnail will appear'
+                    : 'Auto-generated avatar based on group name'
+                  }
                 </span>
               </div>
             </div>
@@ -214,19 +243,37 @@ export default function AddGroupModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <button 
+          {editingGroup && onDelete && (
+            <button
+              className={styles.deleteButton}
+              onClick={onDelete}
+              disabled={saving}
+              style={{ marginRight: 'auto' }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3,6 5,6 21,6"></polyline>
+                  <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                Delete
+              </span>
+            </button>
+          )}
+          <button
             className={styles.cancelButton}
             onClick={onClose}
             disabled={saving}
           >
             Cancel
           </button>
-          <button 
+          <button
             className={styles.saveButton}
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? 'Creating...' : 'Create Group'}
+            {saving ? (editingGroup ? 'Updating...' : 'Creating...') : (editingGroup ? 'Update Group' : 'Create Group')}
           </button>
         </div>
       </div>

@@ -42,8 +42,8 @@
 }
 
 .error {
-  background: var(--error-bg);
-  color: var(--error-text);
+  background: var(--bg);
+  color: var(--error-color);
   padding: 0.75rem;
   border-radius: var(--border-radius);
   margin-bottom: 1rem;

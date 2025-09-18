@@ -45,7 +45,7 @@
 }
 
 .error {
-  color: var(--error);
+  color: var(--error-color);
 }
 
 .emptyState {
