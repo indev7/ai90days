@@ -6,7 +6,7 @@
 
 .layout {
   display: flex;
-  height: calc(100vh - 80px);
+  height: calc(100vh );
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -146,6 +146,7 @@
   margin: 0 auto;
   padding: 2rem;
   overflow-x: auto;
+  height:calc(100vh);
 }
 
 .treeSection {

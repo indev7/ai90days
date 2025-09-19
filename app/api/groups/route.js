@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { 
-  createGroup, 
-  getAllGroups, 
+import {
+  createGroup,
+  getAllGroups,
   getRootGroups,
   getUserGroups,
   addUserToGroup
 } from '@/lib/db';
 import { nanoid } from 'nanoid';
-import { saveGroupAvatar } from '@/lib/avatarGenerator';
+import { generateAvatarSVG } from '@/lib/avatarGenerator';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
 export async function GET(request) {
   try {
@@ -45,7 +47,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { name, type, parent_group_id, thumbnail_url } = body;
+    const { name, type, parent_group_id, thumbnail_data } = body;
 
     if (!name || !type) {
       return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
@@ -58,13 +60,58 @@ export async function POST(request) {
     }
 
     const groupId = nanoid();
+    let finalThumbnailUrl = null;
     
-    // Generate avatar if no thumbnail URL provided
-    let finalThumbnailUrl = thumbnail_url;
-    if (!thumbnail_url) {
-      const generatedAvatarPath = saveGroupAvatar(groupId, name);
-      if (generatedAvatarPath) {
-        finalThumbnailUrl = generatedAvatarPath;
+    // Handle uploaded file data
+    if (thumbnail_data) {
+      try {
+        // Save uploaded image file
+        const base64Data = thumbnail_data.split(',')[1]; // Remove data:image/...;base64, prefix
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Determine file extension from data URL
+        const mimeMatch = thumbnail_data.match(/data:image\/([^;]+)/);
+        const extension = mimeMatch ? mimeMatch[1] : 'png';
+        
+        
+        const publicDir = join(process.cwd(), 'public', 'groups');
+        
+        // Ensure directory exists
+        if (!existsSync(publicDir)) {
+          mkdirSync(publicDir, { recursive: true });
+        }
+        
+        const filename = `${groupId}.${extension}`;
+        const filepath = join(publicDir, filename);
+        
+        writeFileSync(filepath, buffer);
+        finalThumbnailUrl = `/groups/${filename}`;
+      } catch (error) {
+        console.error('Error saving uploaded image:', error);
+        // Fall back to generated avatar if file save fails
+      }
+    }
+    
+    // Generate avatar if no thumbnail was uploaded or upload failed
+    if (!finalThumbnailUrl) {
+      try {
+        const publicDir = join(process.cwd(), 'public', 'groups');
+        
+        // Ensure directory exists
+        if (!existsSync(publicDir)) {
+          mkdirSync(publicDir, { recursive: true });
+        }
+        
+        const svg = generateAvatarSVG(name);
+        const filename = `${groupId}.svg`;
+        const filepath = join(publicDir, filename);
+        
+        writeFileSync(filepath, svg);
+        
+        finalThumbnailUrl = `/groups/${filename}`;
+      } catch (error) {
+        console.error('Error saving group avatar:', error);
+        // Continue without avatar if generation fails
       }
     }
     

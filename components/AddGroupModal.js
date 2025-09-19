@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Avatar from 'boring-avatars';
+import { generateAvatarSVG } from '@/lib/avatarGenerator';
 import styles from './OKRTModal.module.css'; // Reuse OKRT modal styles
 
 const GROUP_TYPES = [
@@ -26,10 +26,11 @@ export default function AddGroupModal({
     name: '',
     type: 'Group',
     parent_group_id: '',
-    thumbnail_url: ''
+    thumbnail_file: null
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [previewUrl, setPreviewUrl] = useState('');
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -40,16 +41,19 @@ export default function AddGroupModal({
           name: editingGroup.name || '',
           type: editingGroup.type || 'Group',
           parent_group_id: editingGroup.parent_group_id || '',
-          thumbnail_url: editingGroup.thumbnail_url || ''
+          thumbnail_file: null
         });
+        // Set preview URL for existing thumbnail
+        setPreviewUrl(editingGroup.thumbnail_url || '');
       } else {
         // Create mode - reset form
         setFormData({
           name: '',
           type: 'Group',
           parent_group_id: '',
-          thumbnail_url: ''
+          thumbnail_file: null
         });
+        setPreviewUrl('');
       }
       setErrors({});
     }
@@ -68,6 +72,37 @@ export default function AddGroupModal({
         [field]: undefined
       }));
     }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      setFormData(prev => ({ ...prev, thumbnail_file: null }));
+      setPreviewUrl('');
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setErrors(prev => ({ ...prev, thumbnail_file: 'Please select a valid image file (JPEG, PNG, GIF, or WebP)' }));
+      return;
+    }
+
+    // Validate file size (1MB = 1024 * 1024 bytes)
+    const maxSize = 1024 * 1024;
+    if (file.size > maxSize) {
+      setErrors(prev => ({ ...prev, thumbnail_file: 'File size must be less than 1MB' }));
+      return;
+    }
+
+    // Clear any previous errors
+    setErrors(prev => ({ ...prev, thumbnail_file: undefined }));
+    
+    // Set file and create preview URL
+    setFormData(prev => ({ ...prev, thumbnail_file: file }));
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
   };
 
   const validateForm = () => {
@@ -98,9 +133,16 @@ export default function AddGroupModal({
         saveData.parent_group_id = null;
       }
       
-      // Remove empty thumbnail_url so API can generate avatar
-      if (!saveData.thumbnail_url) {
-        delete saveData.thumbnail_url;
+      // Handle file upload - convert to base64 for API
+      if (saveData.thumbnail_file) {
+        const reader = new FileReader();
+        const fileData = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(saveData.thumbnail_file);
+        });
+        saveData.thumbnail_data = fileData;
+        delete saveData.thumbnail_file;
       }
       
       await onSave(saveData);
@@ -184,29 +226,29 @@ export default function AddGroupModal({
             </div>
           </div>
 
-          {/* Thumbnail URL */}
+          {/* Thumbnail File Upload */}
           <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-            <label className={styles.label}>Thumbnail Image URL</label>
+            <label className={styles.label}>Group Thumbnail Image</label>
             <input
-              type="url"
-              className={styles.input}
-              value={formData.thumbnail_url}
-              onChange={e => handleInputChange('thumbnail_url', e.target.value)}
-              placeholder="https://example.com/image.jpg (optional - will generate avatar if empty)"
+              type="file"
+              accept="image/*"
+              className={`${styles.input} ${errors.thumbnail_file ? styles.inputError : ''}`}
+              onChange={handleFileChange}
             />
+            {errors.thumbnail_file && <span className={styles.errorText}>{errors.thumbnail_file}</span>}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
-              Leave empty to auto-generate a unique avatar based on the group name
+              Upload an image file (JPEG, PNG, GIF, WebP) under 1MB. Leave empty to auto-generate a unique avatar.
             </div>
           </div>
 
           {/* Preview thumbnail */}
-          {(formData.thumbnail_url || formData.name) && (
+          {(previewUrl || formData.name) && (
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>Preview</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                {formData.thumbnail_url ? (
+                {previewUrl ? (
                   <img
-                    src={formData.thumbnail_url}
+                    src={previewUrl}
                     alt="Thumbnail preview"
                     style={{
                       width: '60px',
@@ -220,20 +262,19 @@ export default function AddGroupModal({
                     }}
                   />
                 ) : formData.name ? (
-                  <Avatar
-                    size={60}
-                    name={formData.name}
-                    variant="marble"
-                    colors={['#92A1C6', '#146A7C', '#F0AB3D', '#C271B4', '#C20D90']}
+                  <div
                     style={{
+                      width: '60px',
+                      height: '60px',
                       borderRadius: '12px',
                       border: '1px solid var(--border)'
                     }}
+                    dangerouslySetInnerHTML={{ __html: generateAvatarSVG(formData.name, 60) }}
                   />
                 ) : null}
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  {formData.thumbnail_url
-                    ? 'This is how your group thumbnail will appear'
+                  {previewUrl
+                    ? 'This is how your uploaded thumbnail will appear'
                     : 'Auto-generated avatar based on group name'
                   }
                 </span>

@@ -23,7 +23,7 @@ html[data-theme="purple"] {
   --surface-elevated: #ffffff;
   --card:      #ffffff;
   --border:    #dbdcde;   /* Light gray border */
-  --border-light: #f1f5f9;
+  --border-light: #d7dbde;
 
   /* Text (Clean neutrals from screenshot) */
   --text: #1e293b;              /* Dark slate text */
