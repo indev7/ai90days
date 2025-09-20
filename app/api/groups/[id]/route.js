@@ -8,7 +8,8 @@ import {
   getGroupMembers,
   getGroupSharedOKRTs,
   getGroupSharedOKRTCount,
-  isUserGroupAdmin
+  isUserGroupAdmin,
+  addUserToGroup
 } from '@/lib/db';
 
 export async function GET(request, { params }) {
@@ -70,7 +71,7 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const { name, type, parent_group_id, thumbnail_url } = body;
+    const { name, type, parent_group_id, thumbnail_url, members } = body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
@@ -87,6 +88,18 @@ export async function PUT(request, { params }) {
     const group = await updateGroup(id, updateData);
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+
+    // Add selected members to the group (only for edit mode)
+    if (members && Array.isArray(members)) {
+      for (const member of members) {
+        try {
+          await addUserToGroup(member.id, id, false); // Add as regular member, not admin
+        } catch (error) {
+          console.error(`Error adding member ${member.id} to group:`, error);
+          // Continue with other members even if one fails
+        }
+      }
     }
 
     return NextResponse.json({ group });

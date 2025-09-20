@@ -32,10 +32,10 @@ const topMenuItems = [
 
 const bottomMenuItems = [
   { href: '/coach', label: 'Coach', icon: 'coach', disabled: false },
-  { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: true },
+  { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: false },
 ];
 
-function getIcon(iconName, isCollapsed = false) {
+function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
   const iconSize = isCollapsed ? 24 : 20;
   const icons = {
     dashboard: <AiOutlineDashboard size={iconSize} />,
@@ -44,7 +44,16 @@ function getIcon(iconName, isCollapsed = false) {
     groups: <PiTreeViewFill size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
-    notifications: <IoMdNotificationsOutline size={iconSize} />,
+    notifications: (
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <IoMdNotificationsOutline size={iconSize} />
+        {unreadCount > 0 && (
+          <span className={styles.notificationBadge}>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </div>
+    ),
   };
   return icons[iconName] || null;
 }
@@ -65,8 +74,9 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
   const router = useRouter();
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [adminGroups, setAdminGroups] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch admin groups on component mount
+  // Fetch admin groups and setup notifications on component mount
   useEffect(() => {
     const fetchAdminGroups = async () => {
       try {
@@ -80,7 +90,51 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
       }
     };
 
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch('/api/notifications?count=true');
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
+      }
+    };
+
+    const setupSSE = () => {
+      const eventSource = new EventSource('/api/notifications/sse');
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'unread_count') {
+            setUnreadCount(data.count);
+          }
+        } catch (error) {
+          console.error('Error parsing SSE data:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        eventSource.close();
+        // Retry connection after 5 seconds
+        setTimeout(setupSSE, 5000);
+      };
+
+      return eventSource;
+    };
+
     fetchAdminGroups();
+    fetchUnreadCount();
+    const eventSource = setupSSE();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
   }, []);
 
   const handleNewClick = () => {
@@ -174,7 +228,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     title={`${item.label} (Coming Soon)`}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon, isDesktopCollapsed)}
+                      {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </span>
@@ -186,7 +240,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     disabled={pathname !== '/okrt'}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon, isDesktopCollapsed)}
+                      {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </button>
@@ -200,7 +254,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                         onClick={() => handleMenuItemClick(item.href, true)}
                       >
                         <span className={styles.icon}>
-                          {getIcon(item.icon, isDesktopCollapsed)}
+                          {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                         </span>
                         <span className={styles.label}>{item.label}</span>
                       </Link>
@@ -212,7 +266,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                         onClick={() => handleMenuItemClick(item.href, false)}
                       >
                         <span className={styles.icon}>
-                          {getIcon(item.icon, isDesktopCollapsed)}
+                          {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                         </span>
                         <span className={styles.label}>{item.label}</span>
                       </Link>
@@ -285,12 +339,12 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
             return (
               <li key={item.href} className={styles.menuItem}>
                 {isDisabled ? (
-                  <span 
+                  <span
                     className={`${styles.menuLink} ${styles.disabled}`}
                     title={`${item.label} (Coming Soon)`}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon, isDesktopCollapsed)}
+                      {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </span>
@@ -302,7 +356,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     onClick={() => handleMenuItemClick(item.href, false)}
                   >
                     <span className={styles.icon}>
-                      {getIcon(item.icon, isDesktopCollapsed)}
+                      {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
                   </Link>

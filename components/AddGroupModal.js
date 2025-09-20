@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { generateAvatarSVG } from '@/lib/avatarGenerator';
 import styles from './OKRTModal.module.css'; // Reuse OKRT modal styles
 
@@ -26,11 +26,23 @@ export default function AddGroupModal({
     name: '',
     type: 'Group',
     parent_group_id: '',
-    thumbnail_file: null
+    thumbnail_file: null,
+    members: [] // Array of selected users
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [previewUrl, setPreviewUrl] = useState('');
+  
+  // User search states
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [memberSearchResults, setMemberSearchResults] = useState([]);
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  const [searchingMembers, setSearchingMembers] = useState(false);
+  const memberSearchRef = useRef(null);
+  
+  // Existing members state (for edit mode)
+  const [existingMembers, setExistingMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -41,23 +53,135 @@ export default function AddGroupModal({
           name: editingGroup.name || '',
           type: editingGroup.type || 'Group',
           parent_group_id: editingGroup.parent_group_id || '',
-          thumbnail_file: null
+          thumbnail_file: null,
+          members: [] // Start with empty members for edit mode
         });
         // Set preview URL for existing thumbnail
         setPreviewUrl(editingGroup.thumbnail_url || '');
+        // Fetch existing members
+        fetchExistingMembers(editingGroup.id);
       } else {
         // Create mode - reset form
         setFormData({
           name: '',
           type: 'Group',
           parent_group_id: '',
-          thumbnail_file: null
+          thumbnail_file: null,
+          members: []
         });
         setPreviewUrl('');
+        setMemberSearchQuery('');
+        setMemberSearchResults([]);
+        setShowMemberDropdown(false);
+        setExistingMembers([]);
       }
       setErrors({});
     }
   }, [isOpen, editingGroup]);
+
+  // Fetch existing members for edit mode
+  const fetchExistingMembers = async (groupId) => {
+    setLoadingMembers(true);
+    try {
+      const response = await fetch(`/api/groups/${groupId}/members`);
+      if (response.ok) {
+        const data = await response.json();
+        setExistingMembers(data.members || []);
+      }
+    } catch (error) {
+      console.error('Error fetching existing members:', error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  // Handle clicks outside member search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (memberSearchRef.current && !memberSearchRef.current.contains(event.target)) {
+        setShowMemberDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Search for users
+  const searchMembers = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setMemberSearchResults([]);
+      setShowMemberDropdown(false);
+      return;
+    }
+
+    setSearchingMembers(true);
+    try {
+      const response = await fetch(`/api/users?q=${encodeURIComponent(query.trim())}&limit=10`);
+      if (response.ok) {
+        const data = await response.json();
+        // Filter out already selected members and existing members
+        const filteredUsers = data.users.filter(user =>
+          !formData.members.some(member => member.id === user.id) &&
+          !existingMembers.some(member => member.id === user.id)
+        );
+        setMemberSearchResults(filteredUsers);
+        setShowMemberDropdown(filteredUsers.length > 0);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setSearchingMembers(false);
+    }
+  };
+
+  // Handle member search input change
+  const handleMemberSearchChange = (e) => {
+    const query = e.target.value;
+    setMemberSearchQuery(query);
+    searchMembers(query);
+  };
+
+  // Add member to selection
+  const addMember = (user) => {
+    setFormData(prev => ({
+      ...prev,
+      members: [...prev.members, user]
+    }));
+    setMemberSearchQuery('');
+    setMemberSearchResults([]);
+    setShowMemberDropdown(false);
+  };
+
+  // Remove member from selection
+  const removeMember = (userId) => {
+    setFormData(prev => ({
+      ...prev,
+      members: prev.members.filter(member => member.id !== userId)
+    }));
+  };
+
+  // Remove existing member from group
+  const removeExistingMember = async (userId) => {
+    if (!editingGroup) return;
+    
+    try {
+      const response = await fetch(`/api/groups/${editingGroup.id}/members/${userId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        // Remove from existing members list
+        setExistingMembers(prev => prev.filter(member => member.id !== userId));
+      } else {
+        console.error('Failed to remove member');
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -281,6 +405,231 @@ export default function AddGroupModal({
               </div>
             </div>
           )}
+
+          {/* Existing Members Section (Edit Mode Only) */}
+          {editingGroup && (
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+              <label className={styles.label}>Current Members</label>
+              {loadingMembers ? (
+                <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  Loading members...
+                </div>
+              ) : existingMembers.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                  {existingMembers.map(member => (
+                    <div
+                      key={member.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 10px',
+                        backgroundColor: 'var(--surface-secondary)',
+                        borderRadius: '16px',
+                        fontSize: '14px',
+                        border: member.is_admin ? '1px solid var(--primary)' : '1px solid var(--border)'
+                      }}
+                    >
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        backgroundColor: member.is_admin ? 'var(--primary)' : 'var(--text-secondary)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold'
+                      }}>
+                        {member.display_name?.charAt(0)?.toUpperCase() || member.email?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <span>{member.display_name || member.email}</span>
+                      {member.is_admin && (
+                        <span style={{
+                          fontSize: '10px',
+                          color: 'var(--primary)',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase'
+                        }}>
+                          Admin
+                        </span>
+                      )}
+                      {!member.is_admin && (
+                        <button
+                          type="button"
+                          onClick={() => removeExistingMember(member.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            padding: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Remove member"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '12px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                  No members in this group yet.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Add Members Section */}
+          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <label className={styles.label}>
+              {editingGroup ? 'Add New Members' : 'Add Members'}
+            </label>
+            <div style={{ position: 'relative' }} ref={memberSearchRef}>
+              <input
+                type="text"
+                className={styles.input}
+                value={memberSearchQuery}
+                onChange={handleMemberSearchChange}
+                placeholder="Search users by name or email..."
+                onFocus={() => {
+                  if (memberSearchResults.length > 0) {
+                    setShowMemberDropdown(true);
+                  }
+                }}
+              />
+              
+              {/* Search dropdown */}
+              {showMemberDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  zIndex: 1000,
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  {searchingMembers ? (
+                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      Searching...
+                    </div>
+                  ) : memberSearchResults.length > 0 ? (
+                    memberSearchResults.map(user => (
+                      <div
+                        key={user.id}
+                        onClick={() => addMember(user)}
+                        style={{
+                          padding: '12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--border-light)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--surface-hover)'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                      >
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--primary)',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: 'bold'
+                        }}>
+                          {user.display_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '500' }}>{user.display_name || user.email}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{user.email}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      No users found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Selected members */}
+            {formData.members.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Selected Members ({formData.members.length}):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {formData.members.map(member => (
+                    <div
+                      key={member.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 10px',
+                        backgroundColor: 'var(--surface-secondary)',
+                        borderRadius: '16px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--primary)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold'
+                      }}>
+                        {member.display_name?.charAt(0)?.toUpperCase() || member.email?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <span>{member.display_name || member.email}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeMember(member.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="Remove member"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
+              Search and select users to add as members to this group. They will be added when you save the group.
+            </div>
+          </div>
         </div>
 
         <div className={styles.modalFooter}>

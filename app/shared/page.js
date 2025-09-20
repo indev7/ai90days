@@ -11,11 +11,26 @@ export default function SharedGoalsPage() {
   const [sharedOKRTs, setSharedOKRTs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [followingLoading, setFollowingLoading] = useState({});
+  const [currentUser, setCurrentUser] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchSharedOKRTs();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/me');
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData.user); // Extract the user object from the response
+      }
+    } catch (err) {
+      console.error('Failed to fetch current user:', err);
+    }
+  };
 
   const fetchSharedOKRTs = async () => {
     try {
@@ -76,6 +91,46 @@ export default function SharedGoalsPage() {
     router.push(`/okrt/${okrtId}`);
   };
 
+  const handleFollowToggle = async (okrtId, isCurrentlyFollowing, event) => {
+    event.stopPropagation(); // Prevent card click
+    
+    setFollowingLoading(prev => ({ ...prev, [okrtId]: true }));
+    
+    try {
+      const method = isCurrentlyFollowing ? 'DELETE' : 'POST';
+      const response = await fetch('/api/follow', {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ objective_id: okrtId }),
+      });
+
+      if (response.ok) {
+        // Update the local state
+        setSharedOKRTs(prev =>
+          prev.map(okrt =>
+            okrt.id === okrtId
+              ? { ...okrt, is_following: isCurrentlyFollowing ? 0 : 1 }
+              : okrt
+          ).sort((a, b) => {
+            // Sort followed items to the top
+            if (a.is_following && !b.is_following) return -1;
+            if (!a.is_following && b.is_following) return 1;
+            return new Date(b.updated_at) - new Date(a.updated_at);
+          })
+        );
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to update follow status');
+      }
+    } catch (err) {
+      setError('Network error occurred');
+    } finally {
+      setFollowingLoading(prev => ({ ...prev, [okrtId]: false }));
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -125,7 +180,7 @@ export default function SharedGoalsPage() {
           {sharedOKRTs.map((okrt) => (
             <div
               key={okrt.id}
-              className={styles.okrtCard}
+              className={`${styles.okrtCard} ${okrt.is_following ? styles.followedCard : ''}`}
               onClick={() => handleOKRTClick(okrt.id)}
             >
               <div className={styles.cardHeader}>
@@ -133,9 +188,27 @@ export default function SharedGoalsPage() {
                   {getTypeIcon(okrt.type)}
                   <span className={styles.typeLabel}>{getTypeLabel(okrt.type)}</span>
                 </div>
-                <div className={styles.ownerInfo}>
-                  <FaUser className={styles.ownerIcon} />
-                  <span className={styles.ownerName}>{okrt.owner_name}</span>
+                <div className={styles.headerActions}>
+                  <div className={styles.ownerInfo}>
+                    <FaUser className={styles.ownerIcon} />
+                    <span className={styles.ownerName}>{okrt.owner_name}</span>
+                  </div>
+                  {currentUser && String(okrt.owner_id) !== String(currentUser.id) && (
+                    <button
+                      className={`${styles.followButton} ${okrt.is_following ? styles.following : ''}`}
+                      onClick={(e) => handleFollowToggle(okrt.id, okrt.is_following, e)}
+                      disabled={followingLoading[okrt.id]}
+                      title={okrt.is_following ? 'Unfollow' : 'Follow'}
+                    >
+                      {followingLoading[okrt.id] ? (
+                        <span className={styles.spinner}>⟳</span>
+                      ) : (
+                        <span className={styles.followText}>
+                          {okrt.is_following ? 'Unfollow' : 'Follow'}
+                        </span>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 

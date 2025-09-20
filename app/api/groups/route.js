@@ -128,6 +128,18 @@ export async function POST(request) {
     // Add the creator as an admin of the group
     await addUserToGroup(user.sub, groupId, true);
 
+    // Add selected members to the group
+    if (body.members && Array.isArray(body.members)) {
+      for (const member of body.members) {
+        try {
+          await addUserToGroup(member.id, groupId, false); // Add as regular member, not admin
+        } catch (error) {
+          console.error(`Error adding member ${member.id} to group:`, error);
+          // Continue with other members even if one fails
+        }
+      }
+    }
+
     return NextResponse.json({ group }, { status: 201 });
   } catch (error) {
     console.error('Error creating group:', error);

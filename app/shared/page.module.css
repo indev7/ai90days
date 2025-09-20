@@ -252,3 +252,97 @@
     font-size: 1.5rem;
   }
 }
+
+/* Follow functionality styles */
+.followedCard {
+  background: rgba(var(--brand-primary-rgb, 59, 130, 246), 0.05);
+  border-color: var(--brand-primary);
+  box-shadow: 0 2px 8px rgba(var(--brand-primary-rgb, 59, 130, 246), 0.15);
+}
+
+.followedCard:hover {
+  box-shadow: 0 4px 16px rgba(var(--brand-primary-rgb, 59, 130, 246), 0.25);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.followButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.followButton:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: rgba(var(--brand-primary-rgb, 59, 130, 246), 0.05);
+}
+
+.followButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.followButton.following {
+  background: var(--brand-primary);
+  color: white;
+  border-color: var(--brand-primary);
+}
+
+.followButton.following:hover {
+  background: var(--error-color, #ef4444);
+  border-color: var(--error-color, #ef4444);
+}
+
+.followIcon {
+  font-size: 0.875rem;
+}
+
+.followText {
+  font-size: 0.875rem;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  font-size: 1rem;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Update card header for mobile */
+@media (max-width: 768px) {
+  .headerActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .followButton {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .followText {
+    display: none;
+  }
+  
+  .cardHeader {
+    align-items: flex-start;
+  }
+}

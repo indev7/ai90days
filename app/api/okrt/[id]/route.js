@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTById, updateOKRT, deleteOKRTCascade } from '../../../../lib/db';
+import { getOKRTById, updateOKRT, deleteOKRTCascade, getOKRTFollowers, getUserById } from '../../../../lib/db';
+import { notifyProgressUpdate } from '../../../../lib/notifications';
 
 // GET /api/okrt/[id] - Get a specific OKRT by ID
 export async function GET(request, { params }) {
@@ -51,6 +52,9 @@ export async function PUT(request, { params }) {
 
     const updateData = await request.json();
     
+    // Store original progress for comparison
+    const originalProgress = okrt.progress;
+    
     // Validate type-specific fields
     if (updateData.type && !['O', 'K', 'T'].includes(updateData.type)) {
       return NextResponse.json({ error: 'Invalid type. Must be O, K, or T' }, { status: 400 });
@@ -85,6 +89,29 @@ export async function PUT(request, { params }) {
     }
 
     const updatedOKRT = await updateOKRT(id, updateData);
+    
+    // Check if progress changed and send notifications to followers
+    if (updateData.progress !== undefined && updateData.progress !== originalProgress) {
+      try {
+        const followers = await getOKRTFollowers(id);
+        if (followers.length > 0) {
+          const owner = await getUserById(session.sub);
+          const followerIds = followers.map(f => f.user_id);
+          
+          await notifyProgressUpdate(
+            followerIds,
+            owner.display_name,
+            okrt.title,
+            id,
+            updateData.progress
+          );
+        }
+      } catch (notificationError) {
+        console.error('Error sending progress notifications:', notificationError);
+        // Don't fail the update if notifications fail
+      }
+    }
+    
     return NextResponse.json({ okrt: updatedOKRT });
   } catch (error) {
     console.error('Error updating OKRT:', error);

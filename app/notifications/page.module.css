@@ -1,0 +1,214 @@
+.notificationsContainer {
+  padding: var(--space-6);
+  max-width: 800px;
+  margin: 0 auto;
+  min-height: calc(100vh - 72px);
+}
+
+.notificationsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headerTitle h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.notificationsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.notificationItem {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+  position: relative;
+  margin-top: 10px;
+}
+
+.notificationItem:hover {
+  border-color: var(--brand-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.notificationItem.unread {
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.02) 0%, 
+    rgba(147, 51, 234, 0.02) 100%
+  );
+  border-left: 4px solid var(--brand-primary);
+}
+
+.notificationIcon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, 
+    var(--brand-primary) 0%, 
+    var(--brand-secondary) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.2rem;
+}
+
+.notificationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-2);
+  gap: var(--space-3);
+}
+
+.notificationTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.notificationMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.notificationTime {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.newBadge {
+  font-size: var(--text-xs);
+}
+
+.notificationMessage {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.notificationActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.notificationsDataView {
+  background: transparent;
+}
+
+.notificationsDataView :global(.p-dataview-content) {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.notificationsDataView :global(.p-dataview-header) {
+  background: transparent;
+  border: none;
+  padding: 0 0 var(--space-6) 0;
+}
+
+.notificationsDataView :global(.p-paginator) {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-6);
+}
+
+.emptyState {
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  color: var(--muted);
+}
+
+.emptyState h2 {
+  margin: var(--space-4) 0 var(--space-2) 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .notificationsContainer {
+    padding: var(--space-4);
+  }
+  
+  .notificationsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  
+  .notificationItem {
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+  
+  .notificationIcon {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+  
+  .notificationHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .notificationMeta {
+    align-self: flex-end;
+  }
+  
+  .notificationActions {
+    flex-wrap: wrap;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .notificationItem.unread {
+    background: linear-gradient(135deg, 
+      rgba(59, 130, 246, 0.05) 0%, 
+      rgba(147, 51, 234, 0.05) 100%
+    );
+  }
+}

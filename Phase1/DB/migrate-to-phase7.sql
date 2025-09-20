@@ -63,3 +63,20 @@ CREATE TRIGGER okrt_updated_at
 BEGIN
     UPDATE okrt SET updated_at = datetime('now') WHERE id = NEW.id;
 END;
+
+-- Phase 7: Follow functionality
+-- Create Follow table for users to follow shared objectives
+
+CREATE TABLE IF NOT EXISTS follows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    objective_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE CASCADE,
+    UNIQUE(user_id, objective_id)
+);
+
+-- Create index for better performance
+CREATE INDEX IF NOT EXISTS idx_follows_user_id ON follows(user_id);
+CREATE INDEX IF NOT EXISTS idx_follows_objective_id ON follows(objective_id);

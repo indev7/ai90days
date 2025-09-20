@@ -1,4 +1,9 @@
 /* This file is intentionally minimal to avoid conflicts with styles/app.css */
 /* All main styles are in styles/app.css and styles/theme.css */
 
+/* PrimeReact CSS imports */
+@import 'primereact/resources/themes/lara-light-blue/theme.css';
+@import 'primereact/resources/primereact.min.css';
+@import 'primeicons/primeicons.css';
+
 /* Next.js requires this file to exist, but we keep it minimal */

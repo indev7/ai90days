@@ -1,0 +1,28 @@
+Phase 8
+Notifications
+
+The user should get notifications in the case if any of the following events occur. 
+Use Serverside events to implement this function.
+Notification receiver must be built in to left menu (bell icon must show unread notification count). 
+When clicked on notification menu link, user must see all notifications (most recent at the top). 
+Make use of PrimeReact widgets when implementing this.
+
+Collaboration & sharing
+New comment (or reward - cookies, medal, stars) on an OKRT you own/follow
+Reply to your comment
+@Mention of you in a comment
+You’re added to a group
+An OKRT is shared to a group you’re in
+You’re made owner/collaborator of an Objective/KR/Task
+A Objective followed by you changes progress
+Deadlines & reviews
+Task due today / overdue
+KR  due  / overdue
+Weekly review due (reminder)
+Weekly review missed (no check-in by cutoff)
+Cycle & visibility
+New quarter starts (kickoff nudge)
+Mid-cycle checkpoint nudge
+Quarter ending soon (wrap-up reminder)
+An item’s visibility changed (e.g., shared → private)
+Create suitable DB table, API, Notification page keep things simple
