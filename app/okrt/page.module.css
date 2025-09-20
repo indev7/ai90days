@@ -107,6 +107,26 @@
   gap: 1.5rem;
 }
 
+.objectiveRightSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.objectiveButtons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.objectiveRewards {
+  display: flex;
+  justify-content: flex-start;
+  min-height: 1.5rem;
+  width:100%
+}
+
 .progressSection {
   display: flex;
   align-items: center;
@@ -196,6 +216,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 1.5rem;
+}
+
+.objectiveCommentsSection {
+  margin-top: 1.5rem;
+  width: 100%;
 }
 
 .keyResultCard {
@@ -562,6 +587,21 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+  
+  .objectiveRightSection {
+    width: 100%;
+    align-items: stretch;
+  }
+  
+  .objectiveButtons {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .objectiveRewards {
+    justify-content: center;
+    margin-top: 0.5rem;
   }
   
   .keyResultsGrid {

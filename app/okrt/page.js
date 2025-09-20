@@ -8,6 +8,8 @@ import { GiGolfFlag } from "react-icons/gi";
 import { LiaGolfBallSolid } from "react-icons/lia";
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
+import CommentsSection from '../../components/CommentsSection';
+import RewardsDisplay from '../../components/RewardsDisplay';
 
 /* =========================
    Utility Components
@@ -140,36 +142,43 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
               <div className={styles.progressLabel}>progress</div>
             </div>
           </div>
-          <button
-            className={styles.shareButton}
-            onClick={() => onShareObjective(objective)}
-            title="Share this objective"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-              <polyline points="16,6 12,2 8,6"/>
-              <line x1="12" y1="2" x2="12" y2="15"/>
-            </svg>
-            Share
-          </button>
-          <button className={styles.focusButton}>Focus</button>
-          <button
-            className={styles.objectiveToggleButton}
-            onClick={onToggleExpanded}
-            aria-label={isExpanded ? 'Collapse objective' : 'Expand objective'}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className={`${styles.objectiveChevron} ${isExpanded ? styles.objectiveChevronExpanded : ''}`}
-            >
-              <polyline points="6,9 12,15 18,9"/>
-            </svg>
-          </button>
+          <div className={styles.objectiveRightSection}>
+            <div className={styles.objectiveButtons}>
+              <button
+                className={styles.shareButton}
+                onClick={() => onShareObjective(objective)}
+                title="Share this objective"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16,6 12,2 8,6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+                Share
+              </button>
+              <button className={styles.focusButton}>Focus</button>
+              <button
+                className={styles.objectiveToggleButton}
+                onClick={onToggleExpanded}
+                aria-label={isExpanded ? 'Collapse objective' : 'Expand objective'}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className={`${styles.objectiveChevron} ${isExpanded ? styles.objectiveChevronExpanded : ''}`}
+                >
+                  <polyline points="6,9 12,15 18,9"/>
+                </svg>
+              </button>
+            </div>
+            <div className={styles.objectiveRewards}>
+              <RewardsDisplay okrtId={objective.id} />
+            </div>
+          </div>
         </div>
       </div>
       {isExpanded && objective.description && (
@@ -378,6 +387,7 @@ const demoData = {
    ========================= */
 
 export default function OKRTPage() {
+  const [user, setUser] = useState(null);
   const [objectives, setObjectives] = useState([]);
   const [keyResults, setKeyResults] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -394,6 +404,23 @@ export default function OKRTPage() {
     isOpen: false,
     objective: null
   });
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/me');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   // Fetch OKRT data using the same pattern as the working OKRT page
   useEffect(() => {
@@ -624,21 +651,34 @@ export default function OKRTPage() {
 
               {/* Key Results Grid for this objective - only show when expanded */}
               {expandedObjectives.has(objective.id) && (
-                <div className={styles.keyResultsGrid}>
-                  {objectiveKRs.map((kr) => (
-                    <KeyResultCard
-                      key={kr.id}
-                      kr={kr}
-                      selected={openKR?.id === kr.id}
-                      onOpen={setOpenKR}
-                      onEditKR={handleEditKR}
-                      onEditTask={handleEditTask}
-                      onAddTask={handleAddTask}
-                      tasks={getTasksForKeyResult(kr.id)}
-                    />
-                  ))}
-                  <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
-                </div>
+                <>
+                  <div className={styles.keyResultsGrid}>
+                    {objectiveKRs.map((kr) => (
+                      <KeyResultCard
+                        key={kr.id}
+                        kr={kr}
+                        selected={openKR?.id === kr.id}
+                        onOpen={setOpenKR}
+                        onEditKR={handleEditKR}
+                        onEditTask={handleEditTask}
+                        onAddTask={handleAddTask}
+                        tasks={getTasksForKeyResult(kr.id)}
+                      />
+                    ))}
+                    <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
+                  </div>
+                  
+                  {/* Single Comments Section for the entire Objective */}
+                  {user?.id && (
+                    <div className={styles.objectiveCommentsSection}>
+                      <CommentsSection
+                        okrtId={objective.id}
+                        currentUserId={user.id}
+                        okrtOwnerId={objective.owner_id}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );

@@ -77,6 +77,8 @@
   --text-3xl: 1.875rem;
 
   /* Semantic Aliases */
+  --primary: var(--brand-primary);
+  --primary-color: var(--brand-primary);
   --accent-color: var(--brand-primary);
   --accent-color-dark: var(--brand-600);
   --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
@@ -84,7 +86,6 @@
   --success-color: var(--brand-success);
   --error-color: var(--danger);
   --text-primary: var(--text);
-  --text-secondary: var(--text-secondary);
   --surface-0: var(--bg-solid);
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
@@ -117,7 +118,7 @@ html[data-theme="dark"] {
 
   /* Text */
   --text: #f5f0eb;
-  --text-secondary: #d9cfc7;
+  --text-secondary: #c4a484;    /* Light coffee secondary for dark mode */
   --muted: #b8a89d;
   --muted-light: #a1866f;
 

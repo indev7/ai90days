@@ -11,7 +11,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 1rem;
-  background: var(--border-light);
+  background: var(--bg);
   overflow: hidden;
 }
 

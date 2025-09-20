@@ -27,7 +27,7 @@ export default function AddGroupModal({
     type: 'Group',
     parent_group_id: '',
     thumbnail_file: null,
-    members: [] // Array of selected users
+    members: [] // Array of selected users with admin status
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -148,7 +148,7 @@ export default function AddGroupModal({
   const addMember = (user) => {
     setFormData(prev => ({
       ...prev,
-      members: [...prev.members, user]
+      members: [...prev.members, { ...user, isAdmin: false }]
     }));
     setMemberSearchQuery('');
     setMemberSearchResults([]);
@@ -160,6 +160,18 @@ export default function AddGroupModal({
     setFormData(prev => ({
       ...prev,
       members: prev.members.filter(member => member.id !== userId)
+    }));
+  };
+
+  // Toggle admin status for a member
+  const toggleMemberAdmin = (userId) => {
+    setFormData(prev => ({
+      ...prev,
+      members: prev.members.map(member =>
+        member.id === userId
+          ? { ...member, isAdmin: !member.isAdmin }
+          : member
+      )
     }));
   };
 
@@ -574,35 +586,92 @@ export default function AddGroupModal({
                 <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                   Selected Members ({formData.members.length}):
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {formData.members.map(member => (
                     <div
                       key={member.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 10px',
+                        gap: '12px',
+                        padding: '12px',
                         backgroundColor: 'var(--surface-secondary)',
-                        borderRadius: '16px',
-                        fontSize: '14px'
+                        borderRadius: '12px',
+                        border: member.isAdmin ? '1px solid var(--primary)' : '1px solid var(--border)'
                       }}
                     >
                       <div style={{
-                        width: '20px',
-                        height: '20px',
+                        width: '32px',
+                        height: '32px',
                         borderRadius: '50%',
-                        backgroundColor: 'var(--primary)',
+                        backgroundColor: member.isAdmin ? 'var(--primary)' : 'var(--text-secondary)',
                         color: 'white',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '10px',
+                        fontSize: '14px',
                         fontWeight: 'bold'
                       }}>
                         {member.display_name?.charAt(0)?.toUpperCase() || member.email?.charAt(0)?.toUpperCase()}
                       </div>
-                      <span>{member.display_name || member.email}</span>
+                      
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                          {member.display_name || member.email}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {member.email}
+                        </div>
+                      </div>
+
+                      {/* Admin Toggle Slider */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          minWidth: '35px'
+                        }}>
+                          Admin
+                        </span>
+                        <label style={{
+                          position: 'relative',
+                          display: 'inline-block',
+                          width: '44px',
+                          height: '24px',
+                          cursor: 'pointer'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={member.isAdmin}
+                            onChange={() => toggleMemberAdmin(member.id)}
+                            style={{ display: 'none' }}
+                          />
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: member.isAdmin ? 'var(--primary)' : 'var(--border)',
+                            borderRadius: '12px',
+                            transition: 'background-color 0.2s ease',
+                            cursor: 'pointer'
+                          }}>
+                            <div style={{
+                              position: 'absolute',
+                              top: '2px',
+                              left: member.isAdmin ? '22px' : '2px',
+                              width: '20px',
+                              height: '20px',
+                              backgroundColor: 'white',
+                              borderRadius: '50%',
+                              transition: 'left 0.2s ease',
+                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }} />
+                          </div>
+                        </label>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => removeMember(member.id)}
@@ -611,11 +680,14 @@ export default function AddGroupModal({
                           border: 'none',
                           color: 'var(--text-secondary)',
                           cursor: 'pointer',
-                          padding: '2px',
+                          padding: '4px',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
+                          borderRadius: '4px'
                         }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--surface-hover)'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                         title="Remove member"
                       >
                         ×

@@ -94,7 +94,7 @@ export async function PUT(request, { params }) {
     if (members && Array.isArray(members)) {
       for (const member of members) {
         try {
-          await addUserToGroup(member.id, id, false); // Add as regular member, not admin
+          await addUserToGroup(member.id, id, member.isAdmin || false); // Use member's admin status
         } catch (error) {
           console.error(`Error adding member ${member.id} to group:`, error);
           // Continue with other members even if one fails
