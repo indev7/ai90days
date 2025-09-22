@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from './CommentsSection.module.css';
 
-const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate }) => {
+const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, isExpanded: externalExpanded }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCommentForm, setShowCommentForm] = useState(false);
@@ -12,6 +12,14 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate })
   const [rewardCount, setRewardCount] = useState(1);
   const [replyingTo, setReplyingTo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Update internal expanded state when external prop changes
+  useEffect(() => {
+    if (externalExpanded !== undefined) {
+      setIsExpanded(externalExpanded);
+    }
+  }, [externalExpanded]);
 
   useEffect(() => {
     fetchComments();
@@ -158,11 +166,34 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate })
     );
   }
 
+  const handleToggleExpanded = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <div className={styles.commentsSection}>
       <div className={styles.commentsHeader}>
-        <h4>Comments & Rewards</h4>
-        <button 
+        <div className={styles.headerLeft}>
+          <button
+            className={styles.expandButton}
+            onClick={handleToggleExpanded}
+            aria-label={isExpanded ? 'Collapse comments' : 'Expand comments'}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={`${styles.chevron} ${isExpanded ? styles.chevronExpanded : ''}`}
+            >
+              <polyline points="9,18 15,12 9,6"></polyline>
+            </svg>
+          </button>
+          <h4>Comments & Rewards ({comments.length})</h4>
+        </div>
+        <button
           className={styles.addCommentButton}
           onClick={() => setShowCommentForm(!showCommentForm)}
         >
@@ -266,79 +297,81 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate })
         </form>
       )}
 
-      <div className={styles.commentsList}>
-        {organizedComments.length === 0 ? (
-          <div className={styles.noComments}>
-            No comments yet. Be the first to comment!
-          </div>
-        ) : (
-          organizedComments.map((comment) => (
-            <div key={comment.id} className={styles.commentThread}>
-              <div className={styles.comment}>
-                <div className={styles.commentHeader}>
-                  <div className={styles.commentAuthor}>
-                    {comment.sender_avatar && (
-                      <img 
-                        src={comment.sender_avatar} 
-                        alt={comment.sender_name}
-                        className={styles.avatar}
-                      />
-                    )}
-                    <span className={styles.authorName}>{comment.sender_name}</span>
-                    <span className={styles.commentDate}>{formatDate(comment.created_at)}</span>
-                  </div>
-                  {comment.type !== 'text' && (
-                    <div className={styles.rewardBadge}>
-                      {getRewardIcon(comment.type, comment.count)}
-                    </div>
-                  )}
-                </div>
-                <div className={styles.commentContent}>
-                  {comment.comment}
-                </div>
-                <div className={styles.commentActions}>
-                  <button 
-                    className={styles.replyButton}
-                    onClick={() => handleReply(comment)}
-                  >
-                    Reply
-                  </button>
-                </div>
-              </div>
-
-              {comment.replies && comment.replies.length > 0 && (
-                <div className={styles.replies}>
-                  {comment.replies.map((reply) => (
-                    <div key={reply.id} className={styles.reply}>
-                      <div className={styles.commentHeader}>
-                        <div className={styles.commentAuthor}>
-                          {reply.sender_avatar && (
-                            <img 
-                              src={reply.sender_avatar} 
-                              alt={reply.sender_name}
-                              className={styles.avatar}
-                            />
-                          )}
-                          <span className={styles.authorName}>{reply.sender_name}</span>
-                          <span className={styles.commentDate}>{formatDate(reply.created_at)}</span>
-                        </div>
-                        {reply.type !== 'text' && (
-                          <div className={styles.rewardBadge}>
-                            {getRewardIcon(reply.type, reply.count)}
-                          </div>
-                        )}
-                      </div>
-                      <div className={styles.commentContent}>
-                        {reply.comment}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+      {isExpanded && (
+        <div className={styles.commentsList}>
+          {organizedComments.length === 0 ? (
+            <div className={styles.noComments}>
+              No comments yet. Be the first to comment!
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            organizedComments.map((comment) => (
+              <div key={comment.id} className={styles.commentThread}>
+                <div className={styles.comment}>
+                  <div className={styles.commentHeader}>
+                    <div className={styles.commentAuthor}>
+                      {comment.sender_avatar && (
+                        <img
+                          src={comment.sender_avatar}
+                          alt={comment.sender_name}
+                          className={styles.avatar}
+                        />
+                      )}
+                      <span className={styles.authorName}>{comment.sender_name}</span>
+                      <span className={styles.commentDate}>{formatDate(comment.created_at)}</span>
+                    </div>
+                    {comment.type !== 'text' && (
+                      <div className={styles.rewardBadge}>
+                        {getRewardIcon(comment.type, comment.count)}
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.commentContent}>
+                    {comment.comment}
+                  </div>
+                  <div className={styles.commentActions}>
+                    <button
+                      className={styles.replyButton}
+                      onClick={() => handleReply(comment)}
+                    >
+                      Reply
+                    </button>
+                  </div>
+                </div>
+
+                {comment.replies && comment.replies.length > 0 && (
+                  <div className={styles.replies}>
+                    {comment.replies.map((reply) => (
+                      <div key={reply.id} className={styles.reply}>
+                        <div className={styles.commentHeader}>
+                          <div className={styles.commentAuthor}>
+                            {reply.sender_avatar && (
+                              <img
+                                src={reply.sender_avatar}
+                                alt={reply.sender_name}
+                                className={styles.avatar}
+                              />
+                            )}
+                            <span className={styles.authorName}>{reply.sender_name}</span>
+                            <span className={styles.commentDate}>{formatDate(reply.created_at)}</span>
+                          </div>
+                          {reply.type !== 'text' && (
+                            <div className={styles.rewardBadge}>
+                              {getRewardIcon(reply.type, reply.count)}
+                            </div>
+                          )}
+                        </div>
+                        <div className={styles.commentContent}>
+                          {reply.comment}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

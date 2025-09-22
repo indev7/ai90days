@@ -198,13 +198,13 @@ export default function SharedGoalsPage() {
                       className={`${styles.followButton} ${okrt.is_following ? styles.following : ''}`}
                       onClick={(e) => handleFollowToggle(okrt.id, okrt.is_following, e)}
                       disabled={followingLoading[okrt.id]}
-                      title={okrt.is_following ? 'Unfollow' : 'Follow'}
+                      title={okrt.is_following ? 'Following' : 'Follow'}
                     >
                       {followingLoading[okrt.id] ? (
                         <span className={styles.spinner}>⟳</span>
                       ) : (
                         <span className={styles.followText}>
-                          {okrt.is_following ? 'Unfollow' : 'Follow'}
+                          {okrt.is_following ? 'Following' : 'Follow'}
                         </span>
                       )}
                     </button>

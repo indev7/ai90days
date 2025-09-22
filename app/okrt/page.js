@@ -82,7 +82,7 @@ function ProgressBar({ value }) {
    Main Components
    ========================= */
 
-function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpanded, onShareObjective }) {
+function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpanded, onShareObjective, onFocusObjective, isFocused }) {
   const getStatusVariant = (status) => {
     switch (status) {
       case 'A': return 'active';
@@ -156,7 +156,12 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
                 </svg>
                 Share
               </button>
-              <button className={styles.focusButton}>Focus</button>
+              <button
+                className={`${styles.focusButton} ${isFocused ? styles.focusButtonActive : ''}`}
+                onClick={() => onFocusObjective(objective.id)}
+              >
+                {isFocused ? 'Exit Focus' : 'Focus'}
+              </button>
               <button
                 className={styles.objectiveToggleButton}
                 onClick={onToggleExpanded}
@@ -394,6 +399,7 @@ export default function OKRTPage() {
   const [loading, setLoading] = useState(true);
   const [openKR, setOpenKR] = useState(null);
   const [expandedObjectives, setExpandedObjectives] = useState(new Set());
+  const [focusedObjectiveId, setFocusedObjectiveId] = useState(null);
   const [modalState, setModalState] = useState({
     isOpen: false,
     mode: 'create',
@@ -586,6 +592,41 @@ export default function OKRTPage() {
     }
   };
 
+  const handleDeleteOkrt = async () => {
+    try {
+      const url = `/api/okrt/${modalState.okrt.id}`;
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete OKRT');
+      }
+
+      // Refresh data after successful delete
+      const fetchResponse = await fetch('/api/okrt');
+      const data = await fetchResponse.json();
+      
+      if (fetchResponse.ok) {
+        const allItems = data.okrts || [];
+        const objs = allItems.filter(item => item.type === 'O');
+        const krs = allItems.filter(item => item.type === 'K');
+        const tsks = allItems.filter(item => item.type === 'T');
+        
+        setObjectives(objs);
+        setKeyResults(krs);
+        setTasks(tsks);
+      }
+    } catch (error) {
+      console.error('Error deleting OKRT:', error);
+      throw error;
+    }
+  };
+
   const handleToggleObjective = (objectiveId) => {
     setExpandedObjectives(prev => {
       const newSet = new Set(prev);
@@ -612,6 +653,22 @@ export default function OKRTPage() {
     });
   };
 
+  const handleFocusObjective = (objectiveId) => {
+    if (focusedObjectiveId === objectiveId) {
+      // Exit focus mode
+      setFocusedObjectiveId(null);
+      // Dispatch event to expand left menu
+      window.dispatchEvent(new CustomEvent('exitFocusMode'));
+    } else {
+      // Enter focus mode
+      setFocusedObjectiveId(objectiveId);
+      // Ensure the focused objective is expanded
+      setExpandedObjectives(prev => new Set([...prev, objectiveId]));
+      // Dispatch event to minimize left menu
+      window.dispatchEvent(new CustomEvent('enterFocusMode'));
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -635,19 +692,23 @@ export default function OKRTPage() {
     <div className={styles.container}>
       {/* Main Content */}
       <main className={styles.main}>
-        {/* Stack all objectives vertically */}
-        {objectives.map((objective) => {
-          const objectiveKRs = getKeyResultsForObjective(objective.id);
-          
-          return (
-            <div key={objective.id} className={styles.objectiveSection}>
-              <ObjectiveHeader
-                objective={objective}
-                onEditObjective={handleEditObjective}
-                isExpanded={expandedObjectives.has(objective.id)}
-                onToggleExpanded={() => handleToggleObjective(objective.id)}
-                onShareObjective={handleShareObjective}
-              />
+        {/* Stack all objectives vertically - show only focused objective if in focus mode */}
+        {objectives
+          .filter(objective => !focusedObjectiveId || objective.id === focusedObjectiveId)
+          .map((objective) => {
+            const objectiveKRs = getKeyResultsForObjective(objective.id);
+            
+            return (
+              <div key={objective.id} className={`${styles.objectiveSection} ${focusedObjectiveId === objective.id ? styles.focusedObjective : ''}`}>
+                <ObjectiveHeader
+                  objective={objective}
+                  onEditObjective={handleEditObjective}
+                  isExpanded={expandedObjectives.has(objective.id)}
+                  onToggleExpanded={() => handleToggleObjective(objective.id)}
+                  onShareObjective={handleShareObjective}
+                  onFocusObjective={handleFocusObjective}
+                  isFocused={focusedObjectiveId === objective.id}
+                />
 
               {/* Key Results Grid for this objective - only show when expanded */}
               {expandedObjectives.has(objective.id) && (
@@ -690,6 +751,7 @@ export default function OKRTPage() {
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
         onSave={handleSaveOkrt}
+        onDelete={modalState.mode === 'edit' ? handleDeleteOkrt : null}
         okrt={modalState.okrt}
         parentOkrt={modalState.parentOkrt}
         mode={modalState.mode}

@@ -75,6 +75,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [adminGroups, setAdminGroups] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Fetch admin groups and setup notifications on component mount
   useEffect(() => {
@@ -130,10 +131,24 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     fetchUnreadCount();
     const eventSource = setupSSE();
 
+    // Listen for focus mode events
+    const handleEnterFocusMode = () => {
+      setIsFocusMode(true);
+    };
+
+    const handleExitFocusMode = () => {
+      setIsFocusMode(false);
+    };
+
+    window.addEventListener('enterFocusMode', handleEnterFocusMode);
+    window.addEventListener('exitFocusMode', handleExitFocusMode);
+
     return () => {
       if (eventSource) {
         eventSource.close();
       }
+      window.removeEventListener('enterFocusMode', handleEnterFocusMode);
+      window.removeEventListener('exitFocusMode', handleExitFocusMode);
     };
   }, []);
 
@@ -211,7 +226,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
   };
 
   return (
-    <nav className={`${styles.leftMenu} ${isCollapsed ? styles.collapsed : ''} ${isDesktopCollapsed ? styles.desktopCollapsed : ''}`}>
+    <nav className={`${styles.leftMenu} ${isCollapsed ? styles.collapsed : ''} ${isDesktopCollapsed || isFocusMode ? styles.desktopCollapsed : ''}`}>
       <div className={styles.menuContent}>
         <ul className={styles.menuList}>
           {topMenuItems.map((item) => {

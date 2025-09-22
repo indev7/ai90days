@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../lib/auth';
-import { createOKRT, getOKRTHierarchy } from '../../../lib/db';
+import { createOKRT, getOKRTHierarchy, getOKRTsByParent } from '../../../lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
-// GET /api/okrt - Get all OKRTs for the current user in hierarchical order
+// GET /api/okrt - Get all OKRTs for the current user in hierarchical order, or by parent_id
 export async function GET(request) {
   try {
     const session = await getSession();
@@ -11,8 +11,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const okrts = await getOKRTHierarchy(session.sub);
-    return NextResponse.json({ okrts });
+    const { searchParams } = new URL(request.url);
+    const parentId = searchParams.get('parent_id');
+
+    if (parentId) {
+      // Get children of specific parent
+      const okrts = await getOKRTsByParent(parentId);
+      // Filter to only return OKRTs owned by the current user
+      const userOkrts = okrts.filter(okrt => okrt.owner_id.toString() === session.sub.toString());
+      return NextResponse.json({ okrts: userOkrts });
+    } else {
+      // Get all OKRTs in hierarchical order
+      const okrts = await getOKRTHierarchy(session.sub);
+      return NextResponse.json({ okrts });
+    }
   } catch (error) {
     console.error('Error fetching OKRTs:', error);
     return NextResponse.json({ error: 'Failed to fetch OKRTs' }, { status: 500 });

@@ -17,6 +17,42 @@
   gap: 0.75rem;
 }
 
+.focusButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.focusButton:hover {
+  background: var(--surface-2);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.focusButtonActive {
+  background: var(--accent-gradient);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+.focusButtonActive:hover {
+  background: var(--accent-color-dark);
+}
+
+.focusIcon {
+  width: 16px;
+  height: 16px;
+}
+
 .shareButton {
   display: inline-flex;
   align-items: center;
@@ -89,6 +125,19 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  transition: all 0.3s ease;
+}
+
+.focusMode .okrtHeader {
+  transform: scale(0.95);
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.focusMode .detailsGrid {
+  transform: scale(0.95);
+  opacity: 0.7;
+  transition: all 0.3s ease;
 }
 
 /* OKRT Header */
@@ -280,11 +329,18 @@
   padding: 2rem;
 }
 
+.childrenHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
 .childrenSection h2 {
   font-size: 1.3rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 1.5rem 0;
+  margin: 0;
 }
 
 .childrenList {
@@ -305,6 +361,40 @@
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
 }
 
+.childHeader {
+  display: flex;
+  align-items: center;
+}
+
+.childExpandButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md, 6px);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.childExpandButton:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.childChevron {
+  color: inherit;
+  transition: transform 0.2s ease;
+}
+
+.childChevronExpanded {
+  transform: rotate(90deg);
+}
+
 .childLink {
   display: flex;
   align-items: center;
@@ -313,10 +403,40 @@
   text-decoration: none;
   color: inherit;
   transition: background-color 0.2s ease;
+  flex: 1;
 }
 
 .childLink:hover {
   background: var(--surface-2);
+}
+
+.childDetails {
+  padding: 1rem 1rem 1rem 3rem;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border-light);
+}
+
+.childDescription {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 0.75rem 0;
+}
+
+.childKrDetails,
+.childTaskDetails {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.childKrDetails span,
+.childTaskDetails span {
+  padding: 0.25rem 0.5rem;
+  background: var(--surface-1);
+  border-radius: 4px;
+  border: 1px solid var(--border-light);
 }
 
 .childIcon {

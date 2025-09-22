@@ -16,11 +16,45 @@
   border-bottom: 1px solid var(--border-light);
 }
 
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .commentsHeader h4 {
   margin: 0;
   color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
+}
+
+.expandButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md, 6px);
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+
+.chevron {
+  color: inherit;
+  transition: transform 0.2s ease;
+}
+
+.chevronExpanded {
+  transform: rotate(90deg);
 }
 
 .addCommentButton {
@@ -35,7 +69,7 @@
 }
 
 .addCommentButton:hover {
-  background: var(--brand-primary-hover);
+  background: var(--brand-secondary);
 }
 
 .loading {
@@ -155,7 +189,7 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  background: var(--brand-primary-hover);
+  background: var(--brand-secondary);
 }
 
 .submitButton:disabled {
@@ -184,7 +218,7 @@
   border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 1rem;
-  margin-bottom: 0.5rem;
+  margin: 0.5rem;
 }
 
 .reply {
@@ -273,6 +307,10 @@
     flex-direction: column;
     gap: 0.5rem;
     align-items: stretch;
+  }
+  
+  .headerLeft {
+    justify-content: flex-start;
   }
   
   .commentTypeSelector {

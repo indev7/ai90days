@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Share2 } from 'lucide-react';
+import { Share2, Focus } from 'lucide-react';
 import ShareModal from '@/components/ShareModal';
+import CommentsSection from '@/components/CommentsSection';
 import styles from './page.module.css';
 
 export default function OKRTDetailPage() {
@@ -17,6 +18,8 @@ export default function OKRTDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [childrenExpanded, setChildrenExpanded] = useState({});
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -100,6 +103,30 @@ export default function OKRTDetailPage() {
     return statuses[status] || { label: 'Unknown', className: '' };
   };
 
+  const toggleFocusMode = () => {
+    const newFocusMode = !isFocusMode;
+    setIsFocusMode(newFocusMode);
+    
+    if (newFocusMode) {
+      // Expand all children when entering focus mode
+      const expandedState = {};
+      children.forEach(child => {
+        expandedState[child.id] = true;
+      });
+      setChildrenExpanded(expandedState);
+    } else {
+      // Collapse all children when exiting focus mode
+      setChildrenExpanded({});
+    }
+  };
+
+  const toggleChildExpanded = (childId) => {
+    setChildrenExpanded(prev => ({
+      ...prev,
+      [childId]: !prev[childId]
+    }));
+  };
+
   const getTaskStatusInfo = (taskStatus) => {
     const statuses = {
       'todo': { label: 'To Do', className: styles.taskTodo },
@@ -151,6 +178,14 @@ export default function OKRTDetailPage() {
           ← Back to OKRTs
         </Link>
         <div className={styles.headerActions}>
+          <button
+            className={`${styles.focusButton} ${isFocusMode ? styles.focusButtonActive : ''}`}
+            onClick={toggleFocusMode}
+            title={isFocusMode ? "Exit focus mode" : "Enter focus mode"}
+          >
+            <Focus className={styles.focusIcon} />
+            {isFocusMode ? 'Exit Focus' : 'Focus'}
+          </button>
           {user && okrt && user.id.toString() === okrt.owner_id && (
             <button
               className={styles.shareButton}
@@ -168,7 +203,7 @@ export default function OKRTDetailPage() {
       </div>
 
       {/* Main Content */}
-      <div className={styles.mainContent}>
+      <div className={`${styles.mainContent} ${isFocusMode ? styles.focusMode : ''}`}>
         {/* OKRT Header */}
         <div className={styles.okrtHeader}>
           <div className={styles.okrtHeaderLeft}>
@@ -306,36 +341,90 @@ export default function OKRTDetailPage() {
         {/* Children */}
         {children.length > 0 && (
           <div className={styles.childrenSection}>
-            <h2>
-              {okrt.type === 'O' ? 'Key Results & Tasks' : 
-               okrt.type === 'K' ? 'Tasks' : 'Sub-tasks'}
-            </h2>
+            <div className={styles.childrenHeader}>
+              <h2>
+                {okrt.type === 'O' ? 'Key Results & Tasks' :
+                 okrt.type === 'K' ? 'Tasks' : 'Sub-tasks'}
+              </h2>
+            </div>
             <div className={styles.childrenList}>
               {children.map(child => (
                 <div key={child.id} className={styles.childItem}>
-                  <Link href={`/okrt/${child.id}`} className={styles.childLink}>
-                    <span className={styles.childIcon}>{getIcon(child.type)}</span>
-                    <div className={styles.childContent}>
-                      <div className={styles.childTitle}>
-                        {child.title || child.description}
+                  <div className={styles.childHeader}>
+                    <button
+                      className={styles.childExpandButton}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleChildExpanded(child.id);
+                      }}
+                      aria-label={childrenExpanded[child.id] ? 'Collapse' : 'Expand'}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className={`${styles.childChevron} ${childrenExpanded[child.id] ? styles.childChevronExpanded : ''}`}
+                      >
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                      </svg>
+                    </button>
+                    <Link href={`/okrt/${child.id}`} className={styles.childLink}>
+                      <span className={styles.childIcon}>{getIcon(child.type)}</span>
+                      <div className={styles.childContent}>
+                        <div className={styles.childTitle}>
+                          {child.title || child.description}
+                        </div>
+                        <div className={styles.childMeta}>
+                          {getTypeName(child.type)} • {child.progress || 0}% complete
+                        </div>
                       </div>
-                      <div className={styles.childMeta}>
-                        {getTypeName(child.type)} • {child.progress || 0}% complete
+                      <div className={styles.childProgress}>
+                        <div className={styles.childProgressBar}>
+                          <div
+                            className={styles.childProgressFill}
+                            style={{ width: `${child.progress || 0}%` }}
+                          ></div>
+                        </div>
                       </div>
+                    </Link>
+                  </div>
+                  {childrenExpanded[child.id] && (
+                    <div className={styles.childDetails}>
+                      <p className={styles.childDescription}>
+                        {child.description || 'No additional details available.'}
+                      </p>
+                      {child.type === 'K' && (
+                        <div className={styles.childKrDetails}>
+                          <span>Target: {child.kr_target_number} {child.kr_unit}</span>
+                          {child.kr_baseline_number && (
+                            <span>Baseline: {child.kr_baseline_number} {child.kr_unit}</span>
+                          )}
+                        </div>
+                      )}
+                      {child.type === 'T' && child.due_date && (
+                        <div className={styles.childTaskDetails}>
+                          <span>Due: {child.due_date}</span>
+                        </div>
+                      )}
                     </div>
-                    <div className={styles.childProgress}>
-                      <div className={styles.childProgressBar}>
-                        <div 
-                          className={styles.childProgressFill}
-                          style={{ width: `${child.progress || 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </Link>
+                  )}
                 </div>
               ))}
             </div>
           </div>
+        )}
+
+        {/* Comments Section */}
+        {user && okrt && (
+          <CommentsSection
+            okrtId={params.id}
+            currentUserId={user.id}
+            okrtOwnerId={okrt.owner_id}
+            isExpanded={isFocusMode}
+          />
         )}
       </div>
 

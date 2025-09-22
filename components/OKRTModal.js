@@ -24,13 +24,14 @@ const generateQuarterOptions = () => {
   return quarters;
 };
 
-export default function OKRTModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  okrt = null, 
+export default function OKRTModal({
+  isOpen,
+  onClose,
+  onSave,
+  okrt = null,
   parentOkrt = null,
-  mode = 'create' // 'create' or 'edit'
+  mode = 'create', // 'create' or 'edit'
+  onDelete = null // Delete handler
 }) {
   const [formData, setFormData] = useState({
     type: 'O',
@@ -50,6 +51,8 @@ export default function OKRTModal({
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [deleting, setDeleting] = useState(false);
+  const [childRecords, setChildRecords] = useState([]);
 
   const quarterOptions = generateQuarterOptions();
 
@@ -188,6 +191,58 @@ export default function OKRTModal({
       setErrors({ general: 'Failed to save OKRT. Please try again.' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Check for child records before deletion
+  const checkChildRecords = async () => {
+    if (!okrt || mode !== 'edit') return [];
+    
+    try {
+      const response = await fetch(`/api/okrt?parent_id=${okrt.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.okrts || [];
+      }
+    } catch (error) {
+      console.error('Error checking child records:', error);
+    }
+    return [];
+  };
+
+  // Handle delete with child record validation
+  const handleDelete = async () => {
+    if (!okrt || !onDelete) return;
+    
+    setDeleting(true);
+    
+    try {
+      // Check for child records
+      const children = await checkChildRecords();
+      
+      if (children.length > 0) {
+        const childType = okrt.type === 'O' ? 'Key Results' : 'Tasks';
+        setErrors({
+          general: `Cannot delete this ${getTypeLabel(okrt.type)}. Please delete all ${childType} first (${children.length} found).`
+        });
+        setDeleting(false);
+        return;
+      }
+      
+      // Confirm deletion
+      const confirmMessage = `Are you sure you want to delete this ${getTypeLabel(okrt.type)}? This action cannot be undone.`;
+      if (!window.confirm(confirmMessage)) {
+        setDeleting(false);
+        return;
+      }
+      
+      await onDelete();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting OKRT:', error);
+      setErrors({ general: 'Failed to delete. Please try again.' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -443,17 +498,35 @@ export default function OKRTModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <button 
+          {mode === 'edit' && onDelete && (
+            <button
+              className={styles.deleteButton}
+              onClick={handleDelete}
+              disabled={saving || deleting}
+              style={{ marginRight: 'auto' }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3,6 5,6 21,6"></polyline>
+                  <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                {deleting ? 'Deleting...' : 'Delete'}
+              </span>
+            </button>
+          )}
+          <button
             className={styles.cancelButton}
             onClick={onClose}
-            disabled={saving}
+            disabled={saving || deleting}
           >
             Cancel
           </button>
-          <button 
+          <button
             className={styles.saveButton}
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || deleting}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>
