@@ -7,10 +7,8 @@ import Link from 'next/link';
 import { LuLayoutDashboard } from "react-icons/lu";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
-import { SlOrganization } from "react-icons/sl";
 import { SiSlideshare } from "react-icons/si";
-import { PiTreeViewFill } from "react-icons/pi";
-import { MdOutlineGroup } from "react-icons/md";
+import { RiOrganizationChart } from "react-icons/ri";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
@@ -24,19 +22,20 @@ const topMenuItems = [
     href: '/okrt',
     label: 'My OKRs',
     icon: 'goals',
-    children: [] // Will be populated with objectives dynamically
+    children: [
+      { href: '/new', label: 'Add OKR', icon: 'new', isAction: true }
+    ] // Will be populated with objectives dynamically
   },
-  { href: '/shared', label: 'Shared', icon: 'shared', disabled: false },
+  { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
   {
     href: '/groups',
-    label: 'Groups',
+    label: 'Group OKRs',
     icon: 'groups',
     disabled: false,
     children: [
       { href: '/groups/create', label: 'Add Group', icon: 'new' }
     ]
   },
-  { href: '/new', label: 'New', icon: 'new', isAction: true },
 ];
 
 const bottomMenuItems = [
@@ -50,7 +49,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     dashboard: <LuLayoutDashboard size={iconSize} />,
     goals: <MdOutlineSelfImprovement size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
-    groups: <SlOrganization size={iconSize} />,
+    groups: <RiOrganizationChart size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
@@ -365,12 +364,25 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
                           const isAddGroup = child.href === '/groups/create';
+                          const isAddOKR = child.isAction && child.label === 'Add OKR';
                           return (
                             <li key={child.href} className={styles.childMenuItem}>
                               {isAddGroup ? (
                                 <button
                                   onClick={handleAddGroupClick}
                                   className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
+                                >
+                                  <span className={styles.icon}>
+                                    {getIcon(child.icon, false)}
+                                  </span>
+                                  <span className={styles.label}>{child.label}</span>
+                                </button>
+                              ) : isAddOKR ? (
+                                <button
+                                  onClick={handleNewClick}
+                                  className={styles.childMenuLink}
+                                  title="Create New Objective"
+                                  disabled={pathname !== '/okrt'}
                                 >
                                   <span className={styles.icon}>
                                     {getIcon(child.icon, false)}
