@@ -89,7 +89,7 @@
 
 .childMenuLink {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-2);
   margin: 0 var(--space-2);
@@ -100,6 +100,9 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   border-radius: var(--radius-md);
+  min-height: 32px;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .childMenuLink:hover {
@@ -198,6 +201,14 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 500;
   letter-spacing: 0.01em;
+}
+
+.childMenuLink .label {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.3;
 }
 
 .collapsed .label {
