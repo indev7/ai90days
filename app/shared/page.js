@@ -88,7 +88,7 @@ export default function SharedGoalsPage() {
   };
 
   const handleOKRTClick = (okrtId) => {
-    router.push(`/okrt/${okrtId}`);
+    router.push(`/shared/${okrtId}`);
   };
 
   const handleFollowToggle = async (okrtId, isCurrentlyFollowing, event) => {

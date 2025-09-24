@@ -146,7 +146,7 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
             </svg>
             Share)
           </button>
-          <button className={styles.focusButton}>Focus</button>
+          <button className={styles.focusButton}>Expand</button>
           <button
             className={styles.objectiveToggleButton}
             onClick={onToggleExpanded}

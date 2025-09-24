@@ -80,15 +80,56 @@ export default function RootLayout({ children }) {
     };
   }, []);
 
+  // Listen for focus mode events from OKRT pages
+  useEffect(() => {
+    const handleEnterFocusMode = () => {
+      // Collapse the appropriate menu based on screen size
+      if (isDesktop) {
+        setIsDesktopMenuCollapsed(true);
+      } else if (isTablet) {
+        setIsMenuCollapsed(true);
+      }
+    };
+
+    const handleExitFocusMode = () => {
+      // Expand the appropriate menu based on screen size
+      if (isDesktop) {
+        setIsDesktopMenuCollapsed(false);
+      } else if (isTablet) {
+        setIsMenuCollapsed(false);
+      }
+    };
+
+    window.addEventListener('enterFocusMode', handleEnterFocusMode);
+    window.addEventListener('exitFocusMode', handleExitFocusMode);
+
+    return () => {
+      window.removeEventListener('enterFocusMode', handleEnterFocusMode);
+      window.removeEventListener('exitFocusMode', handleExitFocusMode);
+    };
+  }, [isDesktop, isTablet]);
+
   // Hide layout on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
   const handleMenuToggle = () => {
-    setIsMenuCollapsed(!isMenuCollapsed);
+    const newCollapsedState = !isMenuCollapsed;
+    setIsMenuCollapsed(newCollapsedState);
+    
+    // If menu is being expanded (collapsed -> not collapsed), dispatch event to collapse OKRTs
+    if (!newCollapsedState) {
+      window.dispatchEvent(new CustomEvent('menuToggleToExpanded'));
+    }
   };
 
   const handleDesktopMenuToggle = () => {
-    setIsDesktopMenuCollapsed(!isDesktopMenuCollapsed);
+    const newCollapsedState = !isDesktopMenuCollapsed;
+    setIsDesktopMenuCollapsed(newCollapsedState);
+    
+    // If menu is being expanded (collapsed -> not collapsed), dispatch event to collapse OKRTs
+    if (!newCollapsedState) {
+      window.dispatchEvent(new CustomEvent('menuToggleToExpanded'));
+    }
   };
 
   if (isAuthPage) {
@@ -149,8 +190,8 @@ export default function RootLayout({ children }) {
             <main style={{
               paddingTop: '72px',
               paddingLeft: isDesktop ? (isDesktopMenuCollapsed ? '80px' : '240px') :
-                          isTablet && !isMenuCollapsed ? '260px' :
-                          isTablet ? '80px' : '0'
+                          isTablet ? (isMenuCollapsed ? '80px' : '260px') : '0',
+              transition: 'padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}>
               {children}
             </main>

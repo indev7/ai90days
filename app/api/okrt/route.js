@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../lib/auth';
-import { createOKRT, getOKRTHierarchy, getOKRTsByParent } from '../../../lib/db';
+import { createOKRT, getOKRTHierarchy, getOKRTsByParent, getUserById, getOKRTShares, getGroupById } from '../../../lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET /api/okrt - Get all OKRTs for the current user in hierarchical order, or by parent_id
@@ -21,9 +21,39 @@ export async function GET(request) {
       const userOkrts = okrts.filter(okrt => okrt.owner_id.toString() === session.sub.toString());
       return NextResponse.json({ okrts: userOkrts });
     } else {
-      // Get all OKRTs in hierarchical order
+      // Get all OKRTs in hierarchical order with owner and sharing info
       const okrts = await getOKRTHierarchy(session.sub);
-      return NextResponse.json({ okrts });
+      
+      // Enhance each OKRT with owner and sharing information
+      const enhancedOkrts = await Promise.all(okrts.map(async (okrt) => {
+        // Get owner information
+        const owner = await getUserById(okrt.owner_id);
+        
+        // Get sharing information (groups this OKRT is shared with)
+        const shares = await getOKRTShares(okrt.id);
+        const groupShares = shares.filter(share => share.share_type === 'G');
+        
+        // Get group details for each group share
+        const sharedGroups = await Promise.all(
+          groupShares.map(async (share) => {
+            try {
+              const group = await getGroupById(share.group_or_user_id);
+              return group;
+            } catch (error) {
+              console.error(`Error fetching group ${share.group_or_user_id}:`, error);
+              return null;
+            }
+          })
+        );
+        
+        return {
+          ...okrt,
+          owner_name: owner ? `${owner.first_name || ''} ${owner.last_name || ''}`.trim() || owner.display_name : 'Unknown',
+          shared_groups: sharedGroups.filter(group => group && group.name)
+        };
+      }));
+      
+      return NextResponse.json({ okrts: enhancedOkrts });
     }
   } catch (error) {
     console.error('Error fetching OKRTs:', error);

@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AiOutlineDashboard } from 'react-icons/ai';
-import { GoGoal } from 'react-icons/go';
-import { RiUserSharedLine } from 'react-icons/ri';
+
+import { LuLayoutDashboard } from "react-icons/lu";
+
+import { MdOutlineSelfImprovement } from "react-icons/md";
+import { SlOrganization } from "react-icons/sl";
+import { SiSlideshare } from "react-icons/si";
 import { PiTreeViewFill } from "react-icons/pi";
-import { MdOutlinePeopleAlt } from "react-icons/md";
+import { MdOutlineGroup } from "react-icons/md";
+
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
@@ -16,8 +20,13 @@ import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/okrt', label: 'My Goals', icon: 'goals' },
-  { href: '/shared', label: 'Shared Goals', icon: 'shared', disabled: false },
+  {
+    href: '/okrt',
+    label: 'My OKRs',
+    icon: 'goals',
+    children: [] // Will be populated with objectives dynamically
+  },
+  { href: '/shared', label: 'Shared', icon: 'shared', disabled: false },
   {
     href: '/groups',
     label: 'Groups',
@@ -38,10 +47,10 @@ const bottomMenuItems = [
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
   const iconSize = isCollapsed ? 24 : 20;
   const icons = {
-    dashboard: <AiOutlineDashboard size={iconSize} />,
-    goals: <GoGoal size={iconSize} />,
-    shared: <RiUserSharedLine size={iconSize} />,
-    groups: <PiTreeViewFill size={iconSize} />,
+    dashboard: <LuLayoutDashboard size={iconSize} />,
+    goals: <MdOutlineSelfImprovement size={iconSize} />,
+    shared: <SiSlideshare size={iconSize} />,
+    groups: <SlOrganization size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
@@ -76,8 +85,9 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
   const [adminGroups, setAdminGroups] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [objectives, setObjectives] = useState([]);
 
-  // Fetch admin groups and setup notifications on component mount
+  // Fetch admin groups, objectives, and setup notifications on component mount
   useEffect(() => {
     const fetchAdminGroups = async () => {
       try {
@@ -88,6 +98,20 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
         }
       } catch (error) {
         console.error('Error fetching admin groups:', error);
+      }
+    };
+
+    const fetchObjectives = async () => {
+      try {
+        const response = await fetch('/api/okrt');
+        if (response.ok) {
+          const data = await response.json();
+          const allItems = data.okrts || [];
+          const objs = allItems.filter(item => item.type === 'O');
+          setObjectives(objs);
+        }
+      } catch (error) {
+        console.error('Error fetching objectives:', error);
       }
     };
 
@@ -128,6 +152,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     };
 
     fetchAdminGroups();
+    fetchObjectives();
     fetchUnreadCount();
     const eventSource = setupSSE();
 
@@ -182,6 +207,12 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     }
   };
 
+  const handleObjectiveClick = (objectiveId, e) => {
+    e.preventDefault();
+    // Navigate to OKRT page with specific objective
+    router.push(`/okrt?objective=${objectiveId}`);
+  };
+
   const isChildActive = (item) => {
     if (!item.children) return false;
     return item.children.some(child => pathname === child.href);
@@ -199,13 +230,21 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
 
   const handleMenuItemClick = (itemHref, hasChildren) => {
     if (hasChildren) {
-      // For Groups menu item, handle differently based on current page
+      // For Groups and My Goals menu items, handle differently based on current page
       if (itemHref === '/groups') {
         if (pathname === '/groups') {
           // If already on groups page, just toggle submenu
           toggleExpanded(itemHref);
         } else {
           // If not on groups page, navigate there using Next.js router
+          router.push(itemHref);
+        }
+      } else if (itemHref === '/okrt') {
+        if (pathname === '/okrt') {
+          // If already on OKRT page, just toggle submenu
+          toggleExpanded(itemHref);
+        } else {
+          // If not on OKRT page, navigate there using Next.js router
           router.push(itemHref);
         }
       } else {
@@ -222,6 +261,10 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     if (itemHref === '/groups' && pathname === '/groups') {
       return true;
     }
+    // Auto-expand My Goals submenu when on OKRT page
+    if (itemHref === '/okrt' && pathname === '/okrt') {
+      return true;
+    }
     return expandedItems.has(itemHref);
   };
 
@@ -230,7 +273,10 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
       <div className={styles.menuContent}>
         <ul className={styles.menuList}>
           {topMenuItems.map((item) => {
-            const isActive = pathname === item.href;
+            // Special handling for shared goals - highlight when on /shared or /shared/[id]
+            const isActive = item.href === '/shared'
+              ? pathname === item.href || pathname.startsWith('/shared/')
+              : pathname === item.href;
             const hasActiveChild = isChildActive(item);
             const isDisabled = item.disabled;
             const isAction = item.isAction;
@@ -288,6 +334,19 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                     )}
                     {item.children && !isDesktopCollapsed && !isCollapsed && isExpanded(item.href) && (
                       <ul className={styles.childMenuList}>
+                        {/* Show objectives for My Goals menu */}
+                        {item.href === '/okrt' && objectives.map((objective) => (
+                          <li key={`objective-${objective.id}`} className={styles.childMenuItem}>
+                            <button
+                              onClick={(e) => handleObjectiveClick(objective.id, e)}
+                              className={styles.childMenuLink}
+                              title={objective.title}
+                            >
+                              <span className={styles.label}>{objective.title}</span>
+                            </button>
+                          </li>
+                        ))}
+                        
                         {/* Show admin groups first */}
                         {item.href === '/groups' && adminGroups.map((group) => (
                           <li key={`group-${group.id}`} className={styles.childMenuItem}>
@@ -296,9 +355,7 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
                               className={styles.childMenuLink}
                               title={`Edit ${group.name}`}
                             >
-                              <span className={styles.icon}>
-                                <MdOutlinePeopleAlt size={16} />
-                              </span>
+                       
                               <span className={styles.label}>{group.name}</span>
                             </button>
                           </li>
@@ -348,7 +405,10 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
       <div className={styles.bottomMenu}>
         <ul className={styles.menuList}>
           {bottomMenuItems.map((item) => {
-            const isActive = pathname === item.href;
+            // Special handling for shared goals - highlight when on /shared or /shared/[id]
+            const isActive = item.href === '/shared'
+              ? pathname === item.href || pathname.startsWith('/shared/')
+              : pathname === item.href;
             const isDisabled = item.disabled;
 
             return (

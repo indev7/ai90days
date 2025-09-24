@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from 'next/navigation';
 import styles from './page.module.css';
 import { GoTrophy } from "react-icons/go";
 import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from "react-icons/gi";
 import { LiaGolfBallSolid } from "react-icons/lia";
+import { LuExpand } from "react-icons/lu";
+import { BiCollapse } from "react-icons/bi";
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
@@ -122,12 +125,24 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
               <div className={styles.chipGroup} title={`Area: ${objective.area || "Personal"}`}>
                 <Chip text={objective.area || "Personal"} variant="area" />
               </div>
-              <div className={styles.chipGroup} title="Visibility: Team">
-                <Chip text="Team" variant="team" />
-              </div>
               <div className={styles.chipGroup} title={`Status: ${getStatusLabel(objective.status)}`}>
                 <Chip text={getStatusLabel(objective.status)} variant={getStatusVariant(objective.status)} />
               </div>
+              <div className={styles.chipGroup} title={`Visibility: ${objective.visibility === 'shared' ? 'Shared' : 'Private'}`}>
+                <Chip text={objective.visibility === 'shared' ? 'Shared' : 'Private'} variant={objective.visibility === 'shared' ? 'shared' : 'private'} />
+              </div>
+              {objective.owner_name && (
+                <div className={styles.chipGroup} title={`Owner: ${objective.owner_name}`}>
+                  <Chip text={objective.owner_name} variant="owner" />
+                </div>
+              )}
+              {objective.shared_groups && objective.shared_groups.length > 0 && objective.shared_groups
+                .filter(group => group && group.name)
+                .map((group) => (
+                  <div key={group.id} className={styles.chipGroup} title={`Shared with group: ${group.name}`}>
+                    <Chip text={group.name} variant="group" />
+                  </div>
+                ))}
             </div>
           </div>
         </div>
@@ -160,7 +175,7 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
                 className={`${styles.focusButton} ${isFocused ? styles.focusButtonActive : ''}`}
                 onClick={() => onFocusObjective(objective.id)}
               >
-                {isFocused ? 'Exit Focus' : 'Focus'}
+                {isFocused ? <BiCollapse size={16} /> : <LuExpand size={16} />}
               </button>
               <button
                 className={styles.objectiveToggleButton}
@@ -195,9 +210,16 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
   );
 }
 
-function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, tasks = [] }) {
+function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, tasks = [], forceExpanded = false }) {
   const [expanded, setExpanded] = useState(false);
   const atRisk = kr.progress < 35;
+
+  // Update expanded state when forceExpanded prop changes
+  useEffect(() => {
+    if (forceExpanded !== undefined) {
+      setExpanded(forceExpanded);
+    }
+  }, [forceExpanded]);
   
   const formatDate = (dateStr) => {
     if (!dateStr) return 'No due date';
@@ -392,6 +414,9 @@ const demoData = {
    ========================= */
 
 export default function OKRTPage() {
+  const searchParams = useSearchParams();
+  const selectedObjectiveId = searchParams.get('objective');
+  
   const [user, setUser] = useState(null);
   const [objectives, setObjectives] = useState([]);
   const [keyResults, setKeyResults] = useState([]);
@@ -400,6 +425,8 @@ export default function OKRTPage() {
   const [openKR, setOpenKR] = useState(null);
   const [expandedObjectives, setExpandedObjectives] = useState(new Set());
   const [focusedObjectiveId, setFocusedObjectiveId] = useState(null);
+  const [krExpansionState, setKrExpansionState] = useState({});
+  const [commentsExpanded, setCommentsExpanded] = useState({});
   const [modalState, setModalState] = useState({
     isOpen: false,
     mode: 'create',
@@ -428,10 +455,11 @@ export default function OKRTPage() {
     fetchUser();
   }, []);
 
-  // Fetch OKRT data using the same pattern as the working OKRT page
+  // Fetch OKRT data
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch user's own objectives
         const response = await fetch('/api/okrt');
         const data = await response.json();
         
@@ -468,6 +496,27 @@ export default function OKRTPage() {
     
     return () => {
       window.removeEventListener('createObjective', handleCreateObjectiveEvent);
+    };
+  }, []);
+
+  // Listen for left menu toggle events to collapse OKRTs when menu expands
+  useEffect(() => {
+    const handleMenuToggle = () => {
+      // Collapse all expanded objectives
+      setExpandedObjectives(new Set());
+      // Collapse all expanded KRs
+      setKrExpansionState({});
+      // Collapse all comments
+      setCommentsExpanded({});
+      // Exit focus mode if active
+      setFocusedObjectiveId(null);
+    };
+
+    // Listen for both hamburger menu and desktop menu toggle events
+    window.addEventListener('menuToggleToExpanded', handleMenuToggle);
+    
+    return () => {
+      window.removeEventListener('menuToggleToExpanded', handleMenuToggle);
     };
   }, []);
 
@@ -657,13 +706,49 @@ export default function OKRTPage() {
     if (focusedObjectiveId === objectiveId) {
       // Exit focus mode
       setFocusedObjectiveId(null);
+      // Collapse the objective itself (hide KRs and Comments)
+      setExpandedObjectives(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(objectiveId);
+        return newSet;
+      });
+      // Collapse all KRs for this objective
+      setKrExpansionState(prev => {
+        const newState = { ...prev };
+        const objectiveKRs = getKeyResultsForObjective(objectiveId);
+        objectiveKRs.forEach(kr => {
+          delete newState[kr.id];
+        });
+        return newState;
+      });
+      // Collapse comments for this objective
+      setCommentsExpanded(prev => ({
+        ...prev,
+        [objectiveId]: false
+      }));
       // Dispatch event to expand left menu
       window.dispatchEvent(new CustomEvent('exitFocusMode'));
+      // Also dispatch the menu toggle event to ensure consistency
+      window.dispatchEvent(new CustomEvent('menuToggleToExpanded'));
     } else {
       // Enter focus mode
       setFocusedObjectiveId(objectiveId);
       // Ensure the focused objective is expanded
       setExpandedObjectives(prev => new Set([...prev, objectiveId]));
+      // Expand all KRs for this objective
+      setKrExpansionState(prev => {
+        const newState = { ...prev };
+        const objectiveKRs = getKeyResultsForObjective(objectiveId);
+        objectiveKRs.forEach(kr => {
+          newState[kr.id] = true;
+        });
+        return newState;
+      });
+      // Expand comments for this objective
+      setCommentsExpanded(prev => ({
+        ...prev,
+        [objectiveId]: true
+      }));
       // Dispatch event to minimize left menu
       window.dispatchEvent(new CustomEvent('enterFocusMode'));
     }
@@ -688,14 +773,23 @@ export default function OKRTPage() {
     );
   }
 
+  // Filter objectives based on URL parameter or focus mode
+  const filteredObjectives = objectives.filter(objective => {
+    if (selectedObjectiveId) {
+      return objective.id === selectedObjectiveId;
+    }
+    if (focusedObjectiveId) {
+      return objective.id === focusedObjectiveId;
+    }
+    return true;
+  });
+
   return (
     <div className={styles.container}>
       {/* Main Content */}
       <main className={styles.main}>
-        {/* Stack all objectives vertically - show only focused objective if in focus mode */}
-        {objectives
-          .filter(objective => !focusedObjectiveId || objective.id === focusedObjectiveId)
-          .map((objective) => {
+        {/* Stack all objectives vertically - show filtered objectives */}
+        {filteredObjectives.map((objective) => {
             const objectiveKRs = getKeyResultsForObjective(objective.id);
             
             return (
@@ -724,6 +818,7 @@ export default function OKRTPage() {
                         onEditTask={handleEditTask}
                         onAddTask={handleAddTask}
                         tasks={getTasksForKeyResult(kr.id)}
+                        forceExpanded={krExpansionState[kr.id]}
                       />
                     ))}
                     <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
@@ -731,14 +826,15 @@ export default function OKRTPage() {
                   
                   {/* Single Comments Section for the entire Objective */}
                   {user?.id && (
-                    <div className={styles.objectiveCommentsSection}>
-                      <CommentsSection
-                        okrtId={objective.id}
-                        currentUserId={user.id}
-                        okrtOwnerId={objective.owner_id}
-                      />
+                  <div className={styles.objectiveCommentsSection}>
+                  <CommentsSection
+                  okrtId={objective.id}
+                  currentUserId={user.id}
+                  okrtOwnerId={objective.owner_id}
+                    isExpanded={commentsExpanded[objective.id]}
+                    />
                     </div>
-                  )}
+                    )}
                 </>
               )}
             </div>
