@@ -110,10 +110,24 @@ export async function POST(request) {
       kr_baseline_number: type === 'K' ? kr_baseline_number : null,
       weight: ['K', 'T'].includes(type) ? weight : null,
       task_status: type === 'T' ? (task_status || 'todo') : null,
-      due_date: type === 'T' ? due_date : null,
+      due_date: (type === 'T' || type === 'K') && due_date ? due_date : null,
       recurrence_json: type === 'T' ? recurrence_json : null,
       blocked_by: type === 'T' ? blocked_by : null
     };
+
+    console.log('=== Creating New OKRT ===');
+    console.log('Type:', okrtData.type);
+    console.log('Full payload:', {
+      ...okrtData,
+      owner_id: okrtData.owner_id || 'none',
+      parent_id: okrtData.parent_id || 'none',
+      due_date: okrtData.due_date || 'none',
+      kr_target_number: okrtData.kr_target_number || 'none',
+      kr_unit: okrtData.kr_unit || 'none',
+      kr_baseline_number: okrtData.kr_baseline_number || 'none',
+      weight: okrtData.weight || 'none'
+    });
+    console.log('==================');
 
     const newOKRT = await createOKRT(okrtData);
     return NextResponse.json({ okrt: newOKRT });

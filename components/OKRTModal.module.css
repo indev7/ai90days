@@ -98,6 +98,46 @@
   margin-bottom: 0.5rem;
 }
 
+.formGroup :global(.p-calendar) {
+  width: 100%;
+}
+
+.formGroup :global(.p-calendar input) {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--surface-0);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  height: 40px;
+  box-sizing: border-box;
+  margin-right:4px;
+}
+
+.formGroup :global(.p-calendar input:hover) {
+  border-color: var(--accent-color);
+}
+
+.formGroup :global(.p-calendar input:focus) {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  outline: none;
+}
+
+.formGroup :global(.p-calendar .p-button) {
+  background-color: var(--surface-0);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.formGroup :global(.p-calendar .p-button:hover) {
+  background-color: var(--surface-1);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
 .formRow {
   display: grid;
   grid-template-columns: 1fr 1fr;

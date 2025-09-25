@@ -8,6 +8,11 @@ import LeftMenu from '@/components/LeftMenu';
 import { CoachProvider } from '@/contexts/CoachContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { initializeTheme } from '@/lib/themeManager';
+// PrimeReact CSS imports
+import 'primereact/resources/primereact.min.css';
+import '@/styles/primereact-overrides.css';
+
+// Theme CSS imports
 import '@/styles/theme.css';
 import '@/styles/themes/coffee.css';
 import '@/styles/themes/microsoft.css';

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import styles from './OKRTModal.module.css';
+import { Calendar } from 'primereact/calendar';
+import 'primereact/resources/primereact.min.css';
 
 const AREAS = ['Life', 'Work', 'Health', 'Finance', 'Education', 'Relationships'];
 const KR_UNITS = ['%', '$', 'count', 'hrs', 'days', 'points', 'users'];
@@ -103,6 +105,24 @@ export default function OKRTModal({
   }, [isOpen, mode, okrt, parentOkrt]);
 
   const handleInputChange = (field, value) => {
+    // Special handling for date fields
+    if (field === 'due_date') {
+      // Ensure the date is in YYYY-MM-DD format
+      if (value && typeof value === 'string' && value.includes('T')) {
+        value = value.split('T')[0];
+      }
+    }
+    
+    // Reset due date if changing cycle quarter
+    if (field === 'cycle_qtr') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        due_date: '' // Reset due date when quarter changes
+      }));
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -171,12 +191,13 @@ export default function OKRTModal({
       } else if (formData.type === 'K') {
         delete saveData.objective_kind;
         delete saveData.task_status;
-        delete saveData.due_date;
+        // Keep the due_date for Key Results
       } else if (formData.type === 'T') {
         delete saveData.objective_kind;
         delete saveData.kr_target_number;
         delete saveData.kr_unit;
         delete saveData.kr_baseline_number;
+        // Keep the due_date for Tasks
       }
       
       // Add parent ID if creating under a parent
@@ -343,7 +364,7 @@ export default function OKRTModal({
             </div>
           </div>
 
-          {/* Progress only - visibility will be managed through sharing */}
+          {/* Progress and Due Date */}
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Progress (%)</label>
@@ -355,6 +376,33 @@ export default function OKRTModal({
                 min={0}
                 max={100}
               />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Due Date</label>
+              <Calendar
+                value={formData.due_date ? new Date(formData.due_date + 'T00:00:00') : null}
+                onChange={(e) => {
+                  if (e.value) {
+                    const date = new Date(e.value);
+                    const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+                    const dateStr = localDate.toISOString().split('T')[0];
+                    handleInputChange('due_date', dateStr);
+                  } else {
+                    handleInputChange('due_date', '');
+                  }
+                }}
+                className={`${errors.due_date ? styles.inputError : ''}`}
+                dateFormat="yy-mm-dd"
+                showIcon
+                showButtonBar
+                monthNavigator
+                yearNavigator
+                yearRange={`${new Date().getFullYear()}:${new Date().getFullYear() + 5}`}
+                showOtherMonths={false}
+                selectOtherMonths={false}
+              />
+              {errors.due_date && <span className={styles.errorText}>{errors.due_date}</span>}
             </div>
           </div>
 
@@ -448,6 +496,8 @@ export default function OKRTModal({
                   />
                 </div>
               </div>
+
+
             </>
           )}
 
@@ -483,16 +533,6 @@ export default function OKRTModal({
                 </div>
               </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Due Date</label>
-                <input
-                  type="date"
-                  className={`${styles.input} ${errors.due_date ? styles.inputError : ''}`}
-                  value={formData.due_date}
-                  onChange={e => handleInputChange('due_date', e.target.value)}
-                />
-                {errors.due_date && <span className={styles.errorText}>{errors.due_date}</span>}
-              </div>
             </>
           )}
         </div>

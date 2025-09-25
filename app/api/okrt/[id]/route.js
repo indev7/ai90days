@@ -77,7 +77,6 @@ export async function PUT(request, { params }) {
       // Key Results don't have Objective or Task specific fields
       delete updateData.objective_kind;
       delete updateData.task_status;
-      delete updateData.due_date;
       delete updateData.recurrence_json;
       delete updateData.blocked_by;
     } else if (type === 'T') {
@@ -87,6 +86,19 @@ export async function PUT(request, { params }) {
       delete updateData.kr_unit;
       delete updateData.kr_baseline_number;
     }
+
+    console.log('=== Updating OKRT ===');
+    console.log('OKRT ID:', id);
+    console.log('Type:', type);
+    console.log('Update payload:', {
+      ...updateData,
+      due_date: updateData.due_date || 'none',
+      kr_target_number: updateData.kr_target_number || 'none',
+      kr_unit: updateData.kr_unit || 'none',
+      kr_baseline_number: updateData.kr_baseline_number || 'none',
+      weight: updateData.weight || 'none'
+    });
+    console.log('==================');
 
     const updatedOKRT = await updateOKRT(id, updateData);
     
