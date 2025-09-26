@@ -254,7 +254,7 @@ function TwelveWeekClock({
         
         {/* Objectives list inside clock border */}
         {objectives.length > 0 && (
-          <div className={styles.objectivesList}>
+          <div className={styles.objectivesList} style={{ maxWidth: `${size}px` }}>
             {objectives.map((o, i) => {
               const color = PROTOTYPE_COLORS[i % PROTOTYPE_COLORS.length];
               const pct = Math.round(clamp(o.progress, 0, 1) * 100);
