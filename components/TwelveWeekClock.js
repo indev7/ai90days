@@ -178,6 +178,37 @@ function TwelveWeekClock({
         
         <div className={styles.clockSvg}>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="12 week clock">
+          {/* SVG Definitions for Jelly Bean Effects */}
+          <defs>
+            {/* Gradient for jelly bean effect */}
+            <linearGradient id="jellyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+              <stop offset="30%" stopColor="#ffffff" stopOpacity="0.2" />
+              <stop offset="70%" stopColor="#000000" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.3" />
+            </linearGradient>
+            
+            {/* Drop shadow filter */}
+            <filter id="jellyShadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+              <feOffset dx="1" dy="2" result="offset" />
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.3" />
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            
+            {/* Inner glow filter */}
+            <filter id="jellyGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="glow" />
+              <feColorMatrix in="glow" values="1 1 1 0 0  1 1 1 0 0  1 1 1 0 0  0 0 0 0.6 0" />
+              <feComposite in="SourceGraphic" in2="glow" operator="over" />
+            </filter>
+          </defs>
+          
           {/* Face */}
           <circle cx={cx} cy={cy} r={outerR} fill={face} />
 
@@ -196,7 +227,37 @@ function TwelveWeekClock({
               <g key={`ring-${i}`}>
                 <circle cx={cx} cy={cy} r={r} stroke={tracksBg} strokeWidth={trackWidth} fill="none" opacity={0.6} />
                 {prog > 0 && (
-                  <path d={arcPath(cx, cy, r, 0, endDeg || 0.01)} stroke={color} strokeWidth={trackWidth} fill="none" strokeLinecap="round" opacity={0.8} />
+                  <g className={`jelly-progress-${i}`}>
+                    {/* Main progress arc with jelly effect */}
+                    <path 
+                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
+                      stroke={color} 
+                      strokeWidth={trackWidth} 
+                      fill="none" 
+                      strokeLinecap="round" 
+                      opacity={0.85}
+                      filter="url(#jellyShadow)"
+                    />
+                    {/* Highlight overlay for jelly effect */}
+                    <path 
+                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
+                      stroke="url(#jellyGradient)" 
+                      strokeWidth={trackWidth * 0.8} 
+                      fill="none" 
+                      strokeLinecap="round" 
+                      opacity={0.6}
+                    />
+                    {/* Inner glow */}
+                    <path 
+                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
+                      stroke={color} 
+                      strokeWidth={trackWidth * 0.4} 
+                      fill="none" 
+                      strokeLinecap="round" 
+                      opacity={0.8}
+                      filter="url(#jellyGlow)"
+                    />
+                  </g>
                 )}
                 {(obj?.krs ?? []).map((kr) => placeKR(r, clamp(kr.dueDay, 0, TOTAL_DAYS - 1), color))}
               </g>
