@@ -49,14 +49,23 @@ export default function OKRTModal({
     weight: 1.0,
     task_status: 'todo',
     due_date: '',
-    progress: 0
+    progress: 0,
+    parent_objective_id: '' // New field for parent objective
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(false);
   const [childRecords, setChildRecords] = useState([]);
+  const [availableObjectives, setAvailableObjectives] = useState([]);
 
   const quarterOptions = generateQuarterOptions();
+
+  // Fetch available objectives when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableObjectives();
+    }
+  }, [isOpen]);
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -76,7 +85,8 @@ export default function OKRTModal({
           weight: okrt.weight || 1.0,
           task_status: okrt.task_status || 'todo',
           due_date: okrt.due_date || '',
-          progress: okrt.progress || 0
+          progress: okrt.progress || 0,
+          parent_objective_id: okrt.parent_id || ''
         });
       } else {
         // Create mode - reset form and set parent if provided
@@ -97,12 +107,69 @@ export default function OKRTModal({
           weight: 1.0,
           task_status: 'todo',
           due_date: '',
-          progress: 0
+          progress: 0,
+          parent_objective_id: parentOkrt?.id || ''
         });
       }
       setErrors({});
     }
   }, [isOpen, mode, okrt, parentOkrt]);
+
+  const fetchAvailableObjectives = async () => {
+    try {
+      // Fetch both owned and shared objectives
+      const [ownedResponse, sharedResponse] = await Promise.all([
+        fetch('/api/okrt'),
+        fetch('/api/shared')
+      ]);
+      
+      const [ownedData, sharedData] = await Promise.all([
+        ownedResponse.json(),
+        sharedResponse.json()
+      ]);
+      
+      const objectives = [];
+      
+      // Add owned objectives
+      if (ownedResponse.ok && ownedData.okrts) {
+        const ownedObjectives = ownedData.okrts
+          .filter(item => item.type === 'O' && (!okrt || item.id !== okrt.id))
+          .map(obj => ({
+            id: obj.id,
+            title: obj.title,
+            owner_name: obj.owner_name || 'You'
+          }));
+        objectives.push(...ownedObjectives);
+      }
+      
+      // Add shared objectives
+      if (sharedResponse.ok && sharedData.okrts) {
+        const sharedObjectives = sharedData.okrts
+          .filter(item => item.type === 'O' && (!okrt || item.id !== okrt.id))
+          .map(obj => ({
+            id: obj.id,
+            title: obj.title,
+            owner_name: obj.owner_name || 'Unknown'
+          }));
+        objectives.push(...sharedObjectives);
+      }
+      
+      // Remove duplicates based on id and sort by owner name then title
+      const uniqueObjectives = objectives
+        .filter((obj, index, self) => 
+          index === self.findIndex(o => o.id === obj.id)
+        )
+        .sort((a, b) => {
+          const ownerCompare = a.owner_name.localeCompare(b.owner_name);
+          if (ownerCompare !== 0) return ownerCompare;
+          return a.title.localeCompare(b.title);
+        });
+      
+      setAvailableObjectives(uniqueObjectives);
+    } catch (error) {
+      console.error('Error fetching objectives:', error);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     // Special handling for date fields
@@ -188,19 +255,27 @@ export default function OKRTModal({
         delete saveData.weight;
         delete saveData.task_status;
         delete saveData.due_date;
+        
+        // Handle parent objective ID for objectives
+        if (saveData.parent_objective_id) {
+          saveData.parent_id = saveData.parent_objective_id;
+        }
+        delete saveData.parent_objective_id; // Remove the UI field
       } else if (formData.type === 'K') {
         delete saveData.objective_kind;
         delete saveData.task_status;
+        delete saveData.parent_objective_id; // Not used for KRs
         // Keep the due_date for Key Results
       } else if (formData.type === 'T') {
         delete saveData.objective_kind;
         delete saveData.kr_target_number;
         delete saveData.kr_unit;
         delete saveData.kr_baseline_number;
+        delete saveData.parent_objective_id; // Not used for Tasks
         // Keep the due_date for Tasks
       }
       
-      // Add parent ID if creating under a parent
+      // Add parent ID if creating under a parent (for KRs and Tasks)
       if (mode === 'create' && parentOkrt) {
         saveData.parent_id = parentOkrt.id;
       }
@@ -333,36 +408,58 @@ export default function OKRTModal({
             {errors.description && <span className={styles.errorText}>{errors.description}</span>}
           </div>
 
-          {/* Area and Cycle */}
-          <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Area</label>
+          {/* Parent Objective - Only show for Objectives */}
+          {formData.type === 'O' && (
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+              <label className={styles.label}>Parent Objective</label>
               <select
                 className={styles.select}
-                value={formData.area}
-                onChange={e => handleInputChange('area', e.target.value)}
+                value={formData.parent_objective_id}
+                onChange={e => handleInputChange('parent_objective_id', e.target.value)}
               >
-                <option value="">Select area</option>
-                {AREAS.map(area => (
-                  <option key={area} value={area}>{area}</option>
+                <option value="">No parent objective (standalone)</option>
+                {availableObjectives.map(objective => (
+                  <option key={objective.id} value={objective.id}>
+                    {objective.owner_name} - {objective.title}
+                  </option>
                 ))}
               </select>
+              {errors.parent_objective_id && <span className={styles.errorText}>{errors.parent_objective_id}</span>}
             </div>
+          )}
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Cycle Quarter</label>
-              <select
-                className={styles.select}
-                value={formData.cycle_qtr}
-                onChange={e => handleInputChange('cycle_qtr', e.target.value)}
-              >
-                <option value="">Select quarter</option>
-                {quarterOptions.map(quarter => (
-                  <option key={quarter} value={quarter}>{quarter}</option>
-                ))}
-              </select>
+          {/* Area and Cycle - Only show for Objectives */}
+          {formData.type === 'O' && (
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Area</label>
+                <select
+                  className={styles.select}
+                  value={formData.area}
+                  onChange={e => handleInputChange('area', e.target.value)}
+                >
+                  <option value="">Select area</option>
+                  {AREAS.map(area => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Cycle Quarter</label>
+                <select
+                  className={styles.select}
+                  value={formData.cycle_qtr}
+                  onChange={e => handleInputChange('cycle_qtr', e.target.value)}
+                >
+                  <option value="">Select quarter</option>
+                  {quarterOptions.map(quarter => (
+                    <option key={quarter} value={quarter}>{quarter}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Progress and Due Date */}
           <div className={styles.formRow}>

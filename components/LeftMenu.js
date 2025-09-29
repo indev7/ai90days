@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { LuLayoutDashboard } from "react-icons/lu";
+import { GoClock } from "react-icons/go";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
 import { SiSlideshare } from "react-icons/si";
@@ -46,7 +47,7 @@ const bottomMenuItems = [
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
   const iconSize = isCollapsed ? 24 : 20;
   const icons = {
-    dashboard: <LuLayoutDashboard size={iconSize} />,
+    dashboard: <GoClock  size={iconSize} />,
     goals: <MdOutlineSelfImprovement size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,

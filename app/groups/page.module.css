@@ -4,13 +4,129 @@
   flex-direction: column;
 }
 
+/* Header Styles */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pageIcon {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+.titleSection h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* View Toggle Styles */
+.viewToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Removed - using new theme selector style */
+
+/* Theme selector style toggle */
+.toggleSwitch {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-1);
+  gap: var(--space-1);
+}
+
+.toggleInput {
+  display: none;
+}
+
+.toggleOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 36px;
+}
+
+.toggleOption:hover {
+  background: rgba(124, 58, 237, 0.05);
+  color: var(--brand-primary);
+}
+
+.toggleOption.active {
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  color: white;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
+}
+
+/* Legacy slider styles - keeping for fallback */
+.toggleSlider {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 24px;
+  background-color: var(--background-secondary);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border: 1px solid var(--border);
+}
+
+.toggleSlider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggleInput:checked + .toggleSlider {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.toggleInput:checked + .toggleSlider::before {
+  transform: translateX(24px);
+}
+
 .layout {
   display: flex;
-  height: calc(100vh );
+  flex: 1;
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
-  margin: 1rem;
+  margin: 0 1rem 1rem 1rem;
   background: var(--bg);
   overflow: hidden;
 }
@@ -87,6 +203,49 @@
 
 .error {
   color: var(--error-color);
+}
+
+/* Canvas Header with Toggle */
+.canvasHeader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 1rem 1rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.viewToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.toggleLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+
+.toggleLabel.active {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.toggleSwitch {
+  position: relative;
+}
+
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .emptyState {
@@ -284,27 +443,7 @@
   opacity: 0.5;
 }
 
-.chevronButton {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  border: 0;
-  background: transparent;
-  padding: 2px;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.chevronButton:hover {
-  opacity: 1;
-}
-
-.chevronIcon {
-  width: 18px;
-  height: 18px;
-  color: var(--text-tertiary);
-}
+/* Chevron button removed - entire card now clickable */
 
 .chip {
   display: inline-flex;
@@ -621,6 +760,37 @@
 }
 
 @media (max-width: 768px) {
+  .canvasHeader {
+    padding: 0 0.5rem 1rem 0.5rem;
+    justify-content: center;
+  }
+  
+  .viewToggle {
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 10px;
+  }
+  
+  .toggleLabel {
+    font-size: 0.85rem;
+  }
+  
+  .toggleSlider {
+    width: 42px;
+    height: 22px;
+  }
+  
+  .toggleSlider::before {
+    width: 16px;
+    height: 16px;
+    top: 2px;
+    left: 2px;
+  }
+  
+  .toggleInput:checked + .toggleSlider::before {
+    transform: translateX(20px);
+  }
+  
   .layout {
     flex-direction: column;
     margin: 0;
