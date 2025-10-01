@@ -143,7 +143,7 @@
   position: absolute;
   left: 4px;
   right: 4px;
-  background: var(--primary);
+  /* Background color is set dynamically via inline styles */
   color: white;
   border-radius: var(--radius-sm);
   padding: 4px 8px;
@@ -151,10 +151,11 @@
   z-index: 15;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: filter 0.2s ease;
 }
 
 .timeBlock:hover {
-  background: var(--brand-600);
+  filter: brightness(0.9); /* Darken on hover instead of changing color */
 }
 
 .timeBlockTitle {
@@ -270,6 +271,13 @@
   margin-bottom: 20px;
 }
 
+.modalSubHeader {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
 .formGroup {
   margin-bottom: 16px;
 }
@@ -296,6 +304,36 @@
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px var(--brand-100);
+}
+
+.timePickerContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeSelect {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-solid);
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+}
+
+.timeSelect:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--brand-100);
+}
+
+.timeSeparator {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  user-select: none;
 }
 
 .modalActions {

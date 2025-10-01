@@ -1,0 +1,16 @@
+Phase 12 - dashboard layout and components
+Need to complete the component layout in the dashbord.
+In addition to the existing 90Day clock component, 4 new components will be introduces. 
+These 4 components must apear in same card dimensions. Rounded corners and border style must be similar to 
+90 day clock. The new component tytles must be
+1. Inspiration - A component to show inspirational quotes from successful role models
+2. Notifications - A list of most recent Notifications
+3. Today - A new clock face component similar to 90 day clock, but showing scheduled tasks for today
+4. Activity - Show most recent activity with elapsed time since
+
+The Desktop and Tablet landscape mode layouts are shown in Spec/Phase12/Dashboard.png
+The mobile and Tablet portraight layout can be seen here: Spec/Phase12/responsive_layout.png
+
+!For now do not implement the new components, just show the border and titles and implement the responsive behavior only
+
+

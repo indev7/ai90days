@@ -469,9 +469,18 @@
   flex-wrap: wrap;
 }
 
-.taskTextCompleted {
-  text-decoration: line-through;
-  color: var(--muted);
+.taskItemCompleted {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.taskItemCompleted .taskIcon {
+  background: #bae6fd;
+  color: #0369a1;
+}
+
+.taskItemCompleted .taskText {
+  color: #0369a1;
 }
 
 .addTaskButton {

@@ -316,13 +316,13 @@ function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, 
         <div className={styles.tasksList}>
           <div className={styles.tasksHeader}>TASKS</div>
           {tasks.map((task) => (
-            <div key={task.id} className={styles.taskItem}>
+            <div key={task.id} className={`${styles.taskItem} ${task.task_status === 'done' ? styles.taskItemCompleted : ''}`}>
               <div className={styles.taskIcon}>
                 <LiaGolfBallSolid size={20} />
               </div>
               <div className={styles.taskContent}>
                 <span
-                  className={`${styles.taskText} ${task.task_status === 'done' ? styles.taskTextCompleted : ''}`}
+                  className={styles.taskText}
                   onClick={(e) => handleTaskClick(e, task)}
                 >
                   {task.description || task.title}

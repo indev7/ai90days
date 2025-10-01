@@ -5,6 +5,7 @@ import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from "react-icons/gi";
 import { LiaGolfBallSolid } from "react-icons/lia";
 import styles from './page.module.css';
+import { createObjectiveColorMap, getThemeColorPalette } from '../../lib/clockUtils';
 
 const DURATION_OPTIONS = [
   { value: 15, label: '15 min' },
@@ -73,9 +74,12 @@ export default function CalendarPage() {
   const [selectedTask, setSelectedTask] = useState('');
   const [selectedTaskTitle, setSelectedTaskTitle] = useState('');
   const [selectedDuration, setSelectedDuration] = useState(30);
+  const [startHour, setStartHour] = useState(9); // Default to 9 AM
+  const [startMinute, setStartMinute] = useState(0); // Default to 00 minutes
   const [loading, setLoading] = useState(false);
   const [mobileCurrentDay, setMobileCurrentDay] = useState(0); // Index for mobile view
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [objectiveColorMap, setObjectiveColorMap] = useState({});
 
   const timeSlots = generateTimeSlots();
   const currentDate = new Date(currentWeekStart);
@@ -116,7 +120,12 @@ export default function CalendarPage() {
         const response = await fetch('/api/time-blocks/tasks');
         if (response.ok) {
           const data = await response.json();
-          setTaskHierarchy(data.hierarchy || []);
+          const hierarchy = data.hierarchy || [];
+          setTaskHierarchy(hierarchy);
+          
+          // Create objective color map
+          const colorMap = createObjectiveColorMap(hierarchy);
+          setObjectiveColorMap(colorMap);
         }
       } catch (error) {
         console.error('Error fetching task hierarchy:', error);
@@ -156,16 +165,25 @@ export default function CalendarPage() {
   const handleTimeSlotDoubleClick = (dayIndex, hour) => {
     const slotId = formatTimeSlotId(dayIndex, hour);
     setSelectedTimeSlot(slotId);
+    setStartHour(hour); // Pre-select the clicked hour
+    setStartMinute(0); // Reset minutes to 00
     setShowScheduleModal(true);
   };
 
   const handleSchedule = async () => {
     if (!selectedTask || !selectedTimeSlot) return;
 
-    const [dayIndex, hour] = selectedTimeSlot.split('-').map(Number);
+    const [dayIndex] = selectedTimeSlot.split('-').map(Number);
     const selectedDay = daysOfWeek[dayIndex];
     const startTime = new Date(selectedDay.date);
-    startTime.setHours(hour, 0, 0, 0);
+    startTime.setHours(startHour, startMinute, 0, 0);
+
+    // Check if the selected time is in the past
+    const now = new Date();
+    if (startTime < now) {
+      alert('Cannot schedule tasks in the past. Please select a future time.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -207,6 +225,19 @@ export default function CalendarPage() {
     }
   };
 
+  // Get color for a time block based on its objective
+  const getTimeBlockColor = (block) => {
+    // First try to use the objective mapping
+    if (block.objective_id && objectiveColorMap[block.objective_id]) {
+      return objectiveColorMap[block.objective_id].color;
+    }
+    
+    // Fallback: Use task_id to assign colors from the same palette used in 90Day Clock
+    const colors = getThemeColorPalette();
+    const colorIndex = (block.task_id || 0) % colors.length;
+    return colors[colorIndex];
+  };
+
   const getTimeBlocksForSlot = (dayIndex, hour) => {
     const selectedDay = daysOfWeek[dayIndex];
     const dateStr = selectedDay.date.toISOString().split('T')[0];
@@ -227,6 +258,13 @@ export default function CalendarPage() {
     return `${minutes}m`;
   };
 
+  const formatTime = (hour, minute) => {
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const minuteStr = minute.toString().padStart(2, '0');
+    return `${displayHour}:${minuteStr} ${period}`;
+  };
+
   const handleTaskSelect = (taskId, taskTitle) => {
     setSelectedTask(taskId);
     setSelectedTaskTitle(taskTitle);
@@ -239,6 +277,8 @@ export default function CalendarPage() {
     setSelectedTask('');
     setSelectedTaskTitle('');
     setSelectedDuration(30);
+    setStartHour(9);
+    setStartMinute(0);
     setDropdownOpen(false);
   };
 
@@ -311,6 +351,8 @@ export default function CalendarPage() {
                         className={styles.scheduleButton}
                         onClick={(e) => {
                           e.stopPropagation();
+                          setStartHour(slot.hour); // Set start hour based on selected slot
+                          setStartMinute(0); // Reset minutes to 00
                           setShowScheduleModal(true);
                         }}
                       >
@@ -319,7 +361,11 @@ export default function CalendarPage() {
                     )}
                     
                     {blocksInSlot.map((block) => (
-                      <div key={block.id} className={styles.timeBlock}>
+                      <div 
+                        key={block.id} 
+                        className={styles.timeBlock}
+                        style={{ backgroundColor: getTimeBlockColor(block) }}
+                      >
                         <div className={styles.timeBlockTitle}>
                           {block.task_title || block.task_description || `Task ${block.task_id}`}
                         </div>
@@ -379,6 +425,8 @@ export default function CalendarPage() {
                           className={styles.scheduleButton}
                           onClick={(e) => {
                             e.stopPropagation();
+                            setStartHour(slot.hour); // Set start hour based on selected slot
+                            setStartMinute(0); // Reset minutes to 00
                             setShowScheduleModal(true);
                           }}
                         >
@@ -387,7 +435,11 @@ export default function CalendarPage() {
                       )}
                       
                       {blocksInSlot.map((block) => (
-                        <div key={block.id} className={styles.timeBlock}>
+                        <div 
+                          key={block.id} 
+                          className={styles.timeBlock}
+                          style={{ backgroundColor: getTimeBlockColor(block) }}
+                        >
                           <div className={styles.timeBlockTitle}>
                             {block.task_title || block.task_description || `Task ${block.task_id}`}
                           </div>
@@ -409,7 +461,14 @@ export default function CalendarPage() {
       {showScheduleModal && (
         <div className={styles.modalOverlay} onClick={resetModal}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>Schedule Task</div>
+            <div className={styles.modalHeader}>
+              <div>Schedule Task</div>
+              {selectedTimeSlot && (
+                <div className={styles.modalSubHeader}>
+                  {daysOfWeek[parseInt(selectedTimeSlot.split('-')[0])].name}, {daysOfWeek[parseInt(selectedTimeSlot.split('-')[0])].dayNumber} at {formatTime(startHour, startMinute)}
+                </div>
+              )}
+            </div>
             
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Task</label>
@@ -462,6 +521,34 @@ export default function CalendarPage() {
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Start Time</label>
+              <div className={styles.timePickerContainer}>
+                <select
+                  className={styles.timeSelect}
+                  value={startHour}
+                  onChange={(e) => setStartHour(Number(e.target.value))}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i.toString().padStart(2, '0')}
+                    </option>
+                  ))}
+                </select>
+                <span className={styles.timeSeparator}>:</span>
+                <select
+                  className={styles.timeSelect}
+                  value={startMinute}
+                  onChange={(e) => setStartMinute(Number(e.target.value))}
+                >
+                  <option value={0}>00</option>
+                  <option value={15}>15</option>
+                  <option value={30}>30</option>
+                  <option value={45}>45</option>
+                </select>
               </div>
             </div>
 

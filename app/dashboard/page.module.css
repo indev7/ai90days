@@ -1,12 +1,13 @@
 .container {
   min-height: calc(100vh - 72px);
-  padding: var(--space-8) var(--space-6);
-  background: var(--bg-solid);
+  padding: var(--space-6);
+  
 }
 
 .content {
-  max-width: 800px;
+  max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .header {
@@ -130,6 +131,327 @@
   color: var(--muted);
 }
 
+/* Dashboard Grid Layout */
+.dashboardGrid {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+/* Desktop: 3 columns - middle spans full height, sides split in half */
+@media (min-width: 1025px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: minmax(280px, 1fr) minmax(280px, 1fr);
+    height: 600px;
+    align-items: stretch;
+    grid-template-areas:
+      "inspiration clock today"
+      "todo clock activity";
+  }
+}
+
+/* Tablet Portrait: Clock left (spans 2 rows), other widgets on right */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    height: calc(600px + calc(var(--space-4) * 2));
+    align-items: stretch;
+    grid-template-areas:
+      "clock today"
+      "clock inspiration"
+      "todo activity";
+  }
+}
+
+/* Mobile: Single column */
+@media (max-width: 640px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "clock"
+      "inspiration"
+      "today"
+      "todo"
+      "activity";
+    justify-items: center;
+  }
+  
+  .clockCard {
+    width: auto;
+    justify-content: center;
+  }
+  
+  .componentCard {
+    max-width: 310px;
+    width: 310px;
+  }
+}
+
+/* Clock Card */
+.clockCard {
+  grid-area: clock;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+}
+
+/* Individual Component Grid Areas - Updated order */
+.componentCard:nth-child(1) {
+  grid-area: inspiration;
+}
+
+.componentCard:nth-child(3) {
+  grid-area: today;
+}
+
+.componentCard:nth-child(4) {
+  grid-area: todo;
+}
+
+.componentCard:nth-child(5) {
+  grid-area: activity;
+}
+
+/* Component Cards */
+.componentCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-1);
+  padding: var(--space-6);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.componentCard:hover {
+  box-shadow: var(--shadow-2);
+  border-color: var(--border-light);
+}
+
+.componentHeader {
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.componentTitle {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* Todo Header Toggle Styles */
+.todoHeaderContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.todoToggle {
+  display: flex;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-1);
+  gap: var(--space-1);
+  min-width: 120px;
+}
+
+.todoToggleOption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 32px;
+  flex: 1;
+  min-width: 50px;
+}
+
+.todoToggleOption:hover {
+  background: rgba(124, 58, 237, 0.05);
+  color: var(--brand-primary);
+}
+
+.todoToggleOption.active {
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  color: white;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.2);
+}
+
+.componentContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Todo List Styles */
+.todoList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  flex: 1;
+  padding-right: var(--space-1);
+  min-height: 320px; /* Increased to ensure 6 tasks are visible */
+  max-height: 400px; /* Set max height to prevent excessive growth */
+  height: 320px; /* Fixed height for consistent display */
+}
+
+.todoItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  min-height: 48px; /* Increased to accommodate description + scheduled info */
+  max-height: 65px; /* Increased maximum height for two-line content */
+}
+
+.todoItem:hover {
+  background-color: var(--border-light);
+}
+
+.todoIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 0.75rem;
+}
+
+.todoText {
+  flex: 1;
+  min-width: 0;
+}
+
+.todoTask {
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: var(--space-1);
+  font-weight: 500;
+}
+
+.todoDescription {
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1; /* Reduced to 1 line to make room for scheduled info */
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 1.4em; /* Approximately 1 line */
+}
+
+.todoScheduledInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.todoScheduledInfo svg {
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.todoProgressContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.todoProgressBar {
+  width: 40px;
+  height: 3px;
+  background-color: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.todoProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+.todoProgressText {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 28px;
+}
+
+.todoObjective {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.2;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.emptyTodo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Todo Widget Container - Custom height for at least 6 tasks */
+.todoWidget {
+  min-height: 380px; /* Ensures space for header + 6 tasks */
+  height: 380px; /* Fixed height for consistent display */
+  max-height: 450px; /* Prevents excessive growth */
+}
+
+.todoWidget .componentContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allows flex shrinking */
+}
+
 .clockWidget {
   display: flex;
   justify-content: center;
@@ -183,6 +505,16 @@
     padding: var(--space-4) var(--space-3);
   }
   
+  .dashboardGrid {
+    gap: var(--space-4);
+  }
+  
+  .componentCard {
+    padding: var(--space-4);
+    min-height: 120px;
+    height: fit-content;
+  }
+  
   .clockWidget {
     margin-bottom: var(--space-6);
   }
@@ -196,6 +528,176 @@
   .container {
     padding: var(--space-6) var(--space-4);
   }
+  
+  .componentCard {
+    min-height: 150px;
+    height: fit-content;
+  }
+}
+
+/* Maximize button styles */
+.maximizeButton {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+.maximizeButton:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+/* Modal styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modalContent {
+  background: var(--surface, var(--bg-solid, #ffffff));
+  border: 1px solid var(--border, #e1d8d1);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-light, #f0e6de);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface, #ffffff);
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modalCloseButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.modalCloseButton:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+.modalBody {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+  background: var(--surface, #ffffff);
+}
+
+.modalTodoItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modalTodoItem:last-child {
+  border-bottom: none;
+}
+
+.modalTodoIndicator {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.modalTodoContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.modalTodoDescription {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  word-wrap: break-word;
+}
+
+.modalTodoMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalScheduledInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.modalScheduledInfo svg {
+  width: 14px;
+  height: 14px;
+}
+
+.modalProgressContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalProgressBar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.modalProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.modalProgressText {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 35px;
 }
 
 @media (min-width: 768px) {
@@ -203,5 +705,15 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-6);
+  }
+  
+  .modalTodoMeta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .modalProgressContainer {
+    min-width: 120px;
   }
 }

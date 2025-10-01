@@ -418,7 +418,9 @@ export default function CoachPage() {
       <div className={styles.messagesContainer}>
         {messages.length === 0 && (
           <div className={styles.welcomeMessage}>
-            <div className={styles.coachAvatar}>🏃‍♂️</div>
+            <div className={styles.coachAvatar}>
+              <img src="/coach.png" alt="Coach" className={styles.coachImage} />
+            </div>
             <p>Hi! I'm your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
           </div>
         )}

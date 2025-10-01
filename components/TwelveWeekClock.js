@@ -1,5 +1,6 @@
 import React from "react";
 import { GiGolfFlag } from "react-icons/gi";
+import { getCurrentQuarterName } from '@/lib/clockUtils';
 import styles from './TwelveWeekClock.module.css';
 
 /**
@@ -58,6 +59,8 @@ function TwelveWeekClock({
   const rawDayIndex = Math.floor(dayIndex);
   const displayDayNumber = rawDayIndex + 1; // Allow day numbers beyond 84
   const handPosition = displayDayNumber % TOTAL_DAYS; // Use day number for proper hand position
+  const quarterName = getCurrentQuarterName(); // e.g., "Q1 2025"
+  const quarterLabel = quarterName.replace(/^(Q\d+)\s+(\d+)$/, '$2-$1'); // Convert to "2025-Q1" format
   const dayLabel = `${titlePrefix} ${displayDayNumber}`;
 
   // Calculate date range for display
@@ -297,18 +300,15 @@ function TwelveWeekClock({
           {/* Center pivot */}
           <circle cx={cx} cy={cy} r={Math.max(2, Math.round(4 * scaleFactor))} fill={ticksAndText} />
 
-          {/* Top label inside face */}
+          {/* Quarter label at top */}
           <text x={cx} y={cy - Math.round(16 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fontWeight={700} fill={ticksAndText} dominantBaseline="auto">
-            {dayLabel}
+            {quarterLabel}
           </text>
 
-          {/* Date under pivot, italic & lighter, with line break after comma */}
-          {dateLabel && (
-            <text x={cx} y={cy + Math.round(18 * scaleFactor)} textAnchor="middle" fontSize={dateLabelFontSize} fill={ticksAndText} opacity={0.7} fontStyle="italic">
-              <tspan>{dateLabel.split(',')[0].trim()},</tspan>
-              <tspan x={cx} dy={Math.round(14 * scaleFactor)}>{(dateLabel.split(',')[1] || '').trim()}</tspan>
-            </text>
-          )}
+          {/* Day label under pivot */}
+          <text x={cx} y={cy + Math.round(28 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fill={ticksAndText} opacity={0.8} fontWeight={600}>
+            {dayLabel}
+          </text>
           {/* Circumference border */}
           <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={ticksAndText} strokeWidth={strokeWidth} />
         </svg>
