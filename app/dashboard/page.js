@@ -57,32 +57,31 @@ export default function Dashboard() {
     hand: '#bfbfbf'
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Get session via API
-        const sessionResponse = await fetch('/api/me');
-        if (!sessionResponse.ok) {
-          router.push('/login');
-          return;
-        }
-        const sessionData = await sessionResponse.json();
-        setSession(sessionData.user);
+  const fetchData = async () => {
+    try {
+      // Get session via API
+      const sessionResponse = await fetch('/api/me');
+      if (!sessionResponse.ok) {
+        router.push('/login');
+        return;
+      }
+      const sessionData = await sessionResponse.json();
+      setSession(sessionData.user);
 
-        // Get user's OKRTs via API
-        const okrtsResponse = await fetch('/api/okrt');
-        let timeBlocks = [];
-        if (okrtsResponse.ok) {
-          const okrtsData = await okrtsResponse.json();
-          const okrts = okrtsData.okrts || [];
-          
-          // Get user's time blocks
-          const timeBlocksResponse = await fetch('/api/time-blocks');
-          if (timeBlocksResponse.ok) {
-            const timeBlocksData = await timeBlocksResponse.json();
-            timeBlocks = timeBlocksData.timeBlocks || [];
-            console.log(`Fetched ${timeBlocks.length} time blocks:`, timeBlocks);
-          }
+      // Get user's OKRTs via API
+      const okrtsResponse = await fetch('/api/okrt');
+      let timeBlocks = [];
+      if (okrtsResponse.ok) {
+        const okrtsData = await okrtsResponse.json();
+        const okrts = okrtsData.okrts || [];
+        
+        // Get user's time blocks
+        const timeBlocksResponse = await fetch('/api/time-blocks');
+        if (timeBlocksResponse.ok) {
+          const timeBlocksData = await timeBlocksResponse.json();
+          timeBlocks = timeBlocksData.timeBlocks || [];
+          console.log(`Fetched ${timeBlocks.length} time blocks:`, timeBlocks);
+        }
           
           // Get current quarter info for filtering
           const currentDate = new Date();
@@ -145,8 +144,22 @@ export default function Dashboard() {
       }
     };
 
+  useEffect(() => {
     fetchData();
   }, [router]);
+
+  // Add window focus listener to refresh data when user comes back to the page
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('Window focused, refreshing dashboard data...');
+      fetchData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Helper function to format date and time
   const formatScheduledDateTime = (startTime) => {
@@ -170,6 +183,8 @@ export default function Dashboard() {
     );
     
     console.log('Extracting todo tasks from filtered OKRTs:', tasks.length);
+    console.log('Available tasks:', tasks.map(t => ({ id: t.id, title: t.title || t.description })));
+    console.log('Available time blocks:', timeBlocks.map(tb => ({ task_id: tb.task_id, start_time: tb.start_time, duration: tb.duration })));
     
     // Map tasks to include color from objectives and scheduling info
     const mappedTasks = tasks.map((task, index) => {
@@ -195,6 +210,14 @@ export default function Dashboard() {
       const isScheduled = !!timeBlock;
       const scheduledDateTime = isScheduled ? timeBlock.start_time : null;
       
+      // Debug log for all tasks and their scheduling status
+      console.log(`Task ${task.id} (${task.description || task.title}):`, {
+        isScheduled,
+        timeBlockFound: !!timeBlock,
+        scheduledDateTime,
+        timeBlockTaskId: timeBlock?.task_id
+      });
+      
       // Debug log for scheduled tasks
       if (isScheduled) {
         console.log(`Task ${task.id} is scheduled:`, {
@@ -209,6 +232,7 @@ export default function Dashboard() {
         taskDescription: task.description || task.title,
         isScheduled: isScheduled,
         scheduledDateTime: scheduledDateTime,
+        duration: isScheduled ? timeBlock.duration : null,
         scheduledDateFormatted: isScheduled ? formatScheduledDateTime(scheduledDateTime) : null,
         color: color,
         objectiveIndex: objectiveIndex,

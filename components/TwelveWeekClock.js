@@ -293,12 +293,20 @@ function TwelveWeekClock({
               </g>
             );
           })}
-          {/* Hand (bottom layer) */}
-          <line x1={cx} y1={cy} x2={handEnd.x} y2={handEnd.y} stroke={handColor} strokeWidth={strokeWidth} opacity={0.7} />
-          <polygon points={handArrowPts} fill={handColor} opacity={0.7} />
+          {/* Hand (bottom layer) - styled like Today Clock */}
+          <line 
+            x1={cx} 
+            y1={cy} 
+            x2={handEnd.x} 
+            y2={handEnd.y} 
+            stroke={handColor} 
+            strokeWidth={Math.max(3, Math.round(4 * scaleFactor))} 
+            strokeLinecap="round"
+            opacity={0.7} 
+          />
 
           {/* Center pivot */}
-          <circle cx={cx} cy={cy} r={Math.max(2, Math.round(4 * scaleFactor))} fill={ticksAndText} />
+          <circle cx={cx} cy={cy} r={Math.max(4, Math.round(6 * scaleFactor))} fill={handColor} opacity={0.7} />
 
           {/* Quarter label at top */}
           <text x={cx} y={cy - Math.round(16 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fontWeight={700} fill={ticksAndText} dominantBaseline="auto">

@@ -29,12 +29,26 @@
 }
 
 .componentContent {
-  flex: 1;
   padding: 1rem;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Responsive padding adjustments for larger clocks */
+@media (min-width: 1025px) {
+  .componentContent {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .componentContent {
+    padding: 0.75rem;
+  }
 }
 
 .todayWidget {

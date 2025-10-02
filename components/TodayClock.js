@@ -1,17 +1,29 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import styles from './TodayClock.module.css';
 
 export default function TodayClock({ todoTasks, size = 200 }) {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    // Cleanup timer on component unmount
+    return () => clearInterval(timer);
+  }, []);
+  
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  const currentSecond = currentTime.getSeconds();
   const isAM = currentHour < 12;
   
   // Get today's scheduled tasks
   const todayTasks = useMemo(() => {
-    const today = new Date();
+    const today = new Date(currentTime);
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -21,28 +33,47 @@ export default function TodayClock({ todoTasks, size = 200 }) {
       const taskDate = new Date(task.scheduledDateTime);
       return taskDate >= today && taskDate < tomorrow;
     });
-  }, [todoTasks]);
+  }, [todoTasks, currentTime]);
 
   // Calculate hour hand position
   const hourAngle = ((currentHour % 12) + currentMinute / 60) * 30 - 90; // -90 to start from 12 o'clock
+  
+  // Calculate minute hand position
+  const minuteAngle = currentMinute * 6 - 90; // 6 degrees per minute, -90 to start from 12 o'clock
+  
+  // Calculate second hand position
+  const secondAngle = currentSecond * 6 - 90; // 6 degrees per second, -90 to start from 12 o'clock
 
-  // Generate task sectors
-  const taskSectors = todayTasks.map(task => {
-    const taskTime = new Date(task.scheduledDateTime);
-    const taskHour = taskTime.getHours();
-    const taskMinute = taskTime.getMinutes();
-    
-    // Convert to angle (12 o'clock = 0°, 3 o'clock = 90°, etc.)
-    const startAngle = ((taskHour % 12) + taskMinute / 60) * 30 - 90;
-    const endAngle = startAngle + 15; // 30-minute sector (15 degrees)
-    
-    return {
-      ...task,
-      startAngle,
-      endAngle,
-      hour: taskHour % 12 || 12
-    };
-  });
+  // Generate task sectors - only show tasks for the current AM/PM period
+  const taskSectors = todayTasks
+    .filter(task => {
+      const taskTime = new Date(task.scheduledDateTime);
+      const taskHour = taskTime.getHours();
+      const taskIsAM = taskHour < 12;
+      
+      // Only show tasks that match the current AM/PM period
+      return taskIsAM === isAM;
+    })
+    .map(task => {
+      const taskTime = new Date(task.scheduledDateTime);
+      const taskHour = taskTime.getHours();
+      const taskMinute = taskTime.getMinutes();
+      
+      // Convert to angle (12 o'clock = 0°, 3 o'clock = 90°, etc.)
+      const startAngle = ((taskHour % 12) + taskMinute / 60) * 30 - 90;
+      
+      // Calculate end angle based on actual task duration
+      const durationMinutes = task.duration || 30; // Default to 30 minutes if no duration
+      const durationDegrees = (durationMinutes / 60) * 30; // Convert minutes to degrees (30 degrees per hour)
+      const endAngle = startAngle + durationDegrees;
+      
+      return {
+        ...task,
+        startAngle,
+        endAngle,
+        hour: taskHour % 12 || 12
+      };
+    });
 
   // Create SVG path for a sector
   const createSectorPath = (startAngle, endAngle, innerRadius, outerRadius) => {
@@ -75,16 +106,100 @@ export default function TodayClock({ todoTasks, size = 200 }) {
           cx={center}
           cy={center}
           r={radius}
-          fill="#f7fbff"
-          stroke="#e5e5e5"
+          fill="var(--surface)"
+          stroke="var(--border)"
           strokeWidth="2"
         />
         
-        {/* Hour markers */}
+        {/* AM/PM background sections */}
+        <defs>
+          <clipPath id="leftHalf">
+            <rect x={center - radius} y={center - radius} width={radius} height={radius * 2} />
+          </clipPath>
+          <clipPath id="rightHalf">
+            <rect x={center} y={center - radius} width={radius} height={radius * 2} />
+          </clipPath>
+        </defs>
+        
+        {/* Sun side (lighter background) and Moon side (darker background) */}
+        {isAM ? (
+          <>
+            {/* Sun side - left half */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius - 2}
+              fill="var(--brand-50)"
+              clipPath="url(#leftHalf)"
+            />
+            {/* Moon side - right half */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius - 2}
+              fill="var(--brand-200)"
+              clipPath="url(#rightHalf)"
+            />
+          </>
+        ) : (
+          <>
+            {/* Moon side - left half */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius - 2}
+              fill="var(--brand-200)"
+              clipPath="url(#leftHalf)"
+            />
+            {/* Sun side - right half */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius - 2}
+              fill="var(--brand-50)"
+              clipPath="url(#rightHalf)"
+            />
+          </>
+        )}
+        
+        {/* Dividing line (12 to 6) */}
+        <line
+          x1={center}
+          y1={center - radius + 2}
+          x2={center}
+          y2={center + radius - 2}
+          stroke="#d0d0d0"
+          strokeWidth="1"
+          strokeDasharray="2,2"
+        />
+        
+        {/* Hour marker lines */}
         {hourNumbers.map((hour, index) => {
           const angle = (index * 30 - 90) * (Math.PI / 180);
-          const x = center + Math.cos(angle) * (radius - 25);
-          const y = center + Math.sin(angle) * (radius - 25);
+          const outerX = center + Math.cos(angle) * (radius - 2);
+          const outerY = center + Math.sin(angle) * (radius - 2);
+          const innerX = center + Math.cos(angle) * (radius - 8.5);
+          const innerY = center + Math.sin(angle) * (radius - 8.5);
+          
+          return (
+            <line
+              key={`line-${hour}`}
+              x1={outerX}
+              y1={outerY}
+              x2={innerX}
+              y2={innerY}
+              stroke="#999"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          );
+        })}
+        
+        {/* Hour numbers */}
+        {hourNumbers.map((hour, index) => {
+          const angle = (index * 30 - 90) * (Math.PI / 180);
+          const x = center + Math.cos(angle) * (radius - 16);
+          const y = center + Math.sin(angle) * (radius - 16);
           
           return (
             <text
@@ -127,7 +242,36 @@ export default function TodayClock({ todoTasks, size = 200 }) {
             strokeWidth="4"
             strokeLinecap="round"
           />
-          {/* Center dot */}
+        </g>
+        
+        {/* Minute hand */}
+        <g transform={`translate(${center}, ${center})`}>
+          <line
+            x1="0"
+            y1="0"
+            x2={Math.cos((minuteAngle * Math.PI) / 180) * (radius - 30)}
+            y2={Math.sin((minuteAngle * Math.PI) / 180) * (radius - 30)}
+            stroke="#666"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </g>
+        
+        {/* Second hand */}
+        <g transform={`translate(${center}, ${center})`}>
+          <line
+            x1="0"
+            y1="0"
+            x2={Math.cos((secondAngle * Math.PI) / 180) * (radius - 20)}
+            y2={Math.sin((secondAngle * Math.PI) / 180) * (radius - 20)}
+            stroke="#dc2626"
+            strokeWidth="1"
+            strokeLinecap="round"
+          />
+        </g>
+        
+        {/* Center dot */}
+        <g transform={`translate(${center}, ${center})`}>
           <circle cx="0" cy="0" r="6" fill="#333" />
         </g>
         
@@ -136,21 +280,21 @@ export default function TodayClock({ todoTasks, size = 200 }) {
           <>
             {/* Left half: 6am to 12pm (Sun) */}
             <text
-              x={center - radius + 35}
-              y={center + 5}
+              x={center - 0.75 * radius + 26.25}
+              y={center}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="20"
+              fontSize="40"
             >
               ☀️
             </text>
             {/* Right half: 12am to 6am (Moon) */}
             <text
-              x={center + radius - 35}
-              y={center + 5}
+              x={center + 0.75 * radius - 26.25}
+              y={center}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="20"
+              fontSize="40"
             >
               🌙
             </text>
@@ -159,48 +303,27 @@ export default function TodayClock({ todoTasks, size = 200 }) {
           <>
             {/* Left half: 6pm to 12am (Moon) */}
             <text
-              x={center - radius + 35}
-              y={center + 5}
+              x={center - 0.75 * radius + 26.25}
+              y={center}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="20"
+              fontSize="40"
             >
               🌙
             </text>
             {/* Right half: 12pm to 6pm (Sun) */}
             <text
-              x={center + radius - 35}
-              y={center + 5}
+              x={center + 0.75 * radius - 26.25}
+              y={center}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="20"
+              fontSize="40"
             >
               ☀️
             </text>
           </>
         )}
       </svg>
-      
-      {/* Task legend */}
-      {todayTasks.length > 0 && (
-        <div className={styles.taskLegend}>
-          {todayTasks.map(task => (
-            <div key={task.id} className={styles.legendItem}>
-              <div 
-                className={styles.legendColor} 
-                style={{ backgroundColor: task.color }}
-              />
-              <span className={styles.legendText}>
-                {new Date(task.scheduledDateTime).toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit',
-                  hour12: true 
-                })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

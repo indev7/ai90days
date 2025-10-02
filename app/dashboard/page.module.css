@@ -309,7 +309,6 @@
   flex-direction: column;
   color: var(--text-secondary);
   font-size: var(--text-sm);
-  overflow-y: auto;
   min-height: 0;
 }
 
