@@ -161,7 +161,8 @@ export default function OKRTModal({
       }
     }
     
-    if (formData.type === 'T' && formData.due_date) {
+    // Validate due date for all types (O, K, T)
+    if (formData.due_date) {
       const dueDate = new Date(formData.due_date);
       if (dueDate < new Date()) {
         newErrors.due_date = 'Due date cannot be in the past';
@@ -187,7 +188,7 @@ export default function OKRTModal({
         delete saveData.kr_baseline_number;
         delete saveData.weight;
         delete saveData.task_status;
-        delete saveData.due_date;
+        // Keep due_date for Objectives (removed delete saveData.due_date)
       } else if (formData.type === 'K') {
         delete saveData.objective_kind;
         delete saveData.task_status;

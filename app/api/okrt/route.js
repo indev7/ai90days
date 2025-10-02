@@ -105,12 +105,13 @@ export async function POST(request) {
       cycle_qtr,
       visibility,
       objective_kind: type === 'O' ? objective_kind : null,
-      kr_target_number: type === 'K' ? kr_target_number : null,
+      // Normalize numeric KR fields: convert empty string to null so Postgres doesn't reject it
+      kr_target_number: type === 'K' ? (kr_target_number && kr_target_number !== '' ? kr_target_number : null) : null,
       kr_unit: type === 'K' ? kr_unit : null,
-      kr_baseline_number: type === 'K' ? kr_baseline_number : null,
+      kr_baseline_number: type === 'K' ? (kr_baseline_number && kr_baseline_number !== '' ? kr_baseline_number : null) : null,
       weight: ['K', 'T'].includes(type) ? weight : null,
       task_status: type === 'T' ? (task_status || 'todo') : null,
-      due_date: (type === 'T' || type === 'K') && due_date ? due_date : null,
+      due_date: due_date && due_date !== '' ? due_date : null, // Allow due dates for all types, convert empty string to null
       recurrence_json: type === 'T' ? recurrence_json : null,
       blocked_by: type === 'T' ? blocked_by : null
     };

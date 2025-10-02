@@ -15,6 +15,20 @@ import CommentsSection from '../../components/CommentsSection';
 import RewardsDisplay from '../../components/RewardsDisplay';
 
 /* =========================
+   Utility Functions
+   ========================= */
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return 'No due date';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
+
+/* =========================
    Utility Components
    ========================= */
 
@@ -131,6 +145,11 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
               <div className={styles.chipGroup} title={`Visibility: ${objective.visibility === 'shared' ? 'Shared' : 'Private'}`}>
                 <Chip text={objective.visibility === 'shared' ? 'Shared' : 'Private'} variant={objective.visibility === 'shared' ? 'shared' : 'private'} />
               </div>
+              {objective.due_date && (
+                <div className={styles.chipGroup} title={`Due Date: ${formatDate(objective.due_date)}`}>
+                  <Chip text={`Due: ${formatDate(objective.due_date)}`} variant="due" />
+                </div>
+              )}
               {objective.owner_name && (
                 <div className={styles.chipGroup} title={`Owner: ${objective.owner_name}`}>
                   <Chip text={objective.owner_name} variant="owner" />
@@ -220,16 +239,6 @@ function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, 
       setExpanded(forceExpanded);
     }
   }, [forceExpanded]);
-  
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'No due date';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    } catch {
-      return dateStr;
-    }
-  };
 
   const handleCardClick = (e) => {
     // Only open modal if not clicking on expand button or KR title
@@ -764,12 +773,33 @@ export default function OKRTPage() {
 
   if (objectives.length === 0) {
     return (
-      <div className={styles.empty}>
-        <div>
-          <div className={styles.emptyTitle}>No objectives found</div>
-          <div className={styles.emptyText}>Create your first objective to get started.</div>
+      <>
+        <div className={styles.empty}>
+          <div>
+            <div className={styles.emptyTitle}>No objectives found</div>
+            <div className={styles.emptyText}>Create your first objective to get started.</div>
+          </div>
         </div>
-      </div>
+
+        {/* OKRT Modal - moved here so it renders even when no objectives */}
+        <OKRTModal
+          isOpen={modalState.isOpen}
+          onClose={handleCloseModal}
+          onSave={handleSaveOkrt}
+          onDelete={modalState.mode === 'edit' ? handleDeleteOkrt : null}
+          okrt={modalState.okrt}
+          parentOkrt={modalState.parentOkrt}
+          mode={modalState.mode}
+        />
+
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={shareModalState.isOpen}
+          onClose={handleCloseShareModal}
+          okrtId={shareModalState.objective?.id}
+          currentVisibility={shareModalState.objective?.visibility}
+        />
+      </>
     );
   }
 

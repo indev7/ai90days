@@ -70,7 +70,6 @@ export async function PUT(request, { params }) {
       delete updateData.kr_baseline_number;
       delete updateData.weight;
       delete updateData.task_status;
-      delete updateData.due_date;
       delete updateData.recurrence_json;
       delete updateData.blocked_by;
     } else if (type === 'K') {
@@ -99,6 +98,22 @@ export async function PUT(request, { params }) {
       weight: updateData.weight || 'none'
     });
     console.log('==================');
+
+    // Normalize due_date the same way the POST/create route does: convert empty string to null
+    if (Object.prototype.hasOwnProperty.call(updateData, 'due_date')) {
+      updateData.due_date = updateData.due_date && updateData.due_date !== '' ? updateData.due_date : null;
+    }
+
+    // Normalize numeric KR fields for Postgres: convert empty string to null if provided
+    if (Object.prototype.hasOwnProperty.call(updateData, 'kr_target_number')) {
+      updateData.kr_target_number = updateData.kr_target_number && updateData.kr_target_number !== '' ? updateData.kr_target_number : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'kr_baseline_number')) {
+      updateData.kr_baseline_number = updateData.kr_baseline_number && updateData.kr_baseline_number !== '' ? updateData.kr_baseline_number : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'weight')) {
+      updateData.weight = updateData.weight && updateData.weight !== '' ? updateData.weight : null;
+    }
 
     const updatedOKRT = await updateOKRT(id, updateData);
     

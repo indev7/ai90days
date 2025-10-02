@@ -172,24 +172,28 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger for okrt table
+DROP TRIGGER IF EXISTS okrt_updated_at ON okrt;
 CREATE TRIGGER okrt_updated_at 
     BEFORE UPDATE ON okrt
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for users table
+DROP TRIGGER IF EXISTS users_updated_at ON users;
 CREATE TRIGGER users_updated_at 
     BEFORE UPDATE ON users
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for groups table
+DROP TRIGGER IF EXISTS groups_updated_at ON groups;
 CREATE TRIGGER groups_updated_at 
     BEFORE UPDATE ON groups
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for comments table
+DROP TRIGGER IF EXISTS comments_updated_at ON comments;
 CREATE TRIGGER comments_updated_at 
     BEFORE UPDATE ON comments
     FOR EACH ROW 
