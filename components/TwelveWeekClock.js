@@ -1,5 +1,6 @@
 import React from "react";
 import { GiGolfFlag } from "react-icons/gi";
+import { getCurrentQuarterName } from '@/lib/clockUtils';
 import styles from './TwelveWeekClock.module.css';
 
 /**
@@ -58,6 +59,8 @@ function TwelveWeekClock({
   const rawDayIndex = Math.floor(dayIndex);
   const displayDayNumber = rawDayIndex + 1; // Allow day numbers beyond 84
   const handPosition = displayDayNumber % TOTAL_DAYS; // Use day number for proper hand position
+  const quarterName = getCurrentQuarterName(); // e.g., "Q1 2025"
+  const quarterLabel = quarterName.replace(/^(Q\d+)\s+(\d+)$/, '$2-$1'); // Convert to "2025-Q1" format
   const dayLabel = `${titlePrefix} ${displayDayNumber}`;
 
   // Calculate date range for display
@@ -178,6 +181,37 @@ function TwelveWeekClock({
         
         <div className={styles.clockSvg}>
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="12 week clock">
+          {/* SVG Definitions for Jelly Bean Effects */}
+          <defs>
+            {/* Gradient for jelly bean effect */}
+            <linearGradient id="jellyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+              <stop offset="30%" stopColor="#ffffff" stopOpacity="0.2" />
+              <stop offset="70%" stopColor="#000000" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.3" />
+            </linearGradient>
+            
+            {/* Drop shadow filter */}
+            <filter id="jellyShadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+              <feOffset dx="1" dy="2" result="offset" />
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.3" />
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            
+            {/* Inner glow filter */}
+            <filter id="jellyGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="glow" />
+              <feColorMatrix in="glow" values="1 1 1 0 0  1 1 1 0 0  1 1 1 0 0  0 0 0 0.6 0" />
+              <feComposite in="SourceGraphic" in2="glow" operator="over" />
+            </filter>
+          </defs>
+          
           {/* Face */}
           <circle cx={cx} cy={cy} r={outerR} fill={face} />
 
@@ -196,7 +230,37 @@ function TwelveWeekClock({
               <g key={`ring-${i}`}>
                 <circle cx={cx} cy={cy} r={r} stroke={tracksBg} strokeWidth={trackWidth} fill="none" opacity={0.6} />
                 {prog > 0 && (
-                  <path d={arcPath(cx, cy, r, 0, endDeg || 0.01)} stroke={color} strokeWidth={trackWidth} fill="none" strokeLinecap="round" opacity={0.8} />
+                  <g className={`jelly-progress-${i}`}>
+                    {/* Main progress arc with jelly effect */}
+                    <path 
+                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
+                      stroke={color} 
+                      strokeWidth={trackWidth} 
+                      fill="none" 
+                      strokeLinecap="round" 
+                      opacity={0.85}
+                      filter="url(#jellyShadow)"
+                    />
+                    {/* Highlight overlay for jelly effect */}
+                    <path 
+                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
+                      stroke="url(#jellyGradient)" 
+                      strokeWidth={trackWidth * 0.8} 
+                      fill="none" 
+                      strokeLinecap="round" 
+                      opacity={0.6}
+                    />
+                    {/* Inner glow */}
+                    <path 
+                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
+                      stroke={color} 
+                      strokeWidth={trackWidth * 0.4} 
+                      fill="none" 
+                      strokeLinecap="round" 
+                      opacity={0.8}
+                      filter="url(#jellyGlow)"
+                    />
+                  </g>
                 )}
                 {(obj?.krs ?? []).map((kr) => placeKR(r, clamp(kr.dueDay, 0, TOTAL_DAYS - 1), color))}
               </g>
@@ -229,25 +293,30 @@ function TwelveWeekClock({
               </g>
             );
           })}
-          {/* Hand (bottom layer) */}
-          <line x1={cx} y1={cy} x2={handEnd.x} y2={handEnd.y} stroke={handColor} strokeWidth={strokeWidth} opacity={0.7} />
-          <polygon points={handArrowPts} fill={handColor} opacity={0.7} />
+          {/* Hand (bottom layer) - styled like Today Clock */}
+          <line 
+            x1={cx} 
+            y1={cy} 
+            x2={handEnd.x} 
+            y2={handEnd.y} 
+            stroke={handColor} 
+            strokeWidth={Math.max(3, Math.round(4 * scaleFactor))} 
+            strokeLinecap="round"
+            opacity={0.7} 
+          />
 
           {/* Center pivot */}
-          <circle cx={cx} cy={cy} r={Math.max(2, Math.round(4 * scaleFactor))} fill={ticksAndText} />
+          <circle cx={cx} cy={cy} r={Math.max(4, Math.round(6 * scaleFactor))} fill={handColor} opacity={0.7} />
 
-          {/* Top label inside face */}
+          {/* Quarter label at top */}
           <text x={cx} y={cy - Math.round(16 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fontWeight={700} fill={ticksAndText} dominantBaseline="auto">
-            {dayLabel}
+            {quarterLabel}
           </text>
 
-          {/* Date under pivot, italic & lighter, with line break after comma */}
-          {dateLabel && (
-            <text x={cx} y={cy + Math.round(18 * scaleFactor)} textAnchor="middle" fontSize={dateLabelFontSize} fill={ticksAndText} opacity={0.7} fontStyle="italic">
-              <tspan>{dateLabel.split(',')[0].trim()},</tspan>
-              <tspan x={cx} dy={Math.round(14 * scaleFactor)}>{(dateLabel.split(',')[1] || '').trim()}</tspan>
-            </text>
-          )}
+          {/* Day label under pivot */}
+          <text x={cx} y={cy + Math.round(28 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fill={ticksAndText} opacity={0.8} fontWeight={600}>
+            {dayLabel}
+          </text>
           {/* Circumference border */}
           <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={ticksAndText} strokeWidth={strokeWidth} />
         </svg>

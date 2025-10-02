@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import { LuLayoutDashboard } from "react-icons/lu";
+import { GoClock } from "react-icons/go";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
 import { SiSlideshare } from "react-icons/si";
@@ -13,6 +14,7 @@ import { RiOrganizationChart } from "react-icons/ri";
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
+import { RiCalendarScheduleLine } from "react-icons/ri";
 
 import styles from './LeftMenu.module.css';
 
@@ -26,6 +28,7 @@ const topMenuItems = [
       { href: '/new', label: 'Add OKR', icon: 'new', isAction: true }
     ] // Will be populated with objectives dynamically
   },
+  { href: '/calendar', label: 'Calendar', icon: 'calendar', disabled: false },
   { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
   {
     href: '/groups',
@@ -46,8 +49,9 @@ const bottomMenuItems = [
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
   const iconSize = isCollapsed ? 24 : 20;
   const icons = {
-    dashboard: <LuLayoutDashboard size={iconSize} />,
+    dashboard: <GoClock  size={iconSize} />,
     goals: <MdOutlineSelfImprovement size={iconSize} />,
+    calendar: <RiCalendarScheduleLine size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
     new: <IoAdd size={iconSize} />,

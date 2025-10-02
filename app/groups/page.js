@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ImTree } from 'react-icons/im';
-import { ChevronDown, ChevronUp, Plus, Users, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Users } from 'lucide-react';
 import { GrTrophy } from 'react-icons/gr';
 import { RiAdminLine } from 'react-icons/ri';
 import { FaRegUser } from 'react-icons/fa';
 import { LuUsers } from 'react-icons/lu';
 import { RiDeleteBin6Line } from 'react-icons/ri';
 import AddGroupModal from '../../components/AddGroupModal';
+import ObjectiveHierarchy from '../../components/ObjectiveHierarchy';
 import { createTreeLayout } from '../../lib/tidyTree';
 import Avatar from 'boring-avatars';
 import styles from './page.module.css';
@@ -40,6 +41,7 @@ function GroupNode({
   position,
   overlay = false
 }) {
+  const nodeRef = useRef(null);
   const nodeStyle = position ? {
     position: 'absolute',
     left: `${position.x}px`,
@@ -47,17 +49,32 @@ function GroupNode({
     width: `${position.width}px`
   } : {};
 
+  // Handle click outside to close expanded card
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (expanded && nodeRef.current && !nodeRef.current.contains(event.target)) {
+        onToggle();
+      }
+    };
+
+    if (expanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [expanded, onToggle]);
+
   // Get member count from group details
   const memberCount = group.memberCount || 0;
 
   return (
     <div
+      ref={nodeRef}
       className={`${styles.groupNode} ${overlay && expanded ? styles.overlayExpanded : ''}`}
       style={nodeStyle}
     >
       <div
-        className={`${styles.groupCard} ${selected ? styles.selected : ''}`}
-        onClick={() => onSelect()}
+        className={`${styles.groupCard} ${expanded ? styles.selected : ''}`}
+        onClick={() => onToggle()}
       >
         <div className={styles.thumbnail}>
           {group.thumbnail_url ? (
@@ -88,16 +105,6 @@ function GroupNode({
             </span>
           </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          className={styles.chevronButton}
-          aria-label={expanded ? "Collapse" : "Expand"}
-        >
-          <ChevronRight className={styles.chevronIcon} />
-        </button>
       </div>
       {expanded && children && (
         <div className={overlay ? styles.overlayContent : styles.expandedContent}>
@@ -248,6 +255,7 @@ export default function GroupsPage() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
+  const [viewType, setViewType] = useState('groups'); // 'groups' or 'objectives'
 
   useEffect(() => {
     fetchGroups();
@@ -502,7 +510,28 @@ export default function GroupsPage() {
       <div className={styles.layout}>
         {/* Main content */}
         <main className={styles.main}>
-          {groups.length === 0 ? (
+          {/* Toggle Switch in Canvas */}
+          <div className={styles.canvasHeader}>
+            <div className={styles.viewToggle}>
+              <div className={styles.toggleSwitch}>
+                <button
+                  className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
+                  onClick={() => setViewType('groups')}
+                >
+                  Groups
+                </button>
+                <button
+                  className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
+                  onClick={() => setViewType('objectives')}
+                >
+                  Objectives
+                </button>
+              </div>
+            </div>
+          </div>
+          {viewType === 'objectives' ? (
+            <ObjectiveHierarchy />
+          ) : groups.length === 0 ? (
             <div className={styles.emptyState}>
               <ImTree className={styles.emptyIcon} />
               <h3>No Groups Yet</h3>
@@ -530,7 +559,7 @@ export default function GroupsPage() {
               ))}
             </div>
           )}
-        </main>
+          </main>
       </div>
 
       {/* Add Group Modal */}
