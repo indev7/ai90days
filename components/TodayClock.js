@@ -19,8 +19,46 @@ export default function TodayClock({ todoTasks, size = 200 }) {
   const currentHour = currentTime.getHours();
   const currentMinute = currentTime.getMinutes();
   const currentSecond = currentTime.getSeconds();
-  const isAM = currentHour < 12;
   
+  // Determine current 6-hour period and corresponding 12-hour task range
+  const getCurrentPeriod = () => {
+    if (currentHour >= 0 && currentHour < 6) {
+      return {
+        period: 1,
+        taskRangeStart: 0,  // 12AM
+        taskRangeEnd: 12,   // 12PM
+        sunLeft: true,
+        moonRight: true
+      };
+    } else if (currentHour >= 6 && currentHour < 12) {
+      return {
+        period: 2,
+        taskRangeStart: 6,  // 6AM
+        taskRangeEnd: 18,   // 6PM
+        sunLeft: true,
+        sunRight: true
+      };
+    } else if (currentHour >= 12 && currentHour < 18) {
+      return {
+        period: 3,
+        taskRangeStart: 12, // 12PM
+        taskRangeEnd: 24,   // 12AM (next day)
+        moonLeft: true,
+        sunRight: true
+      };
+    } else {
+      return {
+        period: 4,
+        taskRangeStart: 18, // 6PM
+        taskRangeEnd: 30,   // 6AM (next day, represented as 30 for calculation)
+        moonLeft: true,
+        moonRight: true
+      };
+    }
+  };
+  
+  const currentPeriod = getCurrentPeriod();
+
   // Get today's scheduled tasks
   const todayTasks = useMemo(() => {
     const today = new Date(currentTime);
@@ -44,34 +82,48 @@ export default function TodayClock({ todoTasks, size = 200 }) {
   // Calculate second hand position
   const secondAngle = currentSecond * 6 - 90; // 6 degrees per second, -90 to start from 12 o'clock
 
-  // Generate task sectors - only show tasks for the current AM/PM period
+  // Generate task sectors - show tasks for the current 12-hour period
   const taskSectors = todayTasks
     .filter(task => {
       const taskTime = new Date(task.scheduledDateTime);
       const taskHour = taskTime.getHours();
-      const taskIsAM = taskHour < 12;
       
-      // Only show tasks that match the current AM/PM period
-      return taskIsAM === isAM;
+      // Filter tasks based on current period's 12-hour range
+      if (currentPeriod.period === 1) {
+        // 12AM-6AM period shows 12AM-12PM tasks
+        return taskHour >= 0 && taskHour < 12;
+      } else if (currentPeriod.period === 2) {
+        // 6AM-12PM period shows 6AM-6PM tasks  
+        return taskHour >= 6 && taskHour < 18;
+      } else if (currentPeriod.period === 3) {
+        // 12PM-6PM period shows 12PM-12AM tasks
+        return taskHour >= 12 && taskHour < 24;
+      } else {
+        // 6PM-12AM period shows 6PM-6AM tasks (crosses midnight)
+        return taskHour >= 18 || taskHour < 6;
+      }
     })
     .map(task => {
       const taskTime = new Date(task.scheduledDateTime);
       const taskHour = taskTime.getHours();
       const taskMinute = taskTime.getMinutes();
       
-      // Convert to angle (12 o'clock = 0°, 3 o'clock = 90°, etc.)
-      const startAngle = ((taskHour % 12) + taskMinute / 60) * 30 - 90;
+      // Map actual hour to clock display hour - use standard 12-hour format
+      let displayHour = taskHour % 12;
+      if (displayHour === 0) displayHour = 12;
+      
+      const startAngle = ((displayHour % 12) + taskMinute / 60) * 30 - 90;
       
       // Calculate end angle based on actual task duration
-      const durationMinutes = task.duration || 30; // Default to 30 minutes if no duration
-      const durationDegrees = (durationMinutes / 60) * 30; // Convert minutes to degrees (30 degrees per hour)
+      const durationMinutes = task.duration || 30;
+      const durationDegrees = (durationMinutes / 60) * 30;
       const endAngle = startAngle + durationDegrees;
       
       return {
         ...task,
         startAngle,
         endAngle,
-        hour: taskHour % 12 || 12
+        hour: displayHour
       };
     });
 
@@ -122,45 +174,24 @@ export default function TodayClock({ todoTasks, size = 200 }) {
         </defs>
         
         {/* Sun side (lighter background) and Moon side (darker background) */}
-        {isAM ? (
-          <>
-            {/* Sun side - left half */}
-            <circle
-              cx={center}
-              cy={center}
-              r={radius - 2}
-              fill="var(--brand-50)"
-              clipPath="url(#leftHalf)"
-            />
-            {/* Moon side - right half */}
-            <circle
-              cx={center}
-              cy={center}
-              r={radius - 2}
-              fill="var(--brand-200)"
-              clipPath="url(#rightHalf)"
-            />
-          </>
-        ) : (
-          <>
-            {/* Moon side - left half */}
-            <circle
-              cx={center}
-              cy={center}
-              r={radius - 2}
-              fill="var(--brand-200)"
-              clipPath="url(#leftHalf)"
-            />
-            {/* Sun side - right half */}
-            <circle
-              cx={center}
-              cy={center}
-              r={radius - 2}
-              fill="var(--brand-50)"
-              clipPath="url(#rightHalf)"
-            />
-          </>
-        )}
+        <>
+          {/* Left half */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius - 2}
+            fill={currentPeriod.sunLeft ? "var(--brand-50)" : "var(--brand-200)"}
+            clipPath="url(#leftHalf)"
+          />
+          {/* Right half */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius - 2}
+            fill={currentPeriod.sunRight ? "var(--brand-50)" : "var(--brand-200)"}
+            clipPath="url(#rightHalf)"
+          />
+        </>
         
         {/* Dividing line (12 to 6) */}
         <line
@@ -276,54 +307,30 @@ export default function TodayClock({ todoTasks, size = 200 }) {
         </g>
         
         {/* AM/PM indicators with emojis */}
-        {isAM ? (
-          <>
-            {/* Left half: 6am to 12pm (Sun) */}
-            <text
-              x={center - 0.75 * radius + 26.25}
-              y={center}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="40"
-            >
-              ☀️
-            </text>
-            {/* Right half: 12am to 6am (Moon) */}
-            <text
-              x={center + 0.75 * radius - 26.25}
-              y={center}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="40"
-            >
-              🌙
-            </text>
-          </>
-        ) : (
-          <>
-            {/* Left half: 6pm to 12am (Moon) */}
-            <text
-              x={center - 0.75 * radius + 26.25}
-              y={center}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="40"
-            >
-              🌙
-            </text>
-            {/* Right half: 12pm to 6pm (Sun) */}
-            <text
-              x={center + 0.75 * radius - 26.25}
-              y={center}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="40"
-            >
-              ☀️
-            </text>
-          </>
-        )}
+        <>
+          {/* Left half emoji */}
+          <text
+            x={center - 0.75 * radius + 26.25}
+            y={center}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="40"
+          >
+            {currentPeriod.sunLeft ? '☀️' : '🌙'}
+          </text>
+          {/* Right half emoji */}
+          <text
+            x={center + 0.75 * radius - 26.25}
+            y={center}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="40"
+          >
+            {currentPeriod.sunRight ? '☀️' : '🌙'}
+          </text>
+        </>
       </svg>
     </div>
   );
 }
+            

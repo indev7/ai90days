@@ -1,0 +1,18 @@
+Time range displayed on clock face, light, dark halves and emoji transition logic:
+1. 12AM<current time<=6AM
+    clock face must display tasks scheduled in time range 12AM to 12PM, sun on the left moon on the right
+2. 6AM<current time<=12PM
+    clock face must display tasks scheduled in time range 6AM to 6PM, sun on the left sun on the right
+3. 12PM<current time<=6PM
+    clock face must display tasks scheduled in time range 12PM to 12AM, moon on the left sun on the right
+4. 6PM<current time<=12AM
+    clock face must display tasks scheduled in time range 6PM to 6AM, moon on the left moon on the right
+
+Always moon side in dark background color and sun side in light background color
+
+Additional clarifications: 
+1. The background transition must be revised every 6 hours (12AM, 6AM, 12PM, 6PM). 
+2. At any given time, clock face must show a time period of 12 hours and the tasks scheduled during that period.
+3. Background colors change based on emoji placement:
+   - Left side: light background when sun, dark background when moon
+   - Right side: light background when sun, dark background when moon
