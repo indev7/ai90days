@@ -45,7 +45,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { task_id, start_time, duration } = body;
+    const { task_id, start_time, duration, objective_id } = body;
 
     // Validate required fields
     if (!task_id || !start_time || !duration) {
@@ -68,7 +68,8 @@ export async function POST(request) {
       task_id,
       user_id: session.sub,
       start_time,
-      duration
+      duration,
+      objective_id // Optional field for tasks that belong to objectives
     };
 
     const timeBlock = await createTimeBlock(timeBlockData);

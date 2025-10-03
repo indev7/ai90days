@@ -5,7 +5,7 @@ import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from "react-icons/gi";
 import { LiaGolfBallSolid } from "react-icons/lia";
 import styles from './page.module.css';
-import { createObjectiveColorMap, getThemeColorPalette } from '../../lib/clockUtils';
+import { createObjectiveColorMap, getThemeColorPalette, transformOKRTsToObjectives } from '../../lib/clockUtils';
 
 const DURATION_OPTIONS = [
   { value: 15, label: '15 min' },
@@ -73,6 +73,7 @@ export default function CalendarPage() {
   const [taskHierarchy, setTaskHierarchy] = useState([]);
   const [selectedTask, setSelectedTask] = useState('');
   const [selectedTaskTitle, setSelectedTaskTitle] = useState('');
+  const [selectedObjectiveId, setSelectedObjectiveId] = useState('');
   const [selectedDuration, setSelectedDuration] = useState(30);
   const [startHour, setStartHour] = useState(9); // Default to 9 AM
   const [startMinute, setStartMinute] = useState(0); // Default to 00 minutes
@@ -117,14 +118,100 @@ export default function CalendarPage() {
   useEffect(() => {
     const fetchTaskHierarchy = async () => {
       try {
-        const response = await fetch('/api/time-blocks/tasks');
+        // Use the same API as dashboard for consistency
+        const response = await fetch('/api/okrt');
         if (response.ok) {
           const data = await response.json();
-          const hierarchy = data.hierarchy || [];
+          const okrts = data.okrts || [];
+          
+          // Filter to current quarter first (same logic as dashboard)
+          const currentDate = new Date();
+          const currentYear = currentDate.getFullYear();
+          const currentMonth = currentDate.getMonth() + 1;
+          const currentQuarter = Math.ceil(currentMonth / 3);
+          const currentCycleQtr1 = `${currentYear}Q${currentQuarter}`;
+          const currentCycleQtr2 = `${currentYear}-Q${currentQuarter}`;
+          
+          console.log('Calendar filtering objectives for current quarter:', currentCycleQtr1, 'or', currentCycleQtr2);
+          
+          const currentQuarterObjectives = okrts.filter(okrt => 
+            okrt.type === 'O' && 
+            (okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2)
+          );
+          
+          const objectiveIds = currentQuarterObjectives.map(obj => obj.id);
+          console.log('Calendar current quarter objective IDs:', objectiveIds);
+          
+          // Include objectives and all their children (KRs and Tasks) - same as dashboard
+          const filteredOKRTs = okrts.filter(okrt => {
+            if (okrt.type === 'O') {
+              // Only include objectives from current quarter
+              return okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2;
+            } else {
+              // For KRs and Tasks, include if they belong to current quarter objectives
+              return objectiveIds.includes(okrt.parent_id) || 
+                     okrts.some(parent => 
+                       parent.id === okrt.parent_id && 
+                       objectiveIds.includes(parent.parent_id)
+                     );
+            }
+          });
+          
+          console.log('Calendar filtered OKRTs for current quarter:', filteredOKRTs.length, 'out of', okrts.length);
+          
+          // Transform filtered OKRTs to objectives (same as dashboard)
+          const transformedObjectives = transformOKRTsToObjectives(filteredOKRTs, getThemeColorPalette());
+          console.log('Calendar transformed objectives:', transformedObjectives.map((obj, index) => ({
+            id: obj.id,
+            title: obj.title,
+            created_at: obj.created_at,
+            index: index,
+            color: obj.color
+          })));
+          
+          const keyResults = filteredOKRTs.filter(okrt => okrt.type === 'K');
+          const tasks = filteredOKRTs.filter(okrt => 
+            okrt.type === 'T' && (okrt.task_status === 'todo' || okrt.task_status === 'in_progress')
+          );
+          
+          // Build hierarchy with same sorting as transformOKRTsToObjectives
+          const hierarchy = currentQuarterObjectives
+            .sort((a, b) => {
+              const dateA = new Date(a.created_at || 0);
+              const dateB = new Date(b.created_at || 0);
+              return dateA - dateB;
+            })
+            .map(objective => {
+              const objectiveKRs = keyResults.filter(kr => kr.parent_id === objective.id);
+              
+              return {
+                id: objective.id,
+                title: objective.title || objective.description || 'Untitled Objective',
+                type: 'objective',
+                created_at: objective.created_at,
+                keyResults: objectiveKRs.map(kr => {
+                  const krTasks = tasks.filter(task => task.parent_id === kr.id);
+                  
+                  return {
+                    id: kr.id,
+                    title: kr.title || kr.description || 'Untitled Key Result',
+                    type: 'keyResult',
+                    tasks: krTasks.map(task => ({
+                      id: task.id,
+                      title: task.title || task.description || 'Untitled Task',
+                      description: task.description,
+                      task_status: task.task_status,
+                      type: 'task'
+                    }))
+                  };
+                }).filter(kr => kr.tasks.length > 0)
+              };
+            }).filter(obj => obj.keyResults.length > 0);
+          
           setTaskHierarchy(hierarchy);
           
-          // Create objective color map
-          const colorMap = createObjectiveColorMap(hierarchy);
+          // Create objective color map using same logic as dashboard
+          const colorMap = createObjectiveColorMap(transformedObjectives);
           setObjectiveColorMap(colorMap);
         }
       } catch (error) {
@@ -195,7 +282,8 @@ export default function CalendarPage() {
         body: JSON.stringify({
           task_id: selectedTask,
           start_time: startTime.toISOString(),
-          duration: selectedDuration
+          duration: selectedDuration,
+          objective_id: selectedObjectiveId
         })
       });
 
@@ -227,15 +315,22 @@ export default function CalendarPage() {
 
   // Get color for a time block based on its objective
   const getTimeBlockColor = (block) => {
+    console.log('Getting color for time block:', block);
+    console.log('Available objective color map:', objectiveColorMap);
+    
     // First try to use the objective mapping
     if (block.objective_id && objectiveColorMap[block.objective_id]) {
-      return objectiveColorMap[block.objective_id].color;
+      const color = objectiveColorMap[block.objective_id].color;
+      console.log(`Using objective color ${color} for objective_id ${block.objective_id}`);
+      return color;
     }
     
     // Fallback: Use task_id to assign colors from the same palette used in 90Day Clock
     const colors = getThemeColorPalette();
     const colorIndex = (block.task_id || 0) % colors.length;
-    return colors[colorIndex];
+    const fallbackColor = colors[colorIndex];
+    console.log(`Using fallback color ${fallbackColor} for task_id ${block.task_id} (no objective_id: ${block.objective_id})`);
+    return fallbackColor;
   };
 
   const getTimeBlocksForSlot = (dayIndex, hour) => {
@@ -265,9 +360,10 @@ export default function CalendarPage() {
     return `${displayHour}:${minuteStr} ${period}`;
   };
 
-  const handleTaskSelect = (taskId, taskTitle) => {
+  const handleTaskSelect = (taskId, taskTitle, objectiveId) => {
     setSelectedTask(taskId);
     setSelectedTaskTitle(taskTitle);
+    setSelectedObjectiveId(objectiveId);
     setDropdownOpen(false);
   };
 
@@ -276,6 +372,7 @@ export default function CalendarPage() {
     setSelectedTimeSlot(null);
     setSelectedTask('');
     setSelectedTaskTitle('');
+    setSelectedObjectiveId('');
     setSelectedDuration(30);
     setStartHour(9);
     setStartMinute(0);
@@ -502,7 +599,7 @@ export default function CalendarPage() {
                                 className={`${styles.hierarchyItem} ${styles.task} ${
                                   selectedTask === task.id ? styles.selected : ''
                                 }`}
-                                onClick={() => handleTaskSelect(task.id, task.title)}
+                                onClick={() => handleTaskSelect(task.id, task.title, objective.id)}
                               >
                                 <LiaGolfBallSolid size={16} /> {task.title}
                                 <span className={styles.taskStatus}>

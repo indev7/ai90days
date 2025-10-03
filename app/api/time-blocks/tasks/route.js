@@ -13,8 +13,14 @@ export async function GET(request) {
     // Get all OKRTs for the user
     const allOKRTs = await getOKRTsByOwner(session.sub);
     
-    // Build hierarchical structure
-    const objectives = allOKRTs.filter(okrt => okrt.type === 'O');
+    // Build hierarchical structure - sort objectives by created_at for consistent color mapping
+    const objectives = allOKRTs
+      .filter(okrt => okrt.type === 'O')
+      .sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateA - dateB;
+      });
     const keyResults = allOKRTs.filter(okrt => okrt.type === 'K');
     const tasks = allOKRTs.filter(okrt => 
       okrt.type === 'T' && (okrt.task_status === 'todo' || okrt.task_status === 'in_progress')
@@ -28,6 +34,7 @@ export async function GET(request) {
         id: objective.id,
         title: objective.title || objective.description || 'Untitled Objective',
         type: 'objective',
+        created_at: objective.created_at,
         keyResults: objectiveKRs.map(kr => {
           const krTasks = tasks.filter(task => task.parent_id === kr.id);
           

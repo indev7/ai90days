@@ -124,6 +124,13 @@ export default function Dashboard() {
           // Transform filtered OKRTs to objectives format
           const colorPalette = getThemeColorPalette();
           const transformedObjectives = transformOKRTsToObjectives(filteredOKRTs, colorPalette);
+          console.log('Dashboard transformed objectives:', transformedObjectives.map((obj, index) => ({
+            id: obj.id,
+            title: obj.title,
+            created_at: obj.created_at,
+            index: index,
+            color: obj.color
+          })));
           setObjectives(transformedObjectives);
           
           // Extract tasks from filtered OKRTs for todo list
@@ -197,16 +204,31 @@ export default function Dashboard() {
       
       // Find the objective index for color mapping
       let objectiveIndex = 0;
-      if (parentObjective) {
-        const foundIndex = transformedObjectives.findIndex(obj => obj.title === (parentObjective.title || parentObjective.description));
+      let color = colorPalette[0]; // Default color
+      
+      // Check if task has time blocks with objective_id for color mapping
+      const taskTimeBlock = timeBlocks.find(tb => tb.task_id === task.id);
+      if (taskTimeBlock && taskTimeBlock.objective_id) {
+        // Use objective_id from time block directly
+        const foundObjective = transformedObjectives.find(obj => obj.id === taskTimeBlock.objective_id);
+        if (foundObjective) {
+          const foundIndex = transformedObjectives.indexOf(foundObjective);
+          objectiveIndex = foundIndex;
+          color = foundObjective.color;
+          console.log(`Using objective color from time block: ${task.id} -> objective ${taskTimeBlock.objective_id} -> index ${objectiveIndex} -> color ${color}`);
+        }
+      } else if (parentObjective) {
+        // Fallback to deriving from task hierarchy
+        const foundIndex = transformedObjectives.findIndex(obj => obj.id === parentObjective.id);
         if (foundIndex >= 0) {
           objectiveIndex = foundIndex;
+          color = transformedObjectives[foundIndex].color;
+          console.log(`Using objective color from hierarchy: ${task.id} -> objective ${parentObjective.id} -> index ${objectiveIndex} -> color ${color}`);
         }
       }
-      const color = colorPalette[objectiveIndex % colorPalette.length];
       
       // Check if task is scheduled
-      const timeBlock = timeBlocks.find(tb => tb.task_id === task.id);
+      const timeBlock = taskTimeBlock;
       const isScheduled = !!timeBlock;
       const scheduledDateTime = isScheduled ? timeBlock.start_time : null;
       
@@ -318,15 +340,18 @@ export default function Dashboard() {
       // Find parent objective
       const parentObjective = okrts.find(okrt => okrt.id === kr.parent_id && okrt.type === 'O');
       
-      // Find the objective index for color mapping
+      // Find the objective index for color mapping using objective ID
       let objectiveIndex = 0;
+      let color = colorPalette[0]; // Default color
+      
       if (parentObjective) {
-        const foundIndex = transformedObjectives.findIndex(obj => obj.title === (parentObjective.title || parentObjective.description));
+        const foundIndex = transformedObjectives.findIndex(obj => obj.id === parentObjective.id);
         if (foundIndex >= 0) {
           objectiveIndex = foundIndex;
+          color = transformedObjectives[foundIndex].color;
+          console.log(`KR ${kr.id} -> objective ${parentObjective.id} -> index ${objectiveIndex} -> color ${color}`);
         }
       }
-      const color = colorPalette[objectiveIndex % colorPalette.length];
       
       // Format due date if available
       let dueDate = null;
@@ -490,7 +515,40 @@ export default function Dashboard() {
           {/* Today Widget - Top Right */}
           <TodayWidget objectives={objectives} todoTasks={todoTasks} />
 
-          {/* Todo/KR Widget - Bottom Left */}
+          {/* Activity - Bottom Left */}
+          <div className={styles.componentCard}>
+            <div className={styles.componentHeader}>
+              <h3 className={styles.componentTitle}>Activity</h3>
+            </div>
+            <div className={styles.componentContent}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem',
+                color: 'var(--text-secondary)',
+                fontSize: '0.875rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', borderBottom: '1px solid var(--border-light)' }}>
+                  <span>Recent Activity</span>
+                  <span style={{ color: 'var(--brand-primary)' }}>Today</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }}></div>
+                  <span>Dashboard accessed</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-secondary)' }}></div>
+                  <span>Tasks loaded</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-accent)' }}></div>
+                  <span>Progress updated</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Todo/KR Widget - Bottom Right */}
           <div className={`${styles.componentCard} ${styles.todoWidget}`}>
             <div className={styles.componentHeader}>
               <div className={styles.todoHeaderContent}>
@@ -505,7 +563,7 @@ export default function Dashboard() {
                     className={`${styles.todoToggleOption} ${widgetMode === 'kr' ? styles.active : ''}`}
                     onClick={() => setWidgetMode('kr')}
                   >
-                    KR
+                    KRs
                   </button>
                 </div>
                 <button 
@@ -598,39 +656,6 @@ export default function Dashboard() {
                     ))
                   )
                 )}
-              </div>
-            </div>
-          </div>
-
-          {/* Activity - Bottom Right */}
-          <div className={styles.componentCard}>
-            <div className={styles.componentHeader}>
-              <h3 className={styles.componentTitle}>Activity</h3>
-            </div>
-            <div className={styles.componentContent}>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.5rem',
-                color: 'var(--text-secondary)',
-                fontSize: '0.875rem'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', borderBottom: '1px solid var(--border-light)' }}>
-                  <span>Recent Activity</span>
-                  <span style={{ color: 'var(--brand-primary)' }}>Today</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }}></div>
-                  <span>Dashboard accessed</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-secondary)' }}></div>
-                  <span>Tasks loaded</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-accent)' }}></div>
-                  <span>Progress updated</span>
-                </div>
               </div>
             </div>
           </div>
