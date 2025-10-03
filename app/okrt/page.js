@@ -300,54 +300,58 @@ function KeyResultCard({ kr, selected, onOpen, onEditKR, onEditTask, onAddTask, 
             )}
           </div>
         </div>
-        {tasks.length > 0 && (
-          <button
-            className={styles.expandButton}
-            onClick={handleExpandClick}
-            aria-label={expanded ? 'Collapse tasks' : 'Expand tasks'}
+        <button
+          className={styles.expandButton}
+          onClick={handleExpandClick}
+          aria-label={expanded ? 'Collapse tasks' : 'Expand tasks'}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className={`${styles.chevron} ${expanded ? styles.chevronExpanded : ''}`}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className={`${styles.chevron} ${expanded ? styles.chevronExpanded : ''}`}
-            >
-              <polyline points="9,18 15,12 9,6"/>
-            </svg>
-          </button>
-        )}
+            <polyline points="9,18 15,12 9,6"/>
+          </svg>
+        </button>
       </div>
       
-      {expanded && tasks.length > 0 && (
+      {expanded && (
         <div className={styles.tasksList}>
           <div className={styles.tasksHeader}>TASKS</div>
-          {tasks.map((task) => (
-            <div key={task.id} className={`${styles.taskItem} ${task.task_status === 'done' ? styles.taskItemCompleted : ''}`}>
-              <div className={styles.taskIcon}>
-                <LiaGolfBallSolid size={20} />
-              </div>
-              <div className={styles.taskContent}>
-                <span
-                  className={styles.taskText}
-                  onClick={(e) => handleTaskClick(e, task)}
-                >
-                  {task.description || task.title}
-                </span>
-                <div className={styles.taskMeta}>
-                  {task.due_date && (
-                    <span>Due: {formatDate(task.due_date)}</span>
-                  )}
-                  {task.due_date && task.task_status && <span>•</span>}
-                  {task.task_status && (
-                    <span>{task.task_status.replace('_', ' ')}</span>
-                  )}
+          {tasks.length > 0 ? (
+            tasks.map((task) => (
+              <div key={task.id} className={`${styles.taskItem} ${task.task_status === 'done' ? styles.taskItemCompleted : ''}`}>
+                <div className={styles.taskIcon}>
+                  <LiaGolfBallSolid size={20} />
+                </div>
+                <div className={styles.taskContent}>
+                  <span
+                    className={styles.taskText}
+                    onClick={(e) => handleTaskClick(e, task)}
+                  >
+                    {task.description || task.title}
+                  </span>
+                  <div className={styles.taskMeta}>
+                    {task.due_date && (
+                      <span>Due: {formatDate(task.due_date)}</span>
+                    )}
+                    {task.due_date && task.task_status && <span>•</span>}
+                    {task.task_status && (
+                      <span>{task.task_status.replace('_', ' ')}</span>
+                    )}
+                  </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className={styles.noTasksMessage}>
+              No tasks yet. Click "Add task" to create your first task for this key result.
             </div>
-          ))}
+          )}
           <button className={styles.addTaskButton} onClick={(e) => {
             e.stopPropagation();
             onAddTask(kr);
@@ -538,12 +542,12 @@ export default function OKRTPage() {
 
   // Group key results by their parent objective
   const getKeyResultsForObjective = (objId) => {
-    return keyResults.filter(kr => kr.parent_id === objId);
+    return keyResults.filter(kr => String(kr.parent_id) === String(objId));
   };
 
   // Group tasks by their parent key result
   const getTasksForKeyResult = (krId) => {
-    return tasks.filter(task => task.parent_id === krId);
+    return tasks.filter(task => String(task.parent_id) === String(krId));
   };
 
   // Modal handlers

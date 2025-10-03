@@ -249,7 +249,7 @@ export default function ObjectiveHierarchy() {
   };
 
   const getChildObjectives = (parentId) => 
-    objectives.filter(o => o.parent_id === parentId);
+    objectives.filter(o => String(o.parent_id) === String(parentId));
 
   // Generate tree layouts using Tidy Tree algorithm
   const treeLayouts = useMemo(() => {

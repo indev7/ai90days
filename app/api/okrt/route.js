@@ -45,7 +45,7 @@ export async function GET(request) {
             }
           })
         );
-        
+
         return {
           ...okrt,
           owner_name: owner ? `${owner.first_name || ''} ${owner.last_name || ''}`.trim() || owner.display_name : 'Unknown',
