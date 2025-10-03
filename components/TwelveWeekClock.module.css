@@ -34,8 +34,7 @@
 
 .clockWithBorder {
   background: var(--surface);
-  box-shadow: var(--shadow-1);
-  border: 1px solid var(--border);
+  
   border-radius: 0.5rem;
   padding: 1.5rem;
   transition: padding .2s;

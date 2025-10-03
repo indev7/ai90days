@@ -18,6 +18,9 @@ export default function HomePage() {
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+          // Redirect authenticated users directly to dashboard
+          router.push('/dashboard');
+          return;
         }
       } catch (error) {
         console.error('Failed to fetch user:', error);
@@ -27,7 +30,7 @@ export default function HomePage() {
     };
 
     fetchUser();
-  }, []);
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -64,27 +67,7 @@ export default function HomePage() {
     );
   }
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.dashboard}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Welcome back, {user.displayName}!</h1>
-          <p className={styles.subtitle}>Ready to tackle your goals?</p>
-        </div>
-        
-        <div className={styles.placeholder}>
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Dashboard Coming Soon</h2>
-            <p className={styles.cardText}>
-              Your personal goal tracking dashboard will be available in Phase 2. 
-              For now, you can access your profile through the navigation menu.
-            </p>
-            <Link href="/dashboard" className="btn btn-primary">
-              View Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // User is authenticated - this should not be reached since we redirect above
+  // But just in case, we'll still redirect here as a fallback
+  return null;
 }

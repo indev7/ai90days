@@ -279,41 +279,7 @@ export default function Dashboard() {
     
     console.log('Mapped current quarter tasks for display:', mappedTasks.length);
     
-    // Ensure we have at least 8 tasks for better visual layout
-    const minTasks = 8;
     let finalTasks = [...mappedTasks];
-    
-    // Add sample tasks if we don't have enough
-    if (finalTasks.length < minTasks) {
-      const sampleTasks = [
-        'Set up Azure AD app registration for Microsoft login',
-        'Integrate Microsoft login with backend authentication flow', 
-        'Test and debug the Microsoft login flow end-to-end',
-        'Review and optimize database queries for performance',
-        'Update user interface for better mobile responsiveness',
-        'Implement error handling for API endpoints',
-        'Write unit tests for core application features',
-        'Document API endpoints and authentication flow'
-      ];
-      
-      const tasksNeeded = minTasks - finalTasks.length;
-      for (let i = 0; i < tasksNeeded; i++) {
-        const sampleTaskIndex = i % sampleTasks.length;
-        finalTasks.push({
-          id: `sample-${i}`,
-          taskDescription: sampleTasks[sampleTaskIndex],
-          isScheduled: false,
-          scheduledDateTime: null,
-          scheduledDateFormatted: null,
-          color: colorPalette[i % colorPalette.length],
-          objectiveIndex: i % colorPalette.length,
-          status: 'todo',
-          progress: Math.floor(Math.random() * 100), // Random progress for demo
-          objectiveTitle: 'Sample Objective',
-          krTitle: 'Sample Key Result'
-        });
-      }
-    }
     
     // Sort final tasks list: scheduled first, then unscheduled
     finalTasks.sort((a, b) => {

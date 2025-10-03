@@ -56,7 +56,7 @@ export default function SignupPage() {
         window.localStorage.setItem('authChange', Date.now().toString());
         window.localStorage.removeItem('authChange');
         
-        router.push('/');
+        router.push('/dashboard');
         router.refresh();
       } else {
         setError(data.error || 'Signup failed');
