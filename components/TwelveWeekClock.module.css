@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 1.5rem;
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -36,7 +36,7 @@
   background: var(--surface);
   
   border-radius: 0.5rem;
-  padding: 1.5rem;
+  padding: 6px 6px 1.5rem 6px;
   transition: padding .2s;
   display: flex;
   flex-direction: column;
@@ -51,9 +51,8 @@
 .objectivesList {
   width: 100%;
   text-align: left;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  margin-top: 0rem;
+  padding: 1rem 18px 0;
 }
 
 .objectiveItem {
@@ -90,6 +89,55 @@
   max-width: 100%;
 }
 
+/* Create Objective Button Styles */
+.emptyObjectivesContainer {
+  width: 100%;
+  text-align: center;
+  margin-top: 1rem;
+  padding: 2rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.emptyObjectivesMessage {
+  font-size: 1rem;
+  color: var(--text-secondary, var(--text));
+  margin: 0 0 1.5rem 0;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.createObjectiveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary, #007bff);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.createObjectiveButton:hover {
+  background: var(--primary-dark, #0056b3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.createObjectiveButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.createObjectiveIcon {
+  font-size: 1.1rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .clockTitle {
@@ -101,7 +149,7 @@
   }
   
   .clockWithBorder {
-    padding: 1.2rem;
+    padding: 6px 6px 1.2rem 6px;
   }
   
   .objectiveText {
@@ -120,17 +168,30 @@
   }
   
   .clockWithBorder {
-    padding: 1rem;
+    padding: 6px 6px 1rem 6px;
   }
   
   .objectivesList {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 10px 0 10px;
   }
   
   .objectiveText {
     font-size: 0.75rem;
     line-height: 1.3;
+  }
+  
+  .emptyObjectivesContainer {
+    padding: 1.5rem 0.75rem;
+  }
+  
+  .emptyObjectivesMessage {
+    font-size: 0.9rem;
+  }
+  
+  .createObjectiveButton {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.85rem;
   }
 }
 
@@ -148,7 +209,7 @@
   }
   
   .clockWithBorder {
-    padding: 0.75rem;
+    padding: 6px 6px 0.75rem 6px;
   }
   
   .objectiveItem {
@@ -165,5 +226,23 @@
   .objectiveText {
     font-size: 0.7rem;
     line-height: 1.3;
+  }
+  
+  .emptyObjectivesContainer {
+    padding: 1.25rem 0.5rem;
+  }
+  
+  .emptyObjectivesMessage {
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .createObjectiveButton {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .createObjectiveIcon {
+    font-size: 1rem;
   }
 }

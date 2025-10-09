@@ -244,25 +244,37 @@
   }
 }
 
-/* Tablet portrait - collapsible behavior */
-@media (min-width: 768px) and (max-width: 1023px) {
+/* Medium screens (768px - 1379px) - Allow toggle control */
+@media (min-width: 768px) and (max-width: 1379px) {
   .leftMenu {
-    z-index: 40;
+    position: fixed;
+    z-index: 35;
+    width: 240px;
   }
   
   .leftMenu.collapsed {
     width: 80px;
   }
   
-  .collapsed .menuLink {
-    justify-content: center;
-    padding-left: var(--space-4);
-    padding-right: var(--space-4);
+  .leftMenu.collapsed .label {
+    opacity: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  .leftMenu.collapsed .menuLink {
+    justify-content: center !important;
+    padding-left: var(--space-4) !important;
+    padding-right: var(--space-4) !important;
+  }
+  
+  .toggleButton {
+    display: none !important;
   }
 }
 
 /* Desktop - always expanded unless desktopCollapsed */
-@media (min-width: 1024px) {
+@media (min-width: 1380px) {
   .leftMenu {
     position: fixed;
     width: 240px;
@@ -276,10 +288,6 @@
     opacity: 1 !important;
     width: auto !important;
     overflow: visible !important;
-  }
-  
-  .toggleButton {
-    display: none;
   }
 }
 

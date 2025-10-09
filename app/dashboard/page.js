@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TwelveWeekClock from '@/components/TwelveWeekClock';
 import TodayWidget from '@/components/TodayWidget';
+import OKRTModal from '@/components/OKRTModal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { LiaGolfBallSolid } from 'react-icons/lia';
 import { FaGolfBall } from 'react-icons/fa';
@@ -31,6 +32,14 @@ export default function Dashboard() {
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [widgetMode, setWidgetMode] = useState('todo'); // 'todo' or 'kr'
   const todoListRef = useRef(null);
+  
+  // OKRT Modal state
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    mode: 'create',
+    okrt: null,
+    parentOkrt: null
+  });
 
   // Responsive size logic
   const isMobile = useMediaQuery('(max-width: 640px)');
@@ -356,6 +365,50 @@ export default function Dashboard() {
     setKrTasks(mappedKRs);
   };
 
+  // Modal handlers
+  const handleCreateObjective = () => {
+    setModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleCloseModal = () => {
+    setModalState({
+      isOpen: false,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleSaveOkrt = async (okrtData) => {
+    try {
+      const response = await fetch('/api/okrt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(okrtData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save OKRT');
+      }
+
+      // Refresh the dashboard data
+      await fetchData();
+      
+      // Close the modal
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving OKRT:', error);
+      // You might want to show an error message to the user here
+    }
+  };
+
   // Auto-scroll to show today's and future tasks
   useEffect(() => {
     if (todoTasks.length > 0 && todoListRef.current) {
@@ -474,6 +527,7 @@ export default function Dashboard() {
               colors={clockColors}
               dateLabel={currentDate}
               titlePrefix="Day"
+              onCreateObjective={handleCreateObjective}
               {...getTrackProps()}
             />
           </div>
@@ -728,6 +782,16 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      
+      {/* OKRT Modal */}
+      <OKRTModal
+        isOpen={modalState.isOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveOkrt}
+        okrt={modalState.okrt}
+        parentOkrt={modalState.parentOkrt}
+        mode={modalState.mode}
+      />
     </div>
   );
 }

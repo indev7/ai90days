@@ -150,3 +150,10 @@ textarea:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Responsive layout adjustments for left menu auto-collapse */
+@media (min-width: 1200px) and (max-width: 1379px) {
+  main {
+    padding-left: 80px !important;
+  }
+}

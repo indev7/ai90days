@@ -27,8 +27,9 @@ export default function RootLayout({ children }) {
   const [isDesktopMenuCollapsed, setIsDesktopMenuCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
-  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+  const isDesktop = useMediaQuery('(min-width: 1380px)');
+  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1379px)');
+  const isMidRange = useMediaQuery('(min-width: 1024px) and (max-width: 1379px)');
 
   // Initialize theme system
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function RootLayout({ children }) {
       // Collapse the appropriate menu based on screen size
       if (isDesktop) {
         setIsDesktopMenuCollapsed(true);
-      } else if (isTablet) {
+      } else if (isTablet || isMidRange) {
         setIsMenuCollapsed(true);
       }
     };
@@ -100,7 +101,7 @@ export default function RootLayout({ children }) {
       // Expand the appropriate menu based on screen size
       if (isDesktop) {
         setIsDesktopMenuCollapsed(false);
-      } else if (isTablet) {
+      } else if (isTablet || isMidRange) {
         setIsMenuCollapsed(false);
       }
     };
@@ -112,7 +113,7 @@ export default function RootLayout({ children }) {
       window.removeEventListener('enterFocusMode', handleEnterFocusMode);
       window.removeEventListener('exitFocusMode', handleExitFocusMode);
     };
-  }, [isDesktop, isTablet]);
+  }, [isDesktop, isTablet, isMidRange]);
 
   // Hide layout on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/signup';
@@ -177,6 +178,17 @@ export default function RootLayout({ children }) {
     );
   }
 
+  // Calculate the current menu width
+  const getMenuWidth = () => {
+    if (isDesktop) {
+      return isDesktopMenuCollapsed ? 80 : 240;
+    } else if (isTablet) {
+      return isMenuCollapsed ? 80 : 240; // Can be toggled on tablet+
+    } else {
+      return 0; // Hidden on mobile
+    }
+  };
+
   return (
     <html lang="en">
       <body>
@@ -186,6 +198,8 @@ export default function RootLayout({ children }) {
               user={user}
               isDesktopMenuCollapsed={isDesktopMenuCollapsed}
               onDesktopMenuToggle={isDesktop ? handleDesktopMenuToggle : undefined}
+              onLeftMenuToggle={isMidRange ? handleMenuToggle : undefined}
+              isLeftMenuCollapsed={isMenuCollapsed}
             />
             <LeftMenu
               isCollapsed={isDesktop ? false : isMenuCollapsed}
@@ -194,8 +208,7 @@ export default function RootLayout({ children }) {
             />
             <main style={{
               paddingTop: '72px',
-              paddingLeft: isDesktop ? (isDesktopMenuCollapsed ? '80px' : '240px') :
-                          isTablet ? (isMenuCollapsed ? '80px' : '260px') : '0',
+              paddingLeft: `${getMenuWidth()}px`,
               transition: 'padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}>
               {children}

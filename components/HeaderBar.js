@@ -20,17 +20,31 @@ import styles from './HeaderBar.module.css';
  * @property {User|null} [user] - Current user data
  * @property {boolean} [isDesktopMenuCollapsed] - Whether desktop menu is collapsed
  * @property {function} [onDesktopMenuToggle] - Handler for desktop menu toggle
+ * @property {boolean} [isLeftMenuCollapsed] - Whether left menu is collapsed (mid-range)
+ * @property {function} [onLeftMenuToggle] - Handler for left menu toggle (mid-range)
  */
 
 /**
  * Main header bar component
  * @param {HeaderBarProps} props
  */
-export default function HeaderBar({ user = null, isDesktopMenuCollapsed = false, onDesktopMenuToggle }) {
+export default function HeaderBar({ 
+  user = null, 
+  isDesktopMenuCollapsed = false, 
+  onDesktopMenuToggle,
+  isLeftMenuCollapsed = false,
+  onLeftMenuToggle
+}) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleMobileMenuToggle = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    if (onLeftMenuToggle) {
+      // For mid-range screens, control the left menu
+      onLeftMenuToggle();
+    } else {
+      // For mobile screens, control the mobile menu
+      setIsMobileMenuOpen(!isMobileMenuOpen);
+    }
   };
 
   const handleMobileMenuClose = () => {
@@ -54,6 +68,31 @@ export default function HeaderBar({ user = null, isDesktopMenuCollapsed = false,
               </svg>
             </button>
           )}
+          
+          {/* Mid-range hamburger for left menu control */}
+          {onLeftMenuToggle && !onDesktopMenuToggle && (
+            <button
+              className={styles.leftMenuToggle}
+              onClick={onLeftMenuToggle}
+              aria-label={isLeftMenuCollapsed ? "Expand menu" : "Collapse menu"}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          )}
+          
+          {/* Mobile hamburger for mobile menu */}
+          {!onDesktopMenuToggle && !onLeftMenuToggle && (
+            <HamburgerButton
+              isOpen={isMobileMenuOpen}
+              onClick={handleMobileMenuToggle}
+              className={styles.mobileHamburger}
+            />
+          )}
+          
           <Link href="/" className={styles.logoLink}>
             <div className={styles.logo}>90Days</div>
           </Link>
@@ -77,19 +116,16 @@ export default function HeaderBar({ user = null, isDesktopMenuCollapsed = false,
               </Link>
             </div>
           )}
-
-          <HamburgerButton
-            isOpen={isMobileMenuOpen}
-            onClick={handleMobileMenuToggle}
-            className={styles.hamburger}
-          />
         </div>
       </header>
 
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
-        onClose={handleMobileMenuClose} 
-      />
+      {/* Only show mobile menu when not in desktop or mid-range modes */}
+      {!onDesktopMenuToggle && !onLeftMenuToggle && (
+        <MobileMenu 
+          isOpen={isMobileMenuOpen} 
+          onClose={handleMobileMenuClose} 
+        />
+      )}
     </>
   );
 }

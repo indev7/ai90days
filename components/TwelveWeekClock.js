@@ -1,5 +1,6 @@
 import React from "react";
 import { GiGolfFlag } from "react-icons/gi";
+import { FaPlus } from "react-icons/fa";
 import { getCurrentQuarterName } from '@/lib/clockUtils';
 import styles from './TwelveWeekClock.module.css';
 
@@ -53,6 +54,7 @@ function TwelveWeekClock({
   titlePrefix = "Day",
   dateLabel,
   startDate = null,
+  onCreateObjective = null,
 }) {
   const TOTAL_WEEKS = 12;
   const TOTAL_DAYS = 84;
@@ -118,9 +120,11 @@ function TwelveWeekClock({
 
   const face = colors.face ?? "#f7fbff";
   const elapsedFill = colors.elapsedFill ?? "#e8f0ff"; // soft pastel
-  const ticksAndText = colors.ticksAndText ?? "#111"; // black
+  const ticksAndText = colors.ticksAndText ?? "#111"; // black for numbers/text
+  const circumferenceColor = "#999"; // Match TodayClock outer circle
+  const tickColor = "#999"; // Match TodayClock tick marks
   const tracksBg = colors.tracksBg ?? "#e5e5e5";
-  const handColor = colors.hand ?? "#bfbfbf"; // default slightly darker than tracksBg
+  const handColor = "#111"; // Black hand and pivot
 
   // Scale values based on clock size relative to original 460px
   const scaleFactor = size / 460;
@@ -140,8 +144,8 @@ function TwelveWeekClock({
 
   const currentDeg = (handPosition / TOTAL_DAYS) * 360;
 
-  // Hand geometry (bottom layer). Tip lands on inner end of week major tick.
-  const handR = outerR - Math.round(12 * scaleFactor);
+  // Hand geometry (bottom layer). Reduced length by 20px total.
+  const handR = outerR - Math.round(12 * scaleFactor) - 20;
   const handEnd = polar(cx, cy, handR, currentDeg);
   const handAngle = toRad(currentDeg);
   const handBase = polar(cx, cy, handR - Math.round(10 * scaleFactor), currentDeg);
@@ -277,7 +281,7 @@ function TwelveWeekClock({
             return (
               <g key={`week-${w}`} fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">
                 {/* Major week tick */}
-                <line x1={majorIn.x} y1={majorIn.y} x2={majorOut.x} y2={majorOut.y} stroke={ticksAndText} strokeWidth={strokeWidth} />
+                <line x1={majorIn.x} y1={majorIn.y} x2={majorOut.x} y2={majorOut.y} stroke={tickColor} strokeWidth={strokeWidth} />
                 {/* Week number */}
                 <text x={labelPos.x} y={labelPos.y} fontSize={fontSize} fill={ticksAndText} textAnchor="middle" dominantBaseline="middle">
                   {w === 0 ? 12 : w}
@@ -288,7 +292,7 @@ function TwelveWeekClock({
                   const adeg = frac * 360;
                   const tIn = polar(cx, cy, outerR - Math.round(4 * scaleFactor), adeg);
                   const tOut = polar(cx, cy, outerR, adeg);
-                  return <line key={`t-${w}-${d}`} x1={tIn.x} y1={tIn.y} x2={tOut.x} y2={tOut.y} stroke={ticksAndText} strokeWidth={tickStrokeWidth} />;
+                  return <line key={`t-${w}-${d}`} x1={tIn.x} y1={tIn.y} x2={tOut.x} y2={tOut.y} stroke={tickColor} strokeWidth={tickStrokeWidth} />;
                 })}
               </g>
             );
@@ -306,7 +310,7 @@ function TwelveWeekClock({
           />
 
           {/* Center pivot */}
-          <circle cx={cx} cy={cy} r={Math.max(4, Math.round(6 * scaleFactor))} fill={handColor} opacity={0.7} />
+          <circle cx={cx} cy={cy} r={Math.max(4, Math.round(6 * scaleFactor))} fill={handColor} />
 
           {/* Quarter label at top */}
           <text x={cx} y={cy - Math.round(16 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fontWeight={700} fill={ticksAndText} dominantBaseline="auto">
@@ -318,11 +322,11 @@ function TwelveWeekClock({
             {dayLabel}
           </text>
           {/* Circumference border */}
-          <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={ticksAndText} strokeWidth={strokeWidth} />
+          <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={circumferenceColor} strokeWidth={strokeWidth} />
         </svg>
         
-        {/* Objectives list inside clock border */}
-        {objectives.length > 0 && (
+        {/* Objectives list or create button inside clock border */}
+        {objectives.length > 0 ? (
           <div className={styles.objectivesList} style={{ maxWidth: `${size}px` }}>
             {objectives.map((o, i) => {
               const color = PROTOTYPE_COLORS[i % PROTOTYPE_COLORS.length];
@@ -336,6 +340,19 @@ function TwelveWeekClock({
                 </div>
               );
             })}
+          </div>
+        ) : (
+          <div className={styles.emptyObjectivesContainer} style={{ maxWidth: `${size}px` }}>
+            {onCreateObjective && (
+              <button 
+                className={styles.createObjectiveButton}
+                onClick={onCreateObjective}
+                type="button"
+              >
+                <FaPlus className={styles.createObjectiveIcon} />
+                Create Your First Objective
+              </button>
+            )}
           </div>
         )}
       </div>
