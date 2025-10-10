@@ -262,6 +262,26 @@ export default function TodayClock({ todoTasks, size = 200 }) {
           ))}
         </g>
         
+        {/* AM/PM indicators with SVG icons */}
+        <>
+          {/* Left half icon */}
+          <image
+            x={center - 0.75 * radius + 26.25 - 20}
+            y={center - 20}
+            width="40"
+            height="40"
+            href={currentPeriod.sunLeft ? '/sun_icon.svg' : '/moon_icon.svg'}
+          />
+          {/* Right half icon */}
+          <image
+            x={center + 0.75 * radius - 26.25 - 20}
+            y={center - 20}
+            width="40"
+            height="40"
+            href={currentPeriod.sunRight ? '/sun_icon.svg' : '/moon_icon.svg'}
+          />
+        </>
+        
         {/* Hour hand */}
         <g transform={`translate(${center}, ${center})`}>
           <line
@@ -305,30 +325,6 @@ export default function TodayClock({ todoTasks, size = 200 }) {
         <g transform={`translate(${center}, ${center})`}>
           <circle cx="0" cy="0" r="6" fill="#333" />
         </g>
-        
-        {/* AM/PM indicators with emojis */}
-        <>
-          {/* Left half emoji */}
-          <text
-            x={center - 0.75 * radius + 26.25}
-            y={center}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize="40"
-          >
-            {currentPeriod.sunLeft ? '☀️' : '🌙'}
-          </text>
-          {/* Right half emoji */}
-          <text
-            x={center + 0.75 * radius - 26.25}
-            y={center}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize="40"
-          >
-            {currentPeriod.sunRight ? '☀️' : '🌙'}
-          </text>
-        </>
       </svg>
     </div>
   );

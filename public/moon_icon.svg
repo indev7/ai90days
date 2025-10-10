@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="moonGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#D7DFEA"/>
+      <stop offset="100%" stop-color="#A5B3C7"/>
+    </linearGradient>
+    <mask id="crescentMask">
+      <!-- White reveals; black conceals -->
+      <rect width="128" height="128" fill="white"/>
+      <!-- Cutout circle to form the crescent -->
+      <circle cx="84" cy="64" r="34" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Crescent using mask on a full circle -->
+  <circle cx="64" cy="64" r="40" fill="url(#moonGrad)" mask="url(#crescentMask)"/>
+
+  <!-- Subtle rim highlight -->
+  <path d="M99 64a35 35 0 0 1-52 30 40 40 0 1 0 0-60 35 35 0 0 1 52 30z"
+        fill="white" opacity="0.15"/>
+</svg>
