@@ -192,13 +192,12 @@ export default function Dashboard() {
 
   // Extract todo tasks from filtered OKRTs (called during data fetch)
   const extractTodoTasks = (okrts, transformedObjectives, colorPalette, timeBlocks = []) => {
-    // Filter for tasks with todo or in_progress status
+    // Filter for all tasks (including done and blocked for schedule display)
     const tasks = okrts.filter(okrt => 
-      okrt.type === 'T' && 
-      (okrt.task_status === 'todo' || okrt.task_status === 'in_progress')
+      okrt.type === 'T'
     );
     
-    console.log('Extracting todo tasks from filtered OKRTs:', tasks.length);
+    console.log('Extracting all tasks from filtered OKRTs:', tasks.length);
     console.log('Available tasks:', tasks.map(t => ({ id: t.id, title: t.title || t.description })));
     console.log('Available time blocks:', timeBlocks.map(tb => ({ task_id: tb.task_id, start_time: tb.start_time, duration: tb.duration })));
     
@@ -535,40 +534,7 @@ export default function Dashboard() {
           {/* Today Widget - Top Right */}
           <TodayWidget objectives={objectives} todoTasks={todoTasks} />
 
-          {/* Activity - Bottom Left */}
-          <div className={styles.componentCard}>
-            <div className={styles.componentHeader}>
-              <h3 className={styles.componentTitle}>Activity</h3>
-            </div>
-            <div className={styles.componentContent}>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.5rem',
-                color: 'var(--text-secondary)',
-                fontSize: '0.875rem'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', borderBottom: '1px solid var(--border-light)' }}>
-                  <span>Recent Activity</span>
-                  <span style={{ color: 'var(--brand-primary)' }}>Today</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }}></div>
-                  <span>Dashboard accessed</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-secondary)' }}></div>
-                  <span>Tasks loaded</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-accent)' }}></div>
-                  <span>Progress updated</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Todo/KR Widget - Bottom Right */}
+          {/* Todo/KR Widget - Bottom Left */}
           <div className={`${styles.componentCard} ${styles.todoWidget}`}>
             <div className={styles.componentHeader}>
               <div className={styles.todoHeaderContent}>
@@ -676,6 +642,39 @@ export default function Dashboard() {
                     ))
                   )
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Activity - Bottom Right */}
+          <div className={styles.componentCard}>
+            <div className={styles.componentHeader}>
+              <h3 className={styles.componentTitle}>Activity</h3>
+            </div>
+            <div className={styles.componentContent}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem',
+                color: 'var(--text-secondary)',
+                fontSize: '0.875rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', borderBottom: '1px solid var(--border-light)' }}>
+                  <span>Recent Activity</span>
+                  <span style={{ color: 'var(--brand-primary)' }}>Today</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }}></div>
+                  <span>Dashboard accessed</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-secondary)' }}></div>
+                  <span>Tasks loaded</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-accent)' }}></div>
+                  <span>Progress updated</span>
+                </div>
               </div>
             </div>
           </div>

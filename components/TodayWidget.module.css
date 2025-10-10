@@ -1,6 +1,6 @@
 .componentCard {
   background: white;
-  border-radius: 12px;
+  border-radius: 0.5rem;
   border: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
@@ -10,9 +10,12 @@
 .componentHeader {
   padding: 1rem 1rem 0.5rem;
   border-bottom: 1px solid var(--border-light);
+}
+
+.titleRow {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .componentTitle {
@@ -20,6 +23,14 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.componentSubtitle {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.2;
 }
 
 .dateLabel {

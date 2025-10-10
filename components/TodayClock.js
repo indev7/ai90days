@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './TodayClock.module.css';
 
-export default function TodayClock({ todoTasks, size = 200 }) {
+export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const router = useRouter();
   
   // Update time every second
   useEffect(() => {
@@ -19,6 +21,26 @@ export default function TodayClock({ todoTasks, size = 200 }) {
   const currentHour = currentTime.getHours();
   const currentMinute = currentTime.getMinutes();
   const currentSecond = currentTime.getSeconds();
+  
+  /*
+   * CLOCK FACE TIME PERIOD DISPLAY LOGIC
+   * ====================================
+   * 
+   * The clock face displays a rolling 12-hour window that advances every 6 hours.
+   * This ensures users always see current and upcoming tasks within a reasonable timeframe.
+   * 
+   * Time Period Breakpoints & Task Display:
+   * 
+   * Current Time Range        → Clock Face Shows Tasks For
+   * ─────────────────────────────────────────────────────────
+   * 12:00 AM - 5:59 AM       → 12:00 AM to 11:59 AM (12-hour window)
+   * 6:00 AM - 11:59 AM       → 6:00 AM to 5:59 PM (12-hour window)
+   * 12:00 PM - 5:59 PM       → 12:00 PM to 11:59 PM (12-hour window)
+   * 6:00 PM - 11:59 PM       → 6:00 PM to 5:59 AM next day (12-hour window)
+   * 
+   * Sun/Moon Icon Changes at: 6:00 AM, 12:00 PM (noon), and 6:00 PM
+   * Task Display Changes at: 6:00 AM, 12:00 PM (noon), 6:00 PM, and 12:00 AM (midnight)
+   */
   
   // Determine current 6-hour period and corresponding 12-hour task range
   const getCurrentPeriod = () => {
@@ -150,8 +172,20 @@ export default function TodayClock({ todoTasks, size = 200 }) {
   const center = size / 2;
   const hourNumbers = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
+  // Function to handle navigation to calendar
+  const handleScheduleClick = () => {
+    router.push('/calendar');
+  };
+
+  // Function to handle task sector click
+  const handleTaskSectorClick = (task) => {
+    if (onTaskClick) {
+      onTaskClick(task);
+    }
+  };
+
   return (
-    <div className={styles.clockContainer} style={{ width: size, height: size }}>
+    <div className={styles.clockContainer}>
       <svg width={size} height={size} className={styles.clockSvg}>
         {/* Clock face */}
         <circle
@@ -250,16 +284,43 @@ export default function TodayClock({ todoTasks, size = 200 }) {
         
         {/* Task sectors */}
         <g transform={`translate(${center}, ${center})`}>
-          {taskSectors.map((task, index) => (
-            <path
-              key={task.id}
-              d={createSectorPath(task.startAngle, task.endAngle, radius - 40, radius - 10)}
-              fill={task.color}
-              fillOpacity="0.6"
-              stroke={task.color}
-              strokeWidth="1"
-            />
-          ))}
+          {taskSectors.map((task, index) => {
+            const taskTime = new Date(task.scheduledDateTime);
+            const timeString = taskTime.toLocaleTimeString('en-US', { 
+              hour: 'numeric', 
+              minute: '2-digit',
+              hour12: true 
+            });
+            const tooltipText = `${task.taskDescription || task.description || task.title} at ${timeString}${onTaskClick ? ' - Click to update' : ''}`;
+            
+            return (
+              <path
+                key={task.id}
+                d={createSectorPath(task.startAngle, task.endAngle, radius - 40, radius - 10)}
+                fill={task.color}
+                fillOpacity="0.6"
+                stroke={task.color}
+                strokeWidth="1"
+                style={{ 
+                  cursor: onTaskClick ? 'pointer' : 'default',
+                  transition: 'fill-opacity 0.2s ease'
+                }}
+                onClick={() => handleTaskSectorClick(task)}
+                onMouseEnter={(e) => {
+                  if (onTaskClick) {
+                    e.target.style.fillOpacity = '0.8';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (onTaskClick) {
+                    e.target.style.fillOpacity = '0.6';
+                  }
+                }}
+              >
+                <title>{tooltipText}</title>
+              </path>
+            );
+          })}
         </g>
         
         {/* AM/PM indicators with SVG icons */}
@@ -326,6 +387,76 @@ export default function TodayClock({ todoTasks, size = 200 }) {
           <circle cx="0" cy="0" r="6" fill="#333" />
         </g>
       </svg>
+      
+      {/* Schedule List */}
+      {taskSectors.length > 0 && (
+        <div className={styles.scheduleSection}>
+          <div className={styles.scheduleList}>
+            {taskSectors
+              .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime))
+              .map((task, index) => {
+                const taskTime = new Date(task.scheduledDateTime);
+                const timeString = taskTime.toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit',
+                  hour12: true 
+                });
+                
+                // Create subtitle text
+                const subtitleParts = [];
+                if (task.keyResult) {
+                  subtitleParts.push(task.keyResult);
+                } else if (task.objective) {
+                  subtitleParts.push(task.objective);
+                }
+                const subtitle = subtitleParts.length > 0 ? subtitleParts.join(' • ') : '';
+                
+                // Convert hex color to rgba with 0.4 opacity
+                const hexToRgba = (hex, alpha) => {
+                  const r = parseInt(hex.slice(1, 3), 16);
+                  const g = parseInt(hex.slice(3, 5), 16);
+                  const b = parseInt(hex.slice(5, 7), 16);
+                  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                };
+                
+                return (
+                  <div 
+                    key={task.id} 
+                    className={styles.scheduleItem}
+                    onClick={() => handleTaskSectorClick(task)}
+                    style={{ backgroundColor: task.color ? hexToRgba(task.color, 0.4) : undefined }}
+                  >
+                    <div className={styles.scheduleTask}>
+                      <div style={{ flex: 1 }}>
+                        <div className={styles.taskDescription}>
+                          {task.taskDescription || task.description || task.title}
+                        </div>
+                        <div className={styles.taskSubtitle}>
+                          {subtitle}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.scheduleTime}>{timeString}</div>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </div>
+      )}
+      
+      {/* No tasks message and schedule button */}
+      {todayTasks.length === 0 && (
+        <div className={styles.noTasksContainer}>
+          <p className={styles.noTasksMessage}>No scheduled tasks for today</p>
+          <button 
+            className={styles.scheduleButton}
+            onClick={handleScheduleClick}
+          >
+            Schedule
+          </button>
+        </div>
+      )}
     </div>
   );
 }
