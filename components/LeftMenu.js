@@ -75,13 +75,21 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
  * @property {boolean} [isCollapsed] - Whether the menu is in collapsed state
  * @property {function} [onToggle] - Toggle handler for collapsed state
  * @property {boolean} [isDesktopCollapsed] - Whether desktop menu is in icon-only mode
+ * @property {boolean} [isMobileSlideIn] - Whether menu is in mobile slide-in mode
+ * @property {function} [onMobileClose] - Handler for closing mobile slide-in menu
  */
 
 /**
  * Left navigation menu for tablet/desktop
  * @param {LeftMenuProps} props
  */
-export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopCollapsed = false }) {
+export default function LeftMenu({ 
+  isCollapsed = false, 
+  onToggle, 
+  isDesktopCollapsed = false, 
+  isMobileSlideIn = false,
+  onMobileClose 
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [expandedItems, setExpandedItems] = useState(new Set());
@@ -187,6 +195,11 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     if (pathname === '/okrt') {
       window.dispatchEvent(new CustomEvent('createObjective'));
     }
+    
+    // Close mobile menu
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const handleAddGroupClick = (e) => {
@@ -198,6 +211,11 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
       // Navigate to groups page and show modal after navigation
       router.push('/groups?showAddModal=true');
     }
+    
+    // Close mobile menu
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const handleGroupEditClick = (groupId, e) => {
@@ -208,12 +226,22 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     } else {
       router.push(`/groups?editGroup=${groupId}`);
     }
+    
+    // Close mobile menu
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const handleObjectiveClick = (objectiveId, e) => {
     e.preventDefault();
     // Navigate to OKRT page with specific objective
     router.push(`/okrt?objective=${objectiveId}`);
+    
+    // Close mobile menu
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const isChildActive = (item) => {
@@ -231,31 +259,14 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     });
   };
 
-  const handleMenuItemClick = (itemHref, hasChildren) => {
-    if (hasChildren) {
-      // For Groups and My Goals menu items, handle differently based on current page
-      if (itemHref === '/groups') {
-        if (pathname === '/groups') {
-          // If already on groups page, just toggle submenu
-          toggleExpanded(itemHref);
-        } else {
-          // If not on groups page, navigate there using Next.js router
-          router.push(itemHref);
-        }
-      } else if (itemHref === '/okrt') {
-        if (pathname === '/okrt') {
-          // If already on OKRT page, just toggle submenu
-          toggleExpanded(itemHref);
-        } else {
-          // If not on OKRT page, navigate there using Next.js router
-          router.push(itemHref);
-        }
-      } else {
-        toggleExpanded(itemHref);
-      }
-    } else {
-      // Close all expanded items when clicking on a menu item without children
-      setExpandedItems(new Set());
+    const handleMenuItemClick = (href, hasChildren) => {
+    if (hasChildren && !isDesktopCollapsed && !isCollapsed) {
+      handleItemToggle(href);
+    }
+    
+    // Close mobile menu when navigating
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
     }
   };
 
@@ -271,8 +282,15 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
     return expandedItems.has(itemHref);
   };
 
-  return (
-    <nav className={`${styles.leftMenu} ${isCollapsed ? styles.collapsed : ''} ${isDesktopCollapsed || isFocusMode ? styles.desktopCollapsed : ''}`}>
+  // Handle mobile slide-in overlay click
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget && onMobileClose) {
+      onMobileClose();
+    }
+  };
+
+  const menuContent = (
+    <nav className={`${styles.leftMenu} ${isCollapsed && !isMobileSlideIn ? styles.collapsed : ''} ${isDesktopCollapsed || isFocusMode ? styles.desktopCollapsed : ''} ${isMobileSlideIn ? styles.mobileSlideIn : ''}`}>
       <div className={styles.menuContent}>
         <ul className={styles.menuList}>
           {topMenuItems.map((item) => {
@@ -472,4 +490,15 @@ export default function LeftMenu({ isCollapsed = false, onToggle, isDesktopColla
       )}
     </nav>
   );
+
+  // If mobile slide-in, wrap in overlay
+  if (isMobileSlideIn) {
+    return (
+      <div className={styles.mobileOverlay} onClick={handleOverlayClick}>
+        {menuContent}
+      </div>
+    );
+  }
+
+  return menuContent;
 }

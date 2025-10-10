@@ -25,11 +25,13 @@ export default function RootLayout({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(true);
   const [isDesktopMenuCollapsed, setIsDesktopMenuCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const isDesktop = useMediaQuery('(min-width: 1380px)');
   const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1379px)');
   const isMidRange = useMediaQuery('(min-width: 1024px) and (max-width: 1379px)');
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   // Initialize theme system
   useEffect(() => {
@@ -138,6 +140,14 @@ export default function RootLayout({ children }) {
     }
   };
 
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleMobileMenuClose = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   if (isAuthPage) {
     return (
       <html lang="en">
@@ -185,7 +195,7 @@ export default function RootLayout({ children }) {
     } else if (isTablet) {
       return isMenuCollapsed ? 80 : 240; // Can be toggled on tablet+
     } else {
-      return 0; // Hidden on mobile
+      return 0; // Hidden on mobile (slide-in overlay doesn't affect content padding)
     }
   };
 
@@ -200,11 +210,15 @@ export default function RootLayout({ children }) {
               onDesktopMenuToggle={isDesktop ? handleDesktopMenuToggle : undefined}
               onLeftMenuToggle={isMidRange ? handleMenuToggle : undefined}
               isLeftMenuCollapsed={isMenuCollapsed}
+              onMobileMenuToggle={isMobile ? handleMobileMenuToggle : undefined}
+              isMobileMenuOpen={isMobileMenuOpen}
             />
             <LeftMenu
               isCollapsed={isDesktop ? false : isMenuCollapsed}
               onToggle={isDesktop ? undefined : handleMenuToggle}
               isDesktopCollapsed={isDesktop ? isDesktopMenuCollapsed : false}
+              isMobileSlideIn={isMobile && isMobileMenuOpen}
+              onMobileClose={handleMobileMenuClose}
             />
             <main style={{
               paddingTop: '72px',

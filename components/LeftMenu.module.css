@@ -237,9 +237,9 @@
   color: var(--text);
 }
 
-/* Hide on mobile - only show on tablet+ */
+/* Hide on mobile by default - only show on tablet+ or when mobile slide-in is active */
 @media (max-width: 767px) {
-  .leftMenu {
+  .leftMenu:not(.mobileSlideIn) {
     display: none;
   }
 }
@@ -323,6 +323,64 @@
   }
 }
 
+/* Mobile slide-in styles */
+.mobileOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  animation: fadeIn 0.3s ease;
+}
+
+.leftMenu.mobileSlideIn {
+  position: relative;
+  width: 260px;
+  height: 100vh;
+  padding-top: 72px;
+  transform: translateX(0);
+  animation: slideInFromLeft 0.3s ease;
+  z-index: 1001;
+}
+
+/* Ensure mobile slide-in shows full width menu with labels */
+.leftMenu.mobileSlideIn .label {
+  opacity: 1;
+  width: auto;
+  overflow: visible;
+}
+
+.leftMenu.mobileSlideIn .menuLink {
+  justify-content: flex-start;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+
+
 @media (prefers-reduced-motion: reduce) {
   .leftMenu,
   .menuLink,
@@ -332,6 +390,14 @@
   }
   
   .notificationBadge {
+    animation: none;
+  }
+  
+  .mobileOverlay {
+    animation: none;
+  }
+  
+  .leftMenu.mobileSlideIn {
     animation: none;
   }
 }

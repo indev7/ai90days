@@ -22,6 +22,8 @@ import styles from './HeaderBar.module.css';
  * @property {function} [onDesktopMenuToggle] - Handler for desktop menu toggle
  * @property {boolean} [isLeftMenuCollapsed] - Whether left menu is collapsed (mid-range)
  * @property {function} [onLeftMenuToggle] - Handler for left menu toggle (mid-range)
+ * @property {function} [onMobileMenuToggle] - Handler for mobile menu toggle
+ * @property {boolean} [isMobileMenuOpen] - Whether mobile menu is open
  */
 
 /**
@@ -33,23 +35,21 @@ export default function HeaderBar({
   isDesktopMenuCollapsed = false, 
   onDesktopMenuToggle,
   isLeftMenuCollapsed = false,
-  onLeftMenuToggle
+  onLeftMenuToggle,
+  onMobileMenuToggle,
+  isMobileMenuOpen = false
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const handleMobileMenuToggle = () => {
     if (onLeftMenuToggle) {
       // For mid-range screens, control the left menu
       onLeftMenuToggle();
-    } else {
-      // For mobile screens, control the mobile menu
-      setIsMobileMenuOpen(!isMobileMenuOpen);
+    } else if (onMobileMenuToggle) {
+      // For mobile screens, control the mobile slide-in menu
+      onMobileMenuToggle();
     }
   };
 
-  const handleMobileMenuClose = () => {
-    setIsMobileMenuOpen(false);
-  };
+
 
   return (
     <>
@@ -85,7 +85,7 @@ export default function HeaderBar({
           )}
           
           {/* Mobile hamburger for mobile menu */}
-          {!onDesktopMenuToggle && !onLeftMenuToggle && (
+          {!onDesktopMenuToggle && !onLeftMenuToggle && onMobileMenuToggle && (
             <HamburgerButton
               isOpen={isMobileMenuOpen}
               onClick={handleMobileMenuToggle}
@@ -119,13 +119,7 @@ export default function HeaderBar({
         </div>
       </header>
 
-      {/* Only show mobile menu when not in desktop or mid-range modes */}
-      {!onDesktopMenuToggle && !onLeftMenuToggle && (
-        <MobileMenu 
-          isOpen={isMobileMenuOpen} 
-          onClose={handleMobileMenuClose} 
-        />
-      )}
+
     </>
   );
 }
