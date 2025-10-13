@@ -16,6 +16,7 @@ import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
+import TaskUpdateModal from './TaskUpdateModal';
 import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
@@ -28,7 +29,13 @@ const topMenuItems = [
       { href: '/new', label: 'Add OKR', icon: 'new', isAction: true }
     ] // Will be populated with objectives dynamically
   },
-  { href: '/calendar', label: 'Calendar', icon: 'calendar', disabled: false },
+  {
+    href: '/calendar',
+    label: 'Schedule',
+    icon: 'calendar',
+    disabled: false,
+    children: [] // Will be populated with scheduled tasks dynamically
+  },
   { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
   {
     href: '/groups',
@@ -97,8 +104,13 @@ export default function LeftMenu({
   const [unreadCount, setUnreadCount] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [objectives, setObjectives] = useState([]);
+  const [scheduledTasks, setScheduledTasks] = useState([]);
+  const [taskUpdateModalState, setTaskUpdateModalState] = useState({
+    isOpen: false,
+    task: null
+  });
 
-  // Fetch admin groups, objectives, and setup notifications on component mount
+  // Fetch admin groups, objectives, scheduled tasks, and setup notifications on component mount
   useEffect(() => {
     const fetchAdminGroups = async () => {
       try {
@@ -123,6 +135,62 @@ export default function LeftMenu({
         }
       } catch (error) {
         console.error('Error fetching objectives:', error);
+      }
+    };
+
+    const fetchScheduledTasks = async () => {
+      try {
+        const response = await fetch('/api/time-blocks');
+        if (response.ok) {
+          const data = await response.json();
+          const timeBlocks = data.timeBlocks || [];
+          
+          // Get current date and one week from now for filtering
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const oneWeekFromNow = new Date(today);
+          oneWeekFromNow.setDate(today.getDate() + 7);
+          
+          // Transform time blocks into task format with additional info
+          const tasksWithSchedule = await Promise.all(
+            timeBlocks.map(async (block) => {
+              try {
+                // Fetch task details
+                const taskResponse = await fetch(`/api/okrt/${block.task_id}`);
+                if (taskResponse.ok) {
+                  const taskData = await taskResponse.json();
+                  return {
+                    ...taskData.okrt,
+                    timeBlockId: block.id,
+                    scheduledDateTime: block.start_time,
+                    duration: block.duration,
+                    isScheduled: true
+                  };
+                }
+              } catch (error) {
+                console.error('Error fetching task details:', error);
+              }
+              return null;
+            })
+          );
+          
+          // Filter out null values, filter by date range (today to one week), and sort by scheduled time
+          const validTasks = tasksWithSchedule
+            .filter(task => {
+              if (task === null) return false;
+              
+              const taskDate = new Date(task.scheduledDateTime);
+              const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+              
+              // Include tasks from today up to one week from now
+              return taskDateOnly >= today && taskDateOnly <= oneWeekFromNow;
+            })
+            .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
+          
+          setScheduledTasks(validTasks);
+        }
+      } catch (error) {
+        console.error('Error fetching scheduled tasks:', error);
       }
     };
 
@@ -164,6 +232,7 @@ export default function LeftMenu({
 
     fetchAdminGroups();
     fetchObjectives();
+    fetchScheduledTasks();
     fetchUnreadCount();
     const eventSource = setupSSE();
 
@@ -244,6 +313,125 @@ export default function LeftMenu({
     }
   };
 
+  // Helper function to format scheduled task display
+  const formatScheduledTaskDisplay = (task) => {
+    const scheduledDate = new Date(task.scheduledDateTime);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayName = dayNames[scheduledDate.getDay()];
+    const dayNum = scheduledDate.getDate();
+    const timeString = scheduledDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    // Format: "Mon 13 4:30pm, 30min"
+    const timeDisplay = `${dayName} ${dayNum} ${timeString}, ${task.duration}min`;
+    
+    // Get task status
+    const getTaskStatus = (progress) => {
+      if (progress === 0) return 'ToDo';
+      if (progress === 100) return 'Done';
+      return 'In Progress';
+    };
+    
+    const status = getTaskStatus(task.progress || 0);
+    
+    return {
+      timeDisplay,
+      status,
+      description: task.taskDescription || task.description || task.title || 'No description'
+    };
+  };
+
+  // Handle scheduled task click
+  const handleScheduledTaskClick = (task, e) => {
+    e.preventDefault();
+    setTaskUpdateModalState({
+      isOpen: true,
+      task: task
+    });
+    
+    // Close mobile menu
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
+  };
+
+  // Modal handlers
+  const handleCloseTaskUpdateModal = () => {
+    setTaskUpdateModalState({
+      isOpen: false,
+      task: null
+    });
+  };
+
+  const handleSaveTaskUpdate = async (taskId, updateData) => {
+    try {
+      const response = await fetch(`/api/okrt/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update task');
+      }
+
+      // Close modal
+      handleCloseTaskUpdateModal();
+
+      // Refresh scheduled tasks to show updated status
+      const fetchScheduledTasks = async () => {
+        try {
+          const response = await fetch('/api/time-blocks');
+          if (response.ok) {
+            const data = await response.json();
+            const timeBlocks = data.timeBlocks || [];
+            
+            const tasksWithSchedule = await Promise.all(
+              timeBlocks.map(async (block) => {
+                try {
+                  const taskResponse = await fetch(`/api/okrt/${block.task_id}`);
+                  if (taskResponse.ok) {
+                    const taskData = await taskResponse.json();
+                    return {
+                      ...taskData.okrt,
+                      timeBlockId: block.id,
+                      scheduledDateTime: block.start_time,
+                      duration: block.duration,
+                      isScheduled: true
+                    };
+                  }
+                } catch (error) {
+                  console.error('Error fetching task details:', error);
+                }
+                return null;
+              })
+            );
+            
+            const validTasks = tasksWithSchedule
+              .filter(task => task !== null)
+              .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
+            
+            setScheduledTasks(validTasks);
+          }
+        } catch (error) {
+          console.error('Error fetching scheduled tasks:', error);
+        }
+      };
+      
+      fetchScheduledTasks();
+
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
+  };
+
   const isChildActive = (item) => {
     if (!item.children) return false;
     return item.children.some(child => pathname === child.href);
@@ -259,9 +447,9 @@ export default function LeftMenu({
     });
   };
 
-    const handleMenuItemClick = (href, hasChildren) => {
+  const handleMenuItemClick = (href, hasChildren) => {
     if (hasChildren && !isDesktopCollapsed && !isCollapsed) {
-      handleItemToggle(href);
+      toggleExpanded(href);
     }
     
     // Close mobile menu when navigating
@@ -277,6 +465,10 @@ export default function LeftMenu({
     }
     // Auto-expand My Goals submenu when on OKRT page
     if (itemHref === '/okrt' && pathname === '/okrt') {
+      return true;
+    }
+    // Auto-expand Schedule submenu when on calendar page
+    if (itemHref === '/calendar' && pathname === '/calendar') {
       return true;
     }
     return expandedItems.has(itemHref);
@@ -367,6 +559,29 @@ export default function LeftMenu({
                             </button>
                           </li>
                         ))}
+                        
+                        {/* Show scheduled tasks for Schedule menu */}
+                        {item.href === '/calendar' && scheduledTasks.map((task) => {
+                          const taskDisplay = formatScheduledTaskDisplay(task);
+                          return (
+                            <li key={`scheduled-${task.id}`} className={styles.childMenuItem}>
+                              <button
+                                onClick={(e) => handleScheduledTaskClick(task, e)}
+                                className={`${styles.childMenuLink} ${styles.scheduledTask}`}
+                                title={taskDisplay.description}
+                              >
+                                <div className={styles.scheduledTaskContent}>
+                                  <div className={styles.taskDescription}>
+                                    {taskDisplay.description}
+                                  </div>
+                                  <div className={styles.taskScheduleInfo}>
+                                    {taskDisplay.timeDisplay} • {taskDisplay.status}
+                                  </div>
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
                         
                         {/* Show admin groups first */}
                         {item.href === '/groups' && adminGroups.map((group) => (
@@ -500,5 +715,17 @@ export default function LeftMenu({
     );
   }
 
-  return menuContent;
+  return (
+    <>
+      {menuContent}
+      
+      {/* Task Update Modal */}
+      <TaskUpdateModal
+        isOpen={taskUpdateModalState.isOpen}
+        onClose={handleCloseTaskUpdateModal}
+        task={taskUpdateModalState.task}
+        onSave={handleSaveTaskUpdate}
+      />
+    </>
+  );
 }

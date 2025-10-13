@@ -303,7 +303,6 @@
   position: relative;
   max-width: 1800px;
   margin: 0 auto;
-  padding: 2rem;
   overflow-x: auto;
   height:calc(100vh);
 }

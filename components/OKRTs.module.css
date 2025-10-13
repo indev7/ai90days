@@ -1,0 +1,89 @@
+.treeContainer {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.nodeLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.nodeTitle {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.nodeDescription {
+  color: var(--text-primary);
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.krDescription {
+  font-weight: 500;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.taskDescription {
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+
+.nodeMetadata {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.nodeCount {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background-color: var(--background-secondary);
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.progress {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  background-color: var(--background-secondary);
+  white-space: nowrap;
+}
+
+.statusBadge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  background-color: var(--background-secondary);
+  white-space: nowrap;
+}

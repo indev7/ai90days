@@ -5,12 +5,9 @@ import { useRouter } from 'next/navigation';
 import TwelveWeekClock from '@/components/TwelveWeekClock';
 import TodayWidget from '@/components/TodayWidget';
 import OKRTModal from '@/components/OKRTModal';
+import OKRTs from '@/components/OKRTs';
+import NotificationsWidget from '@/components/NotificationsWidget';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { LiaGolfBallSolid } from 'react-icons/lia';
-import { FaGolfBall } from 'react-icons/fa';
-import { TbGolfFilled } from 'react-icons/tb';
-import { RiCalendarScheduleFill } from 'react-icons/ri';
-import { CgMaximizeAlt } from "react-icons/cg";
 import {
   transformOKRTsToObjectives,
   calculateDayIndex,
@@ -28,10 +25,7 @@ export default function Dashboard() {
   const [dayIndex, setDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [todoTasks, setTodoTasks] = useState([]);
-  const [krTasks, setKrTasks] = useState([]);
-  const [todoModalOpen, setTodoModalOpen] = useState(false);
-  const [widgetMode, setWidgetMode] = useState('todo'); // 'todo' or 'kr'
-  const todoListRef = useRef(null);
+  const [filteredOKRTs, setFilteredOKRTs] = useState([]);
   
   // OKRT Modal state
   const [modalState, setModalState] = useState({
@@ -142,11 +136,18 @@ export default function Dashboard() {
           })));
           setObjectives(transformedObjectives);
           
-          // Extract tasks from filtered OKRTs for todo list
-          extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocks);
+          // Add color information to filtered OKRTs for tree display
+          const okrtsWithColors = filteredOKRTs.map(okrt => {
+            if (okrt.type === 'O') {
+              const foundObj = transformedObjectives.find(obj => obj.id === okrt.id);
+              return { ...okrt, color: foundObj?.color || colorPalette[0] };
+            }
+            return okrt;
+          });
+          setFilteredOKRTs(okrtsWithColors);
           
-          // Extract KRs from filtered OKRTs for KR list
-          extractKRTasks(filteredOKRTs, transformedObjectives, colorPalette);
+          // Extract tasks from filtered OKRTs for todo list (used by TodayWidget)
+          extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocks);
         }
         
         // Calculate day index based on current quarter
@@ -302,68 +303,6 @@ export default function Dashboard() {
     setTodoTasks(finalTasks);
   };
 
-  // Extract KRs from filtered OKRTs (called during data fetch)
-  const extractKRTasks = (okrts, transformedObjectives, colorPalette) => {
-    // Filter for Key Results
-    const krs = okrts.filter(okrt => okrt.type === 'K');
-    
-    console.log('Extracting KR tasks from filtered OKRTs:', krs.length);
-    
-    // Map KRs to display format
-    const mappedKRs = krs.map((kr, index) => {
-      // Find parent objective
-      const parentObjective = okrts.find(okrt => okrt.id === kr.parent_id && okrt.type === 'O');
-      
-      // Find the objective index for color mapping using objective ID
-      let objectiveIndex = 0;
-      let color = colorPalette[0]; // Default color
-      
-      if (parentObjective) {
-        const foundIndex = transformedObjectives.findIndex(obj => obj.id === parentObjective.id);
-        if (foundIndex >= 0) {
-          objectiveIndex = foundIndex;
-          color = transformedObjectives[foundIndex].color;
-          console.log(`KR ${kr.id} -> objective ${parentObjective.id} -> index ${objectiveIndex} -> color ${color}`);
-        }
-      }
-      
-      // Format due date if available
-      let dueDate = null;
-      let dueDateFormatted = "Due date not set";
-      if (kr.due_date) {
-        dueDate = new Date(kr.due_date);
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        dueDateFormatted = `${dayNames[dueDate.getDay()]} ${monthNames[dueDate.getMonth()]} ${dueDate.getDate()}`;
-      }
-      
-      return {
-        id: kr.id,
-        title: kr.title || kr.description,
-        dueDate: dueDate,
-        dueDateFormatted: dueDateFormatted,
-        color: color,
-        objectiveIndex: objectiveIndex,
-        progress: kr.progress || 0,
-        objectiveTitle: parentObjective?.title || parentObjective?.description || 'Unknown Objective'
-      };
-    });
-
-    // Sort KRs: those with due dates first (by date), then those without
-    mappedKRs.sort((a, b) => {
-      if (a.dueDate && !b.dueDate) return -1;
-      if (!a.dueDate && b.dueDate) return 1;
-      if (a.dueDate && b.dueDate) {
-        return a.dueDate - b.dueDate;
-      }
-      return 0;
-    });
-    
-    console.log('Mapped KR tasks for display:', mappedKRs.length);
-    
-    setKrTasks(mappedKRs);
-  };
-
   // Modal handlers
   const handleCreateObjective = () => {
     setModalState({
@@ -408,71 +347,7 @@ export default function Dashboard() {
     }
   };
 
-  // Auto-scroll to show today's and future tasks
-  useEffect(() => {
-    if (todoTasks.length > 0 && todoListRef.current) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Start of today
-      
-      console.log('Auto-scrolling todo list. Today:', today.toDateString());
-      console.log('Total tasks:', todoTasks.length);
-      
-      // Find the first task that is either unscheduled or scheduled for today/future
-      let firstRelevantTaskIndex = -1;
-      
-      for (let i = 0; i < todoTasks.length; i++) {
-        const task = todoTasks[i];
-        
-        if (!task.isScheduled) {
-          // Unscheduled task - this is relevant
-          console.log(`Task ${i}: Unscheduled - "${task.taskDescription}" - setting as first relevant`);
-          firstRelevantTaskIndex = i;
-          break;
-        } else {
-          // Scheduled task - check if it's today or future
-          const taskDate = new Date(task.scheduledDateTime);
-          taskDate.setHours(0, 0, 0, 0); // Start of task date
-          
-          console.log(`Task ${i}: Scheduled for ${taskDate.toDateString()} - "${task.taskDescription}"`);
-          
-          if (taskDate >= today) {
-            // Task is today or in the future
-            console.log(`Task ${i}: Is today or future - setting as first relevant`);
-            firstRelevantTaskIndex = i;
-            break;
-          } else {
-            console.log(`Task ${i}: Is in the past - skipping`);
-          }
-        }
-      }
-      
-      console.log('First relevant task index:', firstRelevantTaskIndex);
-      
-      // If we found a relevant task and it's not already at the top, scroll to show it
-      if (firstRelevantTaskIndex > 0) {
-        const todoContainer = todoListRef.current;
-        const todoItems = todoContainer.children;
-        
-        if (todoItems[firstRelevantTaskIndex]) {
-          // Calculate scroll position to show this task at the top
-          const itemHeight = todoItems[0].offsetHeight;
-          const scrollPosition = firstRelevantTaskIndex * itemHeight;
-          
-          console.log(`Scrolling to position ${scrollPosition}px (item ${firstRelevantTaskIndex})`);
-          
-          // Smooth scroll to position after a small delay to ensure DOM is ready
-          setTimeout(() => {
-            todoContainer.scrollTo({
-              top: scrollPosition,
-              behavior: 'smooth'
-            });
-          }, 100);
-        }
-      } else {
-        console.log('No scrolling needed - relevant tasks already at top');
-      }
-    }
-  }, [todoTasks]);
+
 
   if (loading) {
     return (
@@ -494,187 +369,70 @@ export default function Dashboard() {
     <div className={styles.container}>
       <div className={styles.content}>
         <div className={styles.dashboardGrid}>
-          {/* Daily Inspiration - Top Left */}
-          <div className={styles.componentCard}>
-            <div className={styles.componentHeader}>
-              <h3 className={styles.componentTitle}>Daily Inspiration</h3>
+          {/* Column 1: Daily Inspiration + Todo List */}
+          <div className={styles.column}>
+            {/* Daily Inspiration */}
+            <div className={styles.componentCard}>
+              <div className={styles.componentHeader}>
+                <h3 className={styles.componentTitle}>Daily Inspiration</h3>
+              </div>
+              <div className={styles.componentContent}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  height: '100%', 
+                  color: 'var(--text-secondary)',
+                  fontStyle: 'italic'
+                }}>
+                  <p style={{ margin: '0 0 0.5rem 0', textAlign: 'center' }}>
+                    "Success is the sum of small efforts repeated day in and day out."
+                  </p>
+                  <small>— Robert Collier</small>
+                </div>
+              </div>
             </div>
-            <div className={styles.componentContent}>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100%', 
-                color: 'var(--text-secondary)',
-                fontStyle: 'italic'
-              }}>
-                <p style={{ margin: '0 0 0.5rem 0', textAlign: 'center' }}>
-                  "Success is the sum of small efforts repeated day in and day out."
-                </p>
-                <small>— Robert Collier</small>
+
+            {/* OKRTs Widget */}
+            <div className={`${styles.componentCard} ${styles.todoWidget}`}>
+              <div className={styles.componentHeader}>
+                <h3 className={styles.componentTitle}>OKRTs</h3>
+              </div>
+              <div className={styles.componentContent}>
+                <OKRTs okrts={filteredOKRTs} />
               </div>
             </div>
           </div>
 
-          {/* The 12 Week Clock - Top Center */}
-          <div className={styles.clockCard}>
-            <TwelveWeekClock
-              size={getClockSize()}
-              dayIndex={dayIndex}
-              objectives={objectives}
-              colors={clockColors}
-              dateLabel={currentDate}
-              titlePrefix="Day"
-              onCreateObjective={handleCreateObjective}
-              {...getTrackProps()}
-            />
-          </div>
-
-          {/* Today Widget - Top Right */}
-          <TodayWidget objectives={objectives} todoTasks={todoTasks} />
-
-          {/* Todo/KR Widget - Bottom Left */}
-          <div className={`${styles.componentCard} ${styles.todoWidget}`}>
-            <div className={styles.componentHeader}>
-              <div className={styles.todoHeaderContent}>
-                <div className={styles.todoToggle}>
-                  <button
-                    className={`${styles.todoToggleOption} ${widgetMode === 'todo' ? styles.active : ''}`}
-                    onClick={() => setWidgetMode('todo')}
-                  >
-                    Todo
-                  </button>
-                  <button
-                    className={`${styles.todoToggleOption} ${widgetMode === 'kr' ? styles.active : ''}`}
-                    onClick={() => setWidgetMode('kr')}
-                  >
-                    KRs
-                  </button>
-                </div>
-                <button 
-                  className={styles.maximizeButton}
-                  onClick={() => setTodoModalOpen(true)}
-                  title={`Expand ${widgetMode === 'todo' ? 'Todo' : 'KR'} List`}
-                >
-                  <CgMaximizeAlt />
-                </button>
-              </div>
-            </div>
-            <div className={styles.componentContent}>
-              <div className={styles.todoList} ref={todoListRef}>
-                {widgetMode === 'todo' ? (
-                  // Todo Tasks Display
-                  todoTasks.length === 0 ? (
-                    <div className={styles.emptyTodo}>
-                      <p>No tasks available</p>
-                    </div>
-                  ) : (
-                    todoTasks.map((task) => (
-                      <div key={task.id} className={styles.todoItem}>
-                        <div className={styles.todoIcon}>
-                          {task.isScheduled ? (
-                            <FaGolfBall style={{ color: task.color, fontSize: '18px' }} />
-                          ) : (
-                            <LiaGolfBallSolid style={{ color: task.color, fontSize: '18px' }} />
-                          )}
-                        </div>
-                        <div className={styles.todoText}>
-                          <div className={styles.todoDescription}>
-                            {task.taskDescription}
-                          </div>
-                          <div className={styles.todoScheduledInfo}>
-                            {task.isScheduled && (
-                              <>
-                                <RiCalendarScheduleFill />
-                                <span>{task.scheduledDateFormatted}</span>
-                              </>
-                            )}
-                            <div className={styles.todoProgressContainer}>
-                              <div className={styles.todoProgressBar}>
-                                <div 
-                                  className={styles.todoProgressFill} 
-                                  style={{ width: `${task.progress || 0}%` }}
-                                />
-                              </div>
-                              <span className={styles.todoProgressText}>
-                                {task.progress || 0}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )
-                ) : (
-                  // KR Tasks Display
-                  krTasks.length === 0 ? (
-                    <div className={styles.emptyTodo}>
-                      <p>No key results available</p>
-                    </div>
-                  ) : (
-                    krTasks.map((kr) => (
-                      <div key={kr.id} className={styles.todoItem}>
-                        <div className={styles.todoIcon}>
-                          <TbGolfFilled style={{ color: kr.color, fontSize: '18px' }} />
-                        </div>
-                        <div className={styles.todoText}>
-                          <div className={styles.todoDescription}>
-                            {kr.title}
-                          </div>
-                          <div className={styles.todoScheduledInfo}>
-                            <RiCalendarScheduleFill />
-                            <span>{kr.dueDateFormatted}</span>
-                            <div className={styles.todoProgressContainer}>
-                              <div className={styles.todoProgressBar}>
-                                <div 
-                                  className={styles.todoProgressFill} 
-                                  style={{ width: `${kr.progress || 0}%` }}
-                                />
-                              </div>
-                              <span className={styles.todoProgressText}>
-                                {kr.progress || 0}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )
-                )}
-              </div>
+          {/* Column 2: 12 Week Clock */}
+          <div className={styles.column}>
+            <div className={styles.clockCard}>
+              <TwelveWeekClock
+                size={getClockSize()}
+                dayIndex={dayIndex}
+                objectives={objectives}
+                colors={clockColors}
+                dateLabel={currentDate}
+                titlePrefix="Day"
+                onCreateObjective={handleCreateObjective}
+                {...getTrackProps()}
+              />
             </div>
           </div>
 
-          {/* Activity - Bottom Right */}
-          <div className={styles.componentCard}>
-            <div className={styles.componentHeader}>
-              <h3 className={styles.componentTitle}>Activity</h3>
-            </div>
-            <div className={styles.componentContent}>
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.5rem',
-                color: 'var(--text-secondary)',
-                fontSize: '0.875rem'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', borderBottom: '1px solid var(--border-light)' }}>
-                  <span>Recent Activity</span>
-                  <span style={{ color: 'var(--brand-primary)' }}>Today</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }}></div>
-                  <span>Dashboard accessed</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-secondary)' }}></div>
-                  <span>Tasks loaded</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-accent)' }}></div>
-                  <span>Progress updated</span>
-                </div>
+          {/* Column 3: Today Widget + Activity */}
+          <div className={styles.column}>
+            {/* Today Widget */}
+            <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+
+            {/* Notifications */}
+            <div className={styles.componentCard}>
+              <div className={styles.componentHeader}>
+                <h3 className={styles.componentTitle}>Notifications</h3>
+              </div>
+              <div className={styles.componentContent}>
+                <NotificationsWidget />
               </div>
             </div>
           </div>
@@ -682,106 +440,6 @@ export default function Dashboard() {
 
       </div>
 
-      {/* Todo Modal */}
-      {todoModalOpen && (
-        <div className={styles.modalOverlay} onClick={() => setTodoModalOpen(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2>{widgetMode === 'todo' ? 'Todo Tasks' : 'Key Results'}</h2>
-              <button 
-                className={styles.modalCloseButton}
-                onClick={() => setTodoModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              {widgetMode === 'todo' ? (
-                // Todo Tasks in Modal
-                todoTasks.length === 0 ? (
-                  <div className={styles.emptyTodo}>
-                    <p>No tasks available</p>
-                  </div>
-                ) : (
-                  todoTasks.map((task) => (
-                    <div key={task.id} className={styles.modalTodoItem}>
-                      <div className={styles.modalTodoIndicator}>
-                        {task.status === 'in_progress' ? (
-                          <FaGolfBall style={{ color: task.color, fontSize: '18px' }} />
-                        ) : (
-                          <LiaGolfBallSolid style={{ color: task.color, fontSize: '18px' }} />
-                        )}
-                      </div>
-                      <div className={styles.modalTodoContent}>
-                        <div className={styles.modalTodoDescription}>
-                          {task.taskDescription}
-                        </div>
-                        <div className={styles.modalTodoMeta}>
-                          {task.isScheduled && (
-                            <div className={styles.modalScheduledInfo}>
-                              <RiCalendarScheduleFill />
-                              <span>{task.scheduledDateFormatted}</span>
-                            </div>
-                          )}
-                          <div className={styles.modalProgressContainer}>
-                            <div className={styles.modalProgressBar}>
-                              <div 
-                                className={styles.modalProgressFill} 
-                                style={{ width: `${task.progress || 0}%` }}
-                              />
-                            </div>
-                            <span className={styles.modalProgressText}>
-                              {task.progress || 0}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )
-              ) : (
-                // KR Tasks in Modal
-                krTasks.length === 0 ? (
-                  <div className={styles.emptyTodo}>
-                    <p>No key results available</p>
-                  </div>
-                ) : (
-                  krTasks.map((kr) => (
-                    <div key={kr.id} className={styles.modalTodoItem}>
-                      <div className={styles.modalTodoIndicator}>
-                        <TbGolfFilled style={{ color: kr.color, fontSize: '18px' }} />
-                      </div>
-                      <div className={styles.modalTodoContent}>
-                        <div className={styles.modalTodoDescription}>
-                          {kr.title}
-                        </div>
-                        <div className={styles.modalTodoMeta}>
-                          <div className={styles.modalScheduledInfo}>
-                            <RiCalendarScheduleFill />
-                            <span>{kr.dueDateFormatted}</span>
-                          </div>
-                          <div className={styles.modalProgressContainer}>
-                            <div className={styles.modalProgressBar}>
-                              <div 
-                                className={styles.modalProgressFill} 
-                                style={{ width: `${kr.progress || 0}%` }}
-                              />
-                            </div>
-                            <span className={styles.modalProgressText}>
-                              {kr.progress || 0}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* OKRT Modal */}
       <OKRTModal
         isOpen={modalState.isOpen}

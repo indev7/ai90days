@@ -1,499 +1,546 @@
 .calendarContainer {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
 }
 
 .calendarHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid var(--border);
-  background-color: var(--card);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--card);
+    gap: 12px;
 }
 
 .calendarTitle {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
 }
 
 .navigationControls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.navButtonChevron {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-1);
+}
+
+.navButtonChevron:hover {
+    background: var(--brand-50);
+    border-color: var(--primary);
+    transform: scale(1.05);
+    box-shadow: var(--shadow-2);
+}
+
+.navButtonChevron:active {
+    transform: scale(0.95);
+}
+
+.navButtonToday {
+    padding: 8px 24px;
+    background: white;
+    color: black;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-1);
+}
+
+.navButtonToday:hover {
+    background: var(--brand-50);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-2);
 }
 
 .navButton {
-  padding: 8px 16px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
 }
 
 .navButton:hover {
-  background: var(--brand-600);
+    background: var(--brand-600);
 }
 
 .calendarContent {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
+    flex: 1;
+    display: flex;
+    overflow: hidden;
 }
 
 /* Desktop Version */
 .calendarGrid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 80px repeat(7, 1fr);
-  background: var(--bg-solid);
-  overflow-y: auto;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    background: var(--bg-solid);
+    overflow-y: auto;
 }
 
 .timeColumn {
-  border-right: 1px solid var(--border);
-  background-color: var(--card);
+    border-right: 1px solid var(--border);
+    background-color: var(--card);
 }
 
 .timeSlot {
-  height: 60px;
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    height: 60px;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .dayColumn {
-  border-right: 1px solid var(--border);
-  position: relative;
+    border-right: 1px solid var(--border);
+    position: relative;
+}
+
+.dayColumn.todayColumn {
+    background-color: var(--brand-50);
 }
 
 .dayHeader {
-  height: 50px;
-  padding: 12px;
-  border-bottom: 2px solid var(--border);
-  background-color: var(--card);
-  font-weight: 600;
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+    height: 50px;
+    padding: 12px;
+    border-bottom: 2px solid var(--border);
+    background-color: var(--card);
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .dayName {
-  font-size: 14px;
+    font-size: 14px;
 }
 
 .dayDate {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 2px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
 }
 
 .timeSlotCell {
-  height: 60px;
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.2s;
+    height: 60px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .timeSlotCell:hover {
-  background-color: var(--brand-50);
+    background-color: var(--brand-50);
 }
 
 .timeSlotCell.selected {
-  background-color: var(--brand-100);
+    background-color: var(--brand-100);
 }
 
 .scheduleButton {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 8px 16px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 12px;
-  z-index: 20;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 12px;
+    z-index: 20;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .scheduleButton:hover {
-  background: var(--brand-600);
+    background: var(--brand-600);
 }
 
 .timeBlock {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  /* Background color is set dynamically via inline styles */
-  color: white;
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  font-size: 11px;
-  z-index: 15;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  transition: filter 0.2s ease;
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    /* Background color is set dynamically via inline styles */
+    color: white;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 11px;
+    z-index: 15;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: filter 0.2s ease;
 }
 
 .timeBlock:hover {
-  filter: brightness(0.9); /* Darken on hover instead of changing color */
+    filter: brightness(0.9);
+    /* Darken on hover instead of changing color */
 }
 
 .timeBlockTitle {
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .timeBlockDuration {
-  font-size: 10px;
-  opacity: 0.9;
-  margin-top: 1px;
+    font-size: 10px;
+    opacity: 0.9;
+    margin-top: 1px;
 }
 
 /* Mobile Version */
 .mobileCalendar {
-  display: none;
+    display: none;
 }
 
 .mobileDayView {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .mobileDayHeader {
-  padding: 16px;
-  background-color: var(--card);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+    padding: 16px;
+    background-color: var(--card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .mobileDayTitle {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
 }
 
 .swipeIndicator {
-  font-size: 12px;
-  color: var(--muted);
+    font-size: 12px;
+    color: var(--muted);
 }
 
 .mobileTimeSlots {
-  flex: 1;
-  overflow-y: auto;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .mobileTimeSlot {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  min-height: 60px;
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    min-height: 60px;
 }
 
 .mobileTimeLabel {
-  width: 80px;
-  padding: 12px;
-  background-color: var(--card);
-  border-right: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    width: 80px;
+    padding: 12px;
+    background-color: var(--card);
+    border-right: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .mobileTimeContent {
-  flex: 1;
-  padding: 8px;
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.2s;
+    flex: 1;
+    padding: 8px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
 .mobileTimeContent:hover {
-  background-color: var(--brand-50);
+    background-color: var(--brand-50);
 }
 
 .mobileTimeContent.selected {
-  background-color: var(--brand-100);
+    background-color: var(--brand-100);
 }
 
 /* Modal Styles */
 .modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 }
 
 .modal {
-  background: var(--card);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .modalHeader {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 20px;
 }
 
 .modalSubHeader {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--text-muted);
-  margin-top: 4px;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 4px;
 }
 
 .formGroup {
-  margin-bottom: 16px;
+    margin-bottom: 16px;
 }
 
 .formLabel {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  margin-bottom: 8px;
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
 }
 
 .formSelect {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background-color: var(--bg-solid);
-  color: var(--text);
-  font-size: 14px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-solid);
+    color: var(--text);
+    font-size: 14px;
 }
 
 .formSelect:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--brand-100);
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--brand-100);
 }
 
 .timePickerContainer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .timeSelect {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background-color: var(--bg-solid);
-  color: var(--text);
-  font-size: 14px;
-  text-align: center;
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-solid);
+    color: var(--text);
+    font-size: 14px;
+    text-align: center;
 }
 
 .timeSelect:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--brand-100);
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--brand-100);
 }
 
 .timeSeparator {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-  user-select: none;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    user-select: none;
 }
 
 .modalActions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
 }
 
 .modalButton {
-  padding: 10px 16px;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
+    padding: 10px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
 }
 
 .modalButtonCancel {
-  background: var(--bg-solid);
-  color: var(--text);
-  border: 1px solid var(--border);
+    background: var(--bg-solid);
+    color: var(--text);
+    border: 1px solid var(--border);
 }
 
 .modalButtonCancel:hover {
-  background: var(--brand-50);
+    background: var(--brand-50);
 }
 
 .modalButtonCreate {
-  background: var(--primary);
-  color: white;
+    background: var(--primary);
+    color: white;
 }
 
 .modalButtonCreate:hover {
-  background: var(--brand-600);
+    background: var(--brand-600);
 }
 
 .modalButtonCreate:disabled {
-  background: var(--muted);
-  cursor: not-allowed;
+    background: var(--muted);
+    cursor: not-allowed;
 }
 
-/* Custom Hierarchical Dropdown */
-.customDropdown {
-  position: relative;
-  width: 100%;
+/* Task List Container */
+.taskListContainer {
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-solid);
+    padding: 8px;
 }
 
-.dropdownButton {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background-color: var(--bg-solid);
-  color: var(--text);
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.objectiveSection {
+    margin-bottom: 8px;
 }
 
-.dropdownButton:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--brand-100);
-}
-
-.dropdownArrow {
-  transition: transform 0.2s;
-}
-
-.dropdownArrow.open {
-  transform: rotate(180deg);
-}
-
-.dropdownMenu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  max-height: 300px;
-  overflow-y: auto;
-  background: var(--bg-solid);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-2);
-  z-index: 1000;
+.objectiveSection:last-child {
+    margin-bottom: 0;
 }
 
 .hierarchyItem {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-light);
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-light);
 }
 
 .hierarchyItem:last-child {
-  border-bottom: none;
+    border-bottom: none;
 }
 
 .hierarchyItem.objective {
-  background: var(--brand-50);
-  font-weight: 600;
-  color: var(--text);
-  cursor: default;
+    background: var(--brand-50);
+    font-weight: 600;
+    color: var(--text);
+    cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: var(--radius-sm);
 }
 
 .hierarchyItem.keyResult {
-  background: var(--brand-100);
-  padding-left: 24px;
-  font-weight: 500;
-  color: var(--text);
-  cursor: default;
+    background: var(--brand-100);
+    padding-left: 24px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: var(--radius-sm);
 }
 
-.hierarchyItem.task {
-  padding-left: 36px;
-  color: var(--text);
-  transition: background-color 0.2s;
+.hierarchyItem.taskItem {
+    padding-left: 36px;
+    color: var(--text);
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
 }
 
-.hierarchyItem.task:hover {
-  background: var(--brand-100);
+.hierarchyItem.taskItem:hover {
+    background: var(--brand-100);
 }
 
-.hierarchyItem.task.selected {
-  background: var(--primary);
-  color: white;
+.radioButton {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+}
+
+.taskTitle {
+    flex: 1;
 }
 
 .taskStatus {
-  font-size: 12px;
-  opacity: 0.7;
-  margin-left: 8px;
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+.noTasks {
+    padding: 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .calendarGrid {
-    display: none;
-  }
-  
-  .mobileCalendar {
-    display: flex;
-    flex: 1;
-  }
-  
-  .calendarTitle {
-    font-size: 20px;
-  }
-  
-  .navButton {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-  
-  .modal {
-    width: 95%;
-    padding: 20px;
-  }
+    .calendarGrid {
+        display: none;
+    }
+
+    .mobileCalendar {
+        display: flex;
+        flex: 1;
+    }
+
+    .calendarTitle {
+        font-size: 20px;
+    }
+
+    .navButton {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .modal {
+        width: 95%;
+        padding: 20px;
+    }
 }
