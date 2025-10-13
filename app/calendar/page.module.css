@@ -192,17 +192,22 @@
 
 .timeBlock {
     position: absolute;
+    top: 0;
     left: 4px;
     right: 4px;
+    /* Height is set dynamically via inline styles based on duration */
     /* Background color is set dynamically via inline styles */
     color: white;
-    border-radius: var(--radius-sm);
-    padding: 4px 8px;
+        
+    padding: 0px 8px;
     font-size: 11px;
     z-index: 15;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     transition: filter 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .timeBlock:hover {
@@ -210,17 +215,51 @@
     /* Darken on hover instead of changing color */
 }
 
+.deleteButton {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 20;
+}
+
+.deleteButton:hover {
+    transform: scale(1.15);
+}
+
+.deleteButton:active {
+    transform: scale(0.9);
+}
+
+.deleteButton svg circle {
+    fill: #dc2626;
+    stroke: #dc2626;
+}
+
+.deleteButton svg path {
+    stroke: white;
+}
+
+.deleteButton:hover svg circle {
+    fill: #b91c1c;
+    stroke: #b91c1c;
+}
+
 .timeBlockTitle {
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.timeBlockDuration {
-    font-size: 10px;
-    opacity: 0.9;
-    margin-top: 1px;
+    line-height: 1.2;
 }
 
 /* Mobile Version */
@@ -427,6 +466,27 @@
 .modalButtonCreate:disabled {
     background: var(--muted);
     cursor: not-allowed;
+}
+
+.modalButtonDelete {
+    background: #dc2626;
+    color: white;
+}
+
+.modalButtonDelete:hover {
+    background: #b91c1c;
+}
+
+.modalButtonDelete:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+}
+
+.deleteModalContent {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.5;
 }
 
 /* Task List Container */

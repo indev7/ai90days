@@ -575,7 +575,7 @@ export default function LeftMenu({
                                     {taskDisplay.description}
                                   </div>
                                   <div className={styles.taskScheduleInfo}>
-                                    {taskDisplay.timeDisplay} • {taskDisplay.status}
+                                    {taskDisplay.timeDisplay}
                                   </div>
                                 </div>
                               </button>

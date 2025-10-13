@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import styles from './TaskUpdateModal.module.css';
 
-export default function TaskUpdateModal({ 
-  isOpen, 
-  onClose, 
-  task, 
-  onSave 
+export default function TaskUpdateModal({
+  isOpen,
+  onClose,
+  task,
+  onSave,
+  onDelete,
+  timeBlockId
 }) {
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +57,13 @@ export default function TaskUpdateModal({
       setProgress(task.progress || 0);
     }
     onClose();
+  };
+
+  const handleDelete = () => {
+    if (!timeBlockId || !onDelete) return;
+    
+    // Call the delete handler which will show the confirmation modal
+    onDelete(timeBlockId);
   };
 
   if (!isOpen || !task) return null;
@@ -120,20 +129,33 @@ export default function TaskUpdateModal({
 
         {/* Modal Footer */}
         <div className={styles.modalFooter}>
-          <button 
-            className={styles.cancelButton} 
-            onClick={handleCancel}
-            disabled={isLoading}
-          >
-            Cancel
-          </button>
-          <button 
-            className={styles.updateButton} 
-            onClick={handleSave}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Updating...' : 'Update'}
-          </button>
+          <div className={styles.footerLeft}>
+            {onDelete && timeBlockId && (
+              <button
+                className={styles.deleteButton}
+                onClick={handleDelete}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            )}
+          </div>
+          <div className={styles.footerRight}>
+            <button
+              className={styles.cancelButton}
+              onClick={handleCancel}
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              className={styles.updateButton}
+              onClick={handleSave}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Updating...' : 'Update'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

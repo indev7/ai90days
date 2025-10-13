@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { IoChevronBack, IoChevronForward } from 'react-icons/io5';
 import styles from './page.module.css';
 import { createObjectiveColorMap, getThemeColorPalette, transformOKRTsToObjectives } from '../../lib/clockUtils';
+import TaskUpdateModal from '../../components/TaskUpdateModal';
 
 const DURATION_OPTIONS = [
     { value: 15, label: '15 min' },
@@ -67,6 +68,10 @@ export default function CalendarPage() {
     });
     const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [timeBlockToDelete, setTimeBlockToDelete] = useState(null);
+    const [showTaskUpdateModal, setShowTaskUpdateModal] = useState(false);
+    const [selectedTimeBlock, setSelectedTimeBlock] = useState(null);
     const [timeBlocks, setTimeBlocks] = useState([]);
     const [taskHierarchy, setTaskHierarchy] = useState([]);
     const [selectedTask, setSelectedTask] = useState('');
@@ -78,6 +83,7 @@ export default function CalendarPage() {
     const [loading, setLoading] = useState(false);
     const [mobileCurrentDay, setMobileCurrentDay] = useState(0); // Index for mobile view
     const [objectiveColorMap, setObjectiveColorMap] = useState({});
+    const [hoveredBlockId, setHoveredBlockId] = useState(null);
 
     const timeSlots = generateTimeSlots();
     const currentDate = new Date(currentWeekStart);
@@ -367,6 +373,90 @@ export default function CalendarPage() {
         setStartMinute(0);
     };
 
+    const handleDeleteTimeBlock = async () => {
+        if (!timeBlockToDelete) return;
+
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/time-blocks/${timeBlockToDelete}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                setShowDeleteModal(false);
+                setTimeBlockToDelete(null);
+                await fetchTimeBlocks(); // Refresh time blocks
+            } else {
+                console.error('Error deleting time block');
+                alert('Failed to delete time block');
+            }
+        } catch (error) {
+            console.error('Error deleting time block:', error);
+            alert('Failed to delete time block');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openDeleteModal = (blockId, e) => {
+        e.stopPropagation();
+        setTimeBlockToDelete(blockId);
+        setShowDeleteModal(true);
+    };
+
+    const closeDeleteModal = () => {
+        setShowDeleteModal(false);
+        setTimeBlockToDelete(null);
+    };
+
+    const handleTimeBlockClick = (block, e) => {
+        e.stopPropagation();
+        setSelectedTimeBlock({
+            id: block.task_id,
+            taskDescription: block.task_title || block.task_description || `Task ${block.task_id}`,
+            progress: block.progress || 0,
+            timeBlockId: block.id
+        });
+        setShowTaskUpdateModal(true);
+    };
+
+    const handleTaskUpdate = async (taskId, updateData) => {
+        try {
+            const response = await fetch(`/api/okrt/${taskId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (response.ok) {
+                // Refresh time blocks to show updated progress
+                await fetchTimeBlocks();
+            } else {
+                throw new Error('Failed to update task');
+            }
+        } catch (error) {
+            console.error('Error updating task:', error);
+            throw error;
+        }
+    };
+
+    const closeTaskUpdateModal = () => {
+        setShowTaskUpdateModal(false);
+        setSelectedTimeBlock(null);
+    };
+
+    const handleDeleteFromModal = (timeBlockId) => {
+        // Close the task update modal first
+        setShowTaskUpdateModal(false);
+        setSelectedTimeBlock(null);
+        
+        // Open the delete confirmation modal
+        setTimeBlockToDelete(timeBlockId);
+        setShowDeleteModal(true);
+    };
+
     return (
         <div className={styles.calendarContainer}>
             <div className={styles.calendarHeader}>
@@ -447,20 +537,48 @@ export default function CalendarPage() {
                                             </button>
                                         )}
 
-                                        {blocksInSlot.map((block) => (
-                                            <div
-                                                key={block.id}
-                                                className={styles.timeBlock}
-                                                style={{ backgroundColor: getTimeBlockColor(block) }}
-                                            >
-                                                <div className={styles.timeBlockTitle}>
-                                                    {block.task_title || block.task_description || `Task ${block.task_id}`}
+                                        {blocksInSlot.map((block) => {
+                                            // Calculate height based on duration (60px per hour)
+                                            const heightPercentage = (block.duration / 60) * 100;
+                                            const blockHeight = `${heightPercentage}%`;
+                                            
+                                            // Calculate top offset based on minutes past the hour
+                                            const blockStart = new Date(block.start_time);
+                                            const minutes = blockStart.getMinutes();
+                                            const topOffset = `${(minutes / 60) * 100}%`;
+                                            
+                                            return (
+                                                <div
+                                                    key={block.id}
+                                                    className={styles.timeBlock}
+                                                    style={{
+                                                        backgroundColor: getTimeBlockColor(block),
+                                                        height: blockHeight,
+                                                        top: topOffset,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onMouseEnter={() => setHoveredBlockId(block.id)}
+                                                    onMouseLeave={() => setHoveredBlockId(null)}
+                                                    onClick={(e) => handleTimeBlockClick(block, e)}
+                                                >
+                                                    <div className={styles.timeBlockTitle}>
+                                                        {block.task_title || block.task_description || `Task ${block.task_id}`}
+                                                    </div>
+                                                    {hoveredBlockId === block.id && (
+                                                    <button
+                                                        className={styles.deleteButton}
+                                                        onClick={(e) => openDeleteModal(block.id, e)}
+                                                        aria-label="Delete time block"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                            <circle cx="8" cy="8" r="7" fill="white" stroke="currentColor" strokeWidth="1"/>
+                                                            <path d="M5 5L11 11M11 5L5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                                        </svg>
+                                                    </button>
+                                                    )}
                                                 </div>
-                                                <div className={styles.timeBlockDuration}>
-                                                    {formatDuration(block.duration)}
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 );
                             })}
@@ -521,20 +639,48 @@ export default function CalendarPage() {
                                                 </button>
                                             )}
 
-                                            {blocksInSlot.map((block) => (
-                                                <div
-                                                    key={block.id}
-                                                    className={styles.timeBlock}
-                                                    style={{ backgroundColor: getTimeBlockColor(block) }}
-                                                >
-                                                    <div className={styles.timeBlockTitle}>
-                                                        {block.task_title || block.task_description || `Task ${block.task_id}`}
+                                            {blocksInSlot.map((block) => {
+                                                // Calculate height based on duration (60px per hour)
+                                                const heightPercentage = (block.duration / 60) * 100;
+                                                const blockHeight = `${heightPercentage}%`;
+                                                
+                                                // Calculate top offset based on minutes past the hour
+                                                const blockStart = new Date(block.start_time);
+                                                const minutes = blockStart.getMinutes();
+                                                const topOffset = `${(minutes / 60) * 100}%`;
+                                                
+                                                return (
+                                                    <div
+                                                        key={block.id}
+                                                        className={styles.timeBlock}
+                                                        style={{
+                                                            backgroundColor: getTimeBlockColor(block),
+                                                            height: blockHeight,
+                                                            top: topOffset,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        onMouseEnter={() => setHoveredBlockId(block.id)}
+                                                        onMouseLeave={() => setHoveredBlockId(null)}
+                                                        onClick={(e) => handleTimeBlockClick(block, e)}
+                                                    >
+                                                        <div className={styles.timeBlockTitle}>
+                                                            {block.task_title || block.task_description || `Task ${block.task_id}`}
+                                                        </div>
+                                                    {hoveredBlockId === block.id && (
+                                                        <button
+                                                            className={styles.deleteButton}
+                                                            onClick={(e) => openDeleteModal(block.id, e)}
+                                                            aria-label="Delete time block"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <circle cx="8" cy="8" r="7" fill="white" stroke="currentColor" strokeWidth="1"/>
+                                                                <path d="M5 5L11 11M11 5L5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                                            </svg>
+                                                        </button>
+                                                    )}
                                                     </div>
-                                                    <div className={styles.timeBlockDuration}>
-                                                        {formatDuration(block.duration)}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 );
@@ -662,6 +808,46 @@ export default function CalendarPage() {
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className={styles.modalOverlay} onClick={closeDeleteModal}>
+                    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.modalHeader}>
+                            Unblock Time
+                        </div>
+                        <div className={styles.deleteModalContent}>
+                            Are you sure you want to unblock this time?
+                        </div>
+                        <div className={styles.modalActions}>
+                            <button
+                                className={`${styles.modalButton} ${styles.modalButtonCancel}`}
+                                onClick={closeDeleteModal}
+                                disabled={loading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className={`${styles.modalButton} ${styles.modalButtonDelete}`}
+                                onClick={handleDeleteTimeBlock}
+                                disabled={loading}
+                            >
+                                {loading ? 'Unblocking...' : 'Unblock'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Task Update Modal */}
+            <TaskUpdateModal
+                isOpen={showTaskUpdateModal}
+                onClose={closeTaskUpdateModal}
+                task={selectedTimeBlock}
+                onSave={handleTaskUpdate}
+                onDelete={handleDeleteFromModal}
+                timeBlockId={selectedTimeBlock?.timeBlockId}
+            />
         </div>
     );
 }

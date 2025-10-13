@@ -10,7 +10,6 @@ import { LiaGolfBallSolid } from "react-icons/lia";
 import { LuExpand } from "react-icons/lu";
 import { BiCollapse } from "react-icons/bi";
 import OKRTModal from '../../components/OKRTModal';
-import TaskUpdateModal from '../../components/TaskUpdateModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
 import RewardsDisplay from '../../components/RewardsDisplay';
@@ -438,10 +437,6 @@ export default function OKRTPage() {
     isOpen: false,
     objective: null
   });
-  const [taskUpdateModalState, setTaskUpdateModalState] = useState({
-    isOpen: false,
-    task: null
-  });
 
   // Fetch user data
   useEffect(() => {
@@ -562,9 +557,11 @@ export default function OKRTPage() {
   };
 
   const handleEditTask = (task) => {
-    setTaskUpdateModalState({
+    setModalState({
       isOpen: true,
-      task: task
+      mode: 'edit',
+      okrt: task,
+      parentOkrt: null
     });
   };
 
@@ -602,51 +599,6 @@ export default function OKRTPage() {
       okrt: null,
       parentOkrt: null
     });
-  };
-
-  // Task Update Modal Handlers
-  const handleCloseTaskUpdateModal = () => {
-    setTaskUpdateModalState({
-      isOpen: false,
-      task: null
-    });
-  };
-
-  const handleSaveTaskUpdate = async (taskId, updateData) => {
-    try {
-      console.log('Saving task update:', { taskId, updateData });
-      
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update task');
-      }
-
-      const result = await response.json();
-      console.log('Task update result:', result);
-
-      // Refresh data to show updated progress
-      await fetchData();
-
-      // Close modal
-      handleCloseTaskUpdateModal();
-
-      // Show success message if progress was propagated
-      if (result.propagation) {
-        console.log('Progress propagated:', result.propagation);
-      }
-
-    } catch (error) {
-      console.error('Error updating task:', error);
-      throw error;
-    }
   };
 
   const handleSaveOkrt = async (okrtData) => {
@@ -899,14 +851,6 @@ export default function OKRTPage() {
         okrt={modalState.okrt}
         parentOkrt={modalState.parentOkrt}
         mode={modalState.mode}
-      />
-
-      {/* Task Update Modal */}
-      <TaskUpdateModal
-        isOpen={taskUpdateModalState.isOpen}
-        onClose={handleCloseTaskUpdateModal}
-        task={taskUpdateModalState.task}
-        onSave={handleSaveTaskUpdate}
       />
 
       {/* Share Modal */}

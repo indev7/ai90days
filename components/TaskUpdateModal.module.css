@@ -213,10 +213,21 @@
   border-top: 1px solid var(--border);
   display: flex;
   gap: 0.75rem;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.cancelButton, .updateButton {
+.footerLeft {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.footerRight {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cancelButton, .updateButton, .deleteButton {
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   font-size: 0.875rem;
@@ -260,6 +271,24 @@
   cursor: not-allowed;
 }
 
+.deleteButton {
+  background-color: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.deleteButton:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.deleteButton:disabled {
+  background-color: var(--text-disabled);
+  border-color: var(--text-disabled);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Responsive Design */
 @media (max-width: 640px) {
   .modalOverlay {
@@ -278,10 +307,20 @@
   }
   
   .modalFooter {
-    flex-direction: column-reverse;
+    flex-direction: column;
   }
   
-  .cancelButton, .updateButton {
+  .footerLeft {
+    width: 100%;
+    order: 2;
+  }
+  
+  .footerRight {
+    width: 100%;
+    order: 1;
+  }
+  
+  .cancelButton, .updateButton, .deleteButton {
     width: 100%;
   }
 }
