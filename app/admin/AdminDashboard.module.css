@@ -1,0 +1,202 @@
+.container {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 40px 20px;
+}
+
+.header {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 4px 0;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+}
+
+.logoutButton {
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.logoutButton:hover {
+  background: #c82333;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 18px;
+  color: #666;
+}
+
+.error {
+  max-width: 1200px;
+  margin: 0 auto 20px;
+  padding: 16px;
+  background-color: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  color: #c33;
+  font-size: 14px;
+}
+
+.stats {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.statCard {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.statValue {
+  font-size: 36px;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 8px;
+}
+
+.statLabel {
+  font-size: 14px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tableContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background: #f8f9fa;
+}
+
+.table th {
+  padding: 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.table td {
+  padding: 16px;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.microsoftId {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #28a745;
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.noData {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-style: italic;
+}
+
+.footer {
+  max-width: 1200px;
+  margin: 30px auto 0;
+  text-align: center;
+}
+
+.backLink {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .tableContainer {
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 800px;
+  }
+}
