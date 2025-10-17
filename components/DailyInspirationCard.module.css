@@ -1,0 +1,280 @@
+.card {
+  position: relative;
+  width: 100%;
+  min-height: 350px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: var(--card-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.content p {
+  margin: 0 0 12px 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.content p:last-child {
+  margin-bottom: 0;
+}
+
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  color: white;
+  margin: 0 0 12px 0;
+}
+
+.readMoreBtn {
+  align-self: flex-end;
+  padding: 10px 24px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.readMoreBtn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.readMoreBtn:active {
+  transform: translateY(0);
+}
+
+.loading,
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.error {
+  color: var(--error-color, #e74c3c);
+}
+
+/* Modal styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalContent {
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalHero {
+  width: 100%;
+  height: 250px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 16px 16px 0 0;
+  position: relative;
+}
+
+.closeBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  font-size: 2rem;
+  color: #333;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: rotate(90deg);
+}
+
+.modalBody {
+  padding: 32px;
+  color: var(--text-primary);
+  line-height: 1.8;
+  font-size: 1.05rem;
+}
+
+.modalBody p {
+  margin: 0 0 16px 0;
+}
+
+.modalBody p:last-child {
+  margin-bottom: 0;
+}
+
+.modalBody h1,
+.modalBody h2,
+.modalBody h3,
+.modalBody h4,
+.modalBody h5,
+.modalBody h6 {
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+  font-weight: 700;
+}
+
+.modalBody ul,
+.modalBody ol {
+  margin: 0 0 16px 0;
+  padding-left: 24px;
+}
+
+.modalBody li {
+  margin-bottom: 8px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .card {
+    min-height: 280px;
+  }
+
+  .overlay {
+    min-height: 280px;
+    padding: 24px;
+  }
+
+  .content {
+    font-size: 1rem;
+  }
+
+  .readMoreBtn {
+    padding: 8px 20px;
+    font-size: 0.9rem;
+  }
+
+  .modalHero {
+    height: 200px;
+  }
+
+  .modalContent {
+    max-height: 90vh;
+  }
+
+  .modalBody {
+    padding: 24px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    min-height: 240px;
+  }
+
+  .overlay {
+    min-height: 240px;
+    padding: 20px;
+  }
+
+  .content {
+    font-size: 0.95rem;
+  }
+
+  .modalHero {
+    height: 180px;
+  }
+
+  .modalBody {
+    padding: 20px;
+  }
+}

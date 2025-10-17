@@ -7,16 +7,11 @@ import { styled } from '@mui/material/styles';
 import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from 'react-icons/gi';
 import { LiaGolfBallSolid } from 'react-icons/lia';
+import { getThemeColorPalette } from '@/lib/clockUtils';
 import styles from './OKRTs.module.css';
 
-// Colors matching the 12 Week Clock legend
-const PROTOTYPE_COLORS = [
-  '#7dd71d', // Green
-  '#e83e8c', // Pink
-  '#60a5fa', // Blue
-  '#fbbf24', // Yellow
-  '#a78bfa'  // Purple
-];
+// Get colors from centralized source
+const PROTOTYPE_COLORS = getThemeColorPalette();
 
 const StyledTreeItem = styled(TreeItem)(({ theme, objectiveColor, objectiveIndex, isKR, isTask }) => ({
   '& .MuiTreeItem-content': {
@@ -29,18 +24,28 @@ const StyledTreeItem = styled(TreeItem)(({ theme, objectiveColor, objectiveIndex
       : 'transparent',
     '&:hover': {
       backgroundColor: objectiveIndex !== undefined
-        ? (isTask ? `${objectiveColor}26` : isKR ? `${objectiveColor}4D` : `${objectiveColor}4D`) // 26 = 15% hover for tasks
+        ? (isTask ? `${objectiveColor}26` : isKR ? `${objectiveColor}4D` : `${objectiveColor}40`) // 40 = 25% hover for objectives (lighter purple, not blue)
         : 'var(--background-secondary)',
+    },
+    '&.Mui-focused': {
+      backgroundColor: objectiveIndex !== undefined
+        ? (isTask ? `${objectiveColor}1A` : isKR ? `${objectiveColor}40` : `${objectiveColor}33`) // Keep original opacity when focused
+        : 'transparent',
     },
     '&.Mui-selected': {
       backgroundColor: objectiveIndex !== undefined
-        ? (isTask ? `${objectiveColor}26` : isKR ? `${objectiveColor}4D` : `${objectiveColor}4D`)
-        : 'var(--background-secondary)',
+        ? (isTask ? `${objectiveColor}1A` : isKR ? `${objectiveColor}40` : `${objectiveColor}33`) // Keep original opacity when selected
+        : 'transparent',
       '&:hover': {
         backgroundColor: objectiveIndex !== undefined
-          ? (isTask ? `${objectiveColor}26` : isKR ? `${objectiveColor}4D` : `${objectiveColor}4D`)
+          ? (isTask ? `${objectiveColor}26` : isKR ? `${objectiveColor}4D` : `${objectiveColor}40`) // 40 = 25% hover for objectives
           : 'var(--background-secondary)',
       },
+    },
+    '&.Mui-selected.Mui-focused': {
+      backgroundColor: objectiveIndex !== undefined
+        ? (isTask ? `${objectiveColor}1A` : isKR ? `${objectiveColor}40` : `${objectiveColor}33`) // Keep original opacity when both selected and focused
+        : 'transparent',
     },
   },
   '& .MuiTreeItem-label': {

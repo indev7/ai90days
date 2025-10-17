@@ -295,7 +295,7 @@ export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
             
             return (
               <path
-                key={task.id}
+                key={task.timeBlockId || task.id}
                 d={createSectorPath(task.startAngle, task.endAngle, radius - 40, radius - 10)}
                 fill={task.color}
                 fillOpacity="0.6"
@@ -420,8 +420,8 @@ export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
                 };
                 
                 return (
-                  <div 
-                    key={task.id} 
+                  <div
+                    key={task.timeBlockId || task.id}
                     className={styles.scheduleItem}
                     onClick={() => handleTaskSectorClick(task)}
                     style={{ backgroundColor: task.color ? hexToRgba(task.color, 0.4) : undefined }}
@@ -445,11 +445,11 @@ export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
         </div>
       )}
       
-      {/* No tasks message and schedule button */}
-      {todayTasks.length === 0 && (
+      {/* No tasks message and schedule button - show when current 12-hour period has no tasks */}
+      {taskSectors.length === 0 && (
         <div className={styles.noTasksContainer}>
-          <p className={styles.noTasksMessage}>No scheduled tasks for today</p>
-          <button 
+          <p className={styles.noTasksMessage}>No scheduled tasks for this period</p>
+          <button
             className={styles.scheduleButton}
             onClick={handleScheduleClick}
           >

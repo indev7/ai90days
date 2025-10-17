@@ -7,6 +7,7 @@ import TodayWidget from '@/components/TodayWidget';
 import OKRTModal from '@/components/OKRTModal';
 import OKRTs from '@/components/OKRTs';
 import NotificationsWidget from '@/components/NotificationsWidget';
+import DailyInspirationCard from '@/components/DailyInspirationCard';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
   transformOKRTsToObjectives,
@@ -194,7 +195,7 @@ export default function Dashboard() {
   // Extract todo tasks from filtered OKRTs (called during data fetch)
   const extractTodoTasks = (okrts, transformedObjectives, colorPalette, timeBlocks = []) => {
     // Filter for all tasks (including done and blocked for schedule display)
-    const tasks = okrts.filter(okrt => 
+    const tasks = okrts.filter(okrt =>
       okrt.type === 'T'
     );
     
@@ -202,76 +203,100 @@ export default function Dashboard() {
     console.log('Available tasks:', tasks.map(t => ({ id: t.id, title: t.title || t.description })));
     console.log('Available time blocks:', timeBlocks.map(tb => ({ task_id: tb.task_id, start_time: tb.start_time, duration: tb.duration })));
     
-    // Map tasks to include color from objectives and scheduling info
-    const mappedTasks = tasks.map((task, index) => {
+    // Create a mapped task entry for EACH time block (not just one per task)
+    const mappedTasks = [];
+    
+    tasks.forEach((task) => {
       // Find parent key result
       const parentKR = okrts.find(okrt => okrt.id === task.parent_id && okrt.type === 'K');
       // Find grandparent objective
-      const parentObjective = parentKR ? 
-        okrts.find(okrt => okrt.id === parentKR.parent_id && okrt.type === 'O') : 
+      const parentObjective = parentKR ?
+        okrts.find(okrt => okrt.id === parentKR.parent_id && okrt.type === 'O') :
         null;
       
-      // Find the objective index for color mapping
-      let objectiveIndex = 0;
-      let color = colorPalette[0]; // Default color
+      // Find ALL time blocks for this task (not just the first one)
+      const taskTimeBlocks = timeBlocks.filter(tb => tb.task_id === task.id);
       
-      // Check if task has time blocks with objective_id for color mapping
-      const taskTimeBlock = timeBlocks.find(tb => tb.task_id === task.id);
-      if (taskTimeBlock && taskTimeBlock.objective_id) {
-        // Use objective_id from time block directly
-        const foundObjective = transformedObjectives.find(obj => obj.id === taskTimeBlock.objective_id);
-        if (foundObjective) {
-          const foundIndex = transformedObjectives.indexOf(foundObjective);
-          objectiveIndex = foundIndex;
-          color = foundObjective.color;
-          console.log(`Using objective color from time block: ${task.id} -> objective ${taskTimeBlock.objective_id} -> index ${objectiveIndex} -> color ${color}`);
+      if (taskTimeBlocks.length > 0) {
+        // Create a separate entry for each time block
+        taskTimeBlocks.forEach((timeBlock) => {
+          // Find the objective index for color mapping
+          let objectiveIndex = 0;
+          let color = colorPalette[0]; // Default color
+          
+          if (timeBlock.objective_id) {
+            // Use objective_id from time block directly
+            const foundObjective = transformedObjectives.find(obj => obj.id === timeBlock.objective_id);
+            if (foundObjective) {
+              const foundIndex = transformedObjectives.indexOf(foundObjective);
+              objectiveIndex = foundIndex;
+              color = foundObjective.color;
+              console.log(`Using objective color from time block: ${task.id} -> objective ${timeBlock.objective_id} -> index ${objectiveIndex} -> color ${color}`);
+            }
+          } else if (parentObjective) {
+            // Fallback to deriving from task hierarchy
+            const foundIndex = transformedObjectives.findIndex(obj => obj.id === parentObjective.id);
+            if (foundIndex >= 0) {
+              objectiveIndex = foundIndex;
+              color = transformedObjectives[foundIndex].color;
+              console.log(`Using objective color from hierarchy: ${task.id} -> objective ${parentObjective.id} -> index ${objectiveIndex} -> color ${color}`);
+            }
+          }
+          
+          console.log(`Task ${task.id} scheduled at ${timeBlock.start_time}:`, {
+            taskDesc: task.description || task.title,
+            scheduledDateTime: timeBlock.start_time,
+            formatted: formatScheduledDateTime(timeBlock.start_time)
+          });
+          
+          mappedTasks.push({
+            id: task.id,
+            timeBlockId: timeBlock.id, // Add time block ID to distinguish multiple schedules
+            taskDescription: task.description || task.title,
+            isScheduled: true,
+            scheduledDateTime: timeBlock.start_time,
+            duration: timeBlock.duration,
+            scheduledDateFormatted: formatScheduledDateTime(timeBlock.start_time),
+            color: color,
+            objectiveIndex: objectiveIndex,
+            status: task.task_status,
+            progress: task.progress || 0,
+            objectiveTitle: parentObjective?.title || parentObjective?.description || 'Unknown Objective',
+            krTitle: parentKR?.title || parentKR?.description || 'Unknown KR',
+            objective: parentObjective?.title || parentObjective?.description,
+            keyResult: parentKR?.title || parentKR?.description
+          });
+        });
+      } else {
+        // Task has no time blocks - add as unscheduled
+        let objectiveIndex = 0;
+        let color = colorPalette[0];
+        
+        if (parentObjective) {
+          const foundIndex = transformedObjectives.findIndex(obj => obj.id === parentObjective.id);
+          if (foundIndex >= 0) {
+            objectiveIndex = foundIndex;
+            color = transformedObjectives[foundIndex].color;
+          }
         }
-      } else if (parentObjective) {
-        // Fallback to deriving from task hierarchy
-        const foundIndex = transformedObjectives.findIndex(obj => obj.id === parentObjective.id);
-        if (foundIndex >= 0) {
-          objectiveIndex = foundIndex;
-          color = transformedObjectives[foundIndex].color;
-          console.log(`Using objective color from hierarchy: ${task.id} -> objective ${parentObjective.id} -> index ${objectiveIndex} -> color ${color}`);
-        }
-      }
-      
-      // Check if task is scheduled
-      const timeBlock = taskTimeBlock;
-      const isScheduled = !!timeBlock;
-      const scheduledDateTime = isScheduled ? timeBlock.start_time : null;
-      
-      // Debug log for all tasks and their scheduling status
-      console.log(`Task ${task.id} (${task.description || task.title}):`, {
-        isScheduled,
-        timeBlockFound: !!timeBlock,
-        scheduledDateTime,
-        timeBlockTaskId: timeBlock?.task_id
-      });
-      
-      // Debug log for scheduled tasks
-      if (isScheduled) {
-        console.log(`Task ${task.id} is scheduled:`, {
-          taskDesc: task.description || task.title,
-          scheduledDateTime,
-          formatted: formatScheduledDateTime(scheduledDateTime)
+        
+        mappedTasks.push({
+          id: task.id,
+          taskDescription: task.description || task.title,
+          isScheduled: false,
+          scheduledDateTime: null,
+          duration: null,
+          scheduledDateFormatted: null,
+          color: color,
+          objectiveIndex: objectiveIndex,
+          status: task.task_status,
+          progress: task.progress || 0,
+          objectiveTitle: parentObjective?.title || parentObjective?.description || 'Unknown Objective',
+          krTitle: parentKR?.title || parentKR?.description || 'Unknown KR',
+          objective: parentObjective?.title || parentObjective?.description,
+          keyResult: parentKR?.title || parentKR?.description
         });
       }
-      
-      return {
-        id: task.id,
-        taskDescription: task.description || task.title,
-        isScheduled: isScheduled,
-        scheduledDateTime: scheduledDateTime,
-        duration: isScheduled ? timeBlock.duration : null,
-        scheduledDateFormatted: isScheduled ? formatScheduledDateTime(scheduledDateTime) : null,
-        color: color,
-        objectiveIndex: objectiveIndex,
-        status: task.task_status,
-        progress: task.progress || 0,
-        objectiveTitle: parentObjective?.title || parentObjective?.description || 'Unknown Objective',
-        krTitle: parentKR?.title || parentKR?.description || 'Unknown KR'
-      };
     });
 
     // Sort tasks: scheduled tasks first (by date/time), then unscheduled tasks
@@ -369,43 +394,23 @@ export default function Dashboard() {
     <div className={styles.container}>
       <div className={styles.content}>
         <div className={styles.dashboardGrid}>
-          {/* Column 1: Daily Inspiration + Todo List */}
+          {/* Column 1: Daily Inspiration + Notifications */}
           <div className={styles.column}>
             {/* Daily Inspiration */}
+            <DailyInspirationCard />
+
+            {/* Notifications */}
             <div className={styles.componentCard}>
               <div className={styles.componentHeader}>
-                <h3 className={styles.componentTitle}>Daily Inspiration</h3>
+                <h3 className={styles.componentTitle}>Notifications</h3>
               </div>
               <div className={styles.componentContent}>
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  height: '100%', 
-                  color: 'var(--text-secondary)',
-                  fontStyle: 'italic'
-                }}>
-                  <p style={{ margin: '0 0 0.5rem 0', textAlign: 'center' }}>
-                    "Success is the sum of small efforts repeated day in and day out."
-                  </p>
-                  <small>— Robert Collier</small>
-                </div>
-              </div>
-            </div>
-
-            {/* OKRTs Widget */}
-            <div className={`${styles.componentCard} ${styles.todoWidget}`}>
-              <div className={styles.componentHeader}>
-                <h3 className={styles.componentTitle}>OKRTs</h3>
-              </div>
-              <div className={styles.componentContent}>
-                <OKRTs okrts={filteredOKRTs} />
+                <NotificationsWidget />
               </div>
             </div>
           </div>
 
-          {/* Column 2: 12 Week Clock */}
+          {/* Column 2: 12 Week Clock + OKRTs Widget */}
           <div className={styles.column}>
             <div className={styles.clockCard}>
               <TwelveWeekClock
@@ -419,22 +424,22 @@ export default function Dashboard() {
                 {...getTrackProps()}
               />
             </div>
+
+            {/* OKRTs Widget */}
+            <div className={`${styles.componentCard} ${styles.todoWidget}`}>
+              <div className={styles.componentHeader}>
+                <h3 className={styles.componentTitle}>OKRTs</h3>
+              </div>
+              <div className={styles.componentContent}>
+                <OKRTs okrts={filteredOKRTs} />
+              </div>
+            </div>
           </div>
 
-          {/* Column 3: Today Widget + Activity */}
+          {/* Column 3: Today Widget */}
           <div className={styles.column}>
             {/* Today Widget */}
             <TodayWidget objectives={objectives} todoTasks={todoTasks} />
-
-            {/* Notifications */}
-            <div className={styles.componentCard}>
-              <div className={styles.componentHeader}>
-                <h3 className={styles.componentTitle}>Notifications</h3>
-              </div>
-              <div className={styles.componentContent}>
-                <NotificationsWidget />
-              </div>
-            </div>
           </div>
         </div>
 

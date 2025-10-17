@@ -1,7 +1,7 @@
 import React from "react";
 import { GiGolfFlag } from "react-icons/gi";
 import { FaPlus } from "react-icons/fa";
-import { getCurrentQuarterName } from '@/lib/clockUtils';
+import { getCurrentQuarterName, getThemeColorPalette } from '@/lib/clockUtils';
 import styles from './TwelveWeekClock.module.css';
 
 /**
@@ -13,14 +13,8 @@ import styles from './TwelveWeekClock.module.css';
  * - Responsive legend (right side on desktop, below on mobile)
  */
 
-// Original prototype colors
-const PROTOTYPE_COLORS = [
-  '#7dd71d', // Green
-  '#e83e8c', // Pink
-  '#60a5fa', // Blue
-  '#fbbf24', // Yellow
-  '#a78bfa'  // Purple
-];
+// Get colors from centralized source
+const PROTOTYPE_COLORS = getThemeColorPalette();
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const toRad = (deg) => (deg - 90) * (Math.PI / 180); // 0° at 12 o'clock, clockwise
@@ -63,6 +57,7 @@ function TwelveWeekClock({
   const handPosition = displayDayNumber % TOTAL_DAYS; // Use day number for proper hand position
   const quarterName = getCurrentQuarterName(); // e.g., "Q1 2025"
   const quarterLabel = quarterName.replace(/^(Q\d+)\s+(\d+)$/, '$2-$1'); // Convert to "2025-Q1" format
+  const clockTitle = `${quarterLabel} 12 Week Clock`; // e.g., "2025-Q4 12 Week Clock"
   const dayLabel = `${titlePrefix} ${displayDayNumber}`;
 
   // Calculate date range for display
@@ -177,10 +172,9 @@ function TwelveWeekClock({
     <div className={styles.clockContainer} style={{ color: ticksAndText }}>
       {/* Clock with border (same style as legend) */}
       <div className={styles.clockWithBorder}>
-        {/* Header with title and date range */}
+        {/* Header with title */}
         <div className={styles.clockHeader}>
-          <h2 className={styles.clockTitle}>The 12 Week Clock</h2>
-          <p className={styles.clockDateRange}>{dateRange}</p>
+          <h3 className={styles.clockTitle}>{clockTitle}</h3>
         </div>
         
         <div className={styles.clockSvg}>
@@ -312,11 +306,6 @@ function TwelveWeekClock({
           {/* Center pivot */}
           <circle cx={cx} cy={cy} r={Math.max(4, Math.round(6 * scaleFactor))} fill={handColor} />
 
-          {/* Quarter label at top */}
-          <text x={cx} y={cy - Math.round(16 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fontWeight={700} fill={ticksAndText} dominantBaseline="auto">
-            {quarterLabel}
-          </text>
-
           {/* Day label under pivot */}
           <text x={cx} y={cy + Math.round(28 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fill={ticksAndText} opacity={0.8} fontWeight={600}>
             {dayLabel}
@@ -324,37 +313,6 @@ function TwelveWeekClock({
           {/* Circumference border */}
           <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={circumferenceColor} strokeWidth={strokeWidth} />
         </svg>
-        
-        {/* Objectives list or create button inside clock border */}
-        {objectives.length > 0 ? (
-          <div className={styles.objectivesList} style={{ maxWidth: `${size}px` }}>
-            {objectives.map((o, i) => {
-              const color = PROTOTYPE_COLORS[i % PROTOTYPE_COLORS.length];
-              const pct = Math.round(clamp(o.progress, 0, 1) * 100);
-              return (
-                <div key={`objective-${i}`} className={styles.objectiveItem}>
-                  <span className={styles.objectiveColorBox} style={{ background: color }} />
-                  <span className={styles.objectiveText}>
-                    {o.title} — {pct}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className={styles.emptyObjectivesContainer} style={{ maxWidth: `${size}px` }}>
-            {onCreateObjective && (
-              <button 
-                className={styles.createObjectiveButton}
-                onClick={onCreateObjective}
-                type="button"
-              >
-                <FaPlus className={styles.createObjectiveIcon} />
-                Create Your First Objective
-              </button>
-            )}
-          </div>
-        )}
       </div>
       </div>
     </div>
