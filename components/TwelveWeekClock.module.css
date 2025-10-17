@@ -45,6 +45,13 @@
   min-height: 0;
 }
 
+.okrtsSection {
+  width: 100%;
+  padding: 0 1rem 1rem;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
 .objectivesList {
   width: 100%;
   text-align: left;

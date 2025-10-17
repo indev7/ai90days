@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import TwelveWeekClock from '@/components/TwelveWeekClock';
 import TodayWidget from '@/components/TodayWidget';
 import OKRTModal from '@/components/OKRTModal';
-import OKRTs from '@/components/OKRTs';
 import NotificationsWidget from '@/components/NotificationsWidget';
 import DailyInspirationCard from '@/components/DailyInspirationCard';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -410,7 +409,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Column 2: 12 Week Clock + OKRTs Widget */}
+          {/* Column 2: 12 Week Clock with OKRTs */}
           <div className={styles.column}>
             <div className={styles.clockCard}>
               <TwelveWeekClock
@@ -421,18 +420,9 @@ export default function Dashboard() {
                 dateLabel={currentDate}
                 titlePrefix="Day"
                 onCreateObjective={handleCreateObjective}
+                okrts={filteredOKRTs}
                 {...getTrackProps()}
               />
-            </div>
-
-            {/* OKRTs Widget */}
-            <div className={`${styles.componentCard} ${styles.todoWidget}`}>
-              <div className={styles.componentHeader}>
-                <h3 className={styles.componentTitle}>OKRTs</h3>
-              </div>
-              <div className={styles.componentContent}>
-                <OKRTs okrts={filteredOKRTs} />
-              </div>
             </div>
           </div>
 

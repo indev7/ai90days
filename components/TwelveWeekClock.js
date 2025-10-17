@@ -2,6 +2,7 @@ import React from "react";
 import { GiGolfFlag } from "react-icons/gi";
 import { FaPlus } from "react-icons/fa";
 import { getCurrentQuarterName, getThemeColorPalette } from '@/lib/clockUtils';
+import OKRTs from '@/components/OKRTs';
 import styles from './TwelveWeekClock.module.css';
 
 /**
@@ -49,6 +50,7 @@ function TwelveWeekClock({
   dateLabel,
   startDate = null,
   onCreateObjective = null,
+  okrts = [],
 }) {
   const TOTAL_WEEKS = 12;
   const TOTAL_DAYS = 84;
@@ -314,6 +316,13 @@ function TwelveWeekClock({
           <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={circumferenceColor} strokeWidth={strokeWidth} />
         </svg>
       </div>
+      
+      {/* OKRTs list below the clock */}
+      {okrts && okrts.length > 0 && (
+        <div className={styles.okrtsSection}>
+          <OKRTs okrts={okrts} />
+        </div>
+      )}
       </div>
     </div>
   );
