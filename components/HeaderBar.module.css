@@ -101,8 +101,8 @@
   background-color: var(--card);
 }
 
-/* Show mobile hamburger only on mobile */
-@media (min-width: 768px) {
+/* Show mobile hamburger only on mobile and tablet portrait */
+@media (min-width: 1024px) {
   .mobileHamburger {
     display: none;
   }

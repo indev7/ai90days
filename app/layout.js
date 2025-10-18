@@ -29,8 +29,8 @@ export default function RootLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const isDesktop = useMediaQuery('(min-width: 1380px)');
-  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1379px)');
-  const isMidRange = useMediaQuery('(min-width: 1024px) and (max-width: 1379px)');
+  const isTabletLandscape = useMediaQuery('(min-width: 1024px) and (max-width: 1379px)');
+  const isTabletPortrait = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   // Initialize theme system
@@ -94,7 +94,7 @@ export default function RootLayout({ children }) {
       // Collapse the appropriate menu based on screen size
       if (isDesktop) {
         setIsDesktopMenuCollapsed(true);
-      } else if (isTablet || isMidRange) {
+      } else if (isTabletLandscape) {
         setIsMenuCollapsed(true);
       }
     };
@@ -103,7 +103,7 @@ export default function RootLayout({ children }) {
       // Expand the appropriate menu based on screen size
       if (isDesktop) {
         setIsDesktopMenuCollapsed(false);
-      } else if (isTablet || isMidRange) {
+      } else if (isTabletLandscape) {
         setIsMenuCollapsed(false);
       }
     };
@@ -115,7 +115,7 @@ export default function RootLayout({ children }) {
       window.removeEventListener('enterFocusMode', handleEnterFocusMode);
       window.removeEventListener('exitFocusMode', handleExitFocusMode);
     };
-  }, [isDesktop, isTablet, isMidRange]);
+  }, [isDesktop, isTabletLandscape]);
 
   // Hide layout on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/signup';
@@ -192,10 +192,10 @@ export default function RootLayout({ children }) {
   const getMenuWidth = () => {
     if (isDesktop) {
       return isDesktopMenuCollapsed ? 80 : 240;
-    } else if (isTablet) {
-      return isMenuCollapsed ? 80 : 240; // Can be toggled on tablet+
+    } else if (isTabletLandscape) {
+      return isMenuCollapsed ? 80 : 240; // Can be toggled on tablet landscape
     } else {
-      return 0; // Hidden on mobile (slide-in overlay doesn't affect content padding)
+      return 0; // Hidden on mobile and tablet portrait (slide-in overlay doesn't affect content padding)
     }
   };
 
@@ -208,16 +208,16 @@ export default function RootLayout({ children }) {
               user={user}
               isDesktopMenuCollapsed={isDesktopMenuCollapsed}
               onDesktopMenuToggle={isDesktop ? handleDesktopMenuToggle : undefined}
-              onLeftMenuToggle={isMidRange ? handleMenuToggle : undefined}
+              onLeftMenuToggle={isTabletLandscape ? handleMenuToggle : undefined}
               isLeftMenuCollapsed={isMenuCollapsed}
-              onMobileMenuToggle={isMobile ? handleMobileMenuToggle : undefined}
+              onMobileMenuToggle={(isMobile || isTabletPortrait) ? handleMobileMenuToggle : undefined}
               isMobileMenuOpen={isMobileMenuOpen}
             />
             <LeftMenu
               isCollapsed={isDesktop ? false : isMenuCollapsed}
               onToggle={isDesktop ? undefined : handleMenuToggle}
               isDesktopCollapsed={isDesktop ? isDesktopMenuCollapsed : false}
-              isMobileSlideIn={isMobile && isMobileMenuOpen}
+              isMobileSlideIn={(isMobile || isTabletPortrait) && isMobileMenuOpen}
               onMobileClose={handleMobileMenuClose}
             />
             <main style={{

@@ -36,19 +36,20 @@ export default function Dashboard() {
   });
 
   // Responsive size logic
-  const isMobile = useMediaQuery('(max-width: 640px)');
-  const isTablet = useMediaQuery('(max-width: 1024px)');
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isTabletPortrait = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   
   const getClockSize = () => {
-    if (isMobile) return 280;        // Small screens
-    if (isTablet) return 360;        // Medium screens
-    return 460;                      // Large screens (desktop)
+    if (isMobile) return 280;              // Small screens
+    if (isTabletPortrait) return 360;      // Tablet portrait
+    return 460;                            // Desktop
   };
 
   const getTrackProps = () => {
-    if (isMobile) return { trackWidth: 8, trackGap: 6 };   // Thinner tracks for mobile
-    if (isTablet) return { trackWidth: 10, trackGap: 8 };  // Medium tracks for tablet
-    return { trackWidth: 14, trackGap: 12 };               // Default thick tracks for desktop
+    if (isMobile) return { trackWidth: 8, trackGap: 6 };          // Thinner tracks for mobile
+    if (isTabletPortrait) return { trackWidth: 10, trackGap: 8 }; // Medium tracks for tablet
+    return { trackWidth: 14, trackGap: 12 };                      // Default thick tracks for desktop
   };
 
   // Use original prototype colors
@@ -389,50 +390,130 @@ export default function Dashboard() {
 
   const currentDate = formatCurrentDate();
 
+  // Render layout based on screen size
+  const renderMobileLayout = () => (
+    <>
+      {/* 1. 12 Week Clock */}
+      <div className={styles.column}>
+        <div className={styles.clockCard}>
+          <TwelveWeekClock
+            size={getClockSize()}
+            dayIndex={dayIndex}
+            objectives={objectives}
+            colors={clockColors}
+            dateLabel={currentDate}
+            titlePrefix="Day"
+            onCreateObjective={handleCreateObjective}
+            okrts={filteredOKRTs}
+            {...getTrackProps()}
+          />
+        </div>
+      </div>
+
+      {/* 2. Daily Inspiration */}
+      <div className={styles.column}>
+        <DailyInspirationCard />
+      </div>
+
+      {/* 3. Today Widget */}
+      <div className={styles.column}>
+        <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+      </div>
+
+      {/* 4. Notifications */}
+      <div className={styles.column}>
+        <div className={styles.componentCard}>
+          <div className={styles.componentHeader}>
+            <h3 className={styles.componentTitle}>Notifications</h3>
+          </div>
+          <div className={styles.componentContent}>
+            <NotificationsWidget />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderTabletPortraitLayout = () => (
+    <>
+      {/* Column 1: Daily Inspiration + Today Clock (40%) */}
+      <div className={styles.column}>
+        <DailyInspirationCard />
+        <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+      </div>
+
+      {/* Column 2: 12 Week Clock + Notifications (60%) */}
+      <div className={styles.column}>
+        <div className={styles.clockCard}>
+          <TwelveWeekClock
+            size={getClockSize()}
+            dayIndex={dayIndex}
+            objectives={objectives}
+            colors={clockColors}
+            dateLabel={currentDate}
+            titlePrefix="Day"
+            onCreateObjective={handleCreateObjective}
+            okrts={filteredOKRTs}
+            {...getTrackProps()}
+          />
+        </div>
+        <div className={styles.componentCard}>
+          <div className={styles.componentHeader}>
+            <h3 className={styles.componentTitle}>Notifications</h3>
+          </div>
+          <div className={styles.componentContent}>
+            <NotificationsWidget />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderDesktopLayout = () => (
+    <>
+      {/* Column 1: Daily Inspiration + Notifications (33%) */}
+      <div className={styles.column}>
+        <DailyInspirationCard />
+        <div className={styles.componentCard}>
+          <div className={styles.componentHeader}>
+            <h3 className={styles.componentTitle}>Notifications</h3>
+          </div>
+          <div className={styles.componentContent}>
+            <NotificationsWidget />
+          </div>
+        </div>
+      </div>
+
+      {/* Column 2: 12 Week Clock (33%) */}
+      <div className={styles.column}>
+        <div className={styles.clockCard}>
+          <TwelveWeekClock
+            size={getClockSize()}
+            dayIndex={dayIndex}
+            objectives={objectives}
+            colors={clockColors}
+            dateLabel={currentDate}
+            titlePrefix="Day"
+            onCreateObjective={handleCreateObjective}
+            okrts={filteredOKRTs}
+            {...getTrackProps()}
+          />
+        </div>
+      </div>
+
+      {/* Column 3: Today Widget (33%) */}
+      <div className={styles.column}>
+        <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+      </div>
+    </>
+  );
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
         <div className={styles.dashboardGrid}>
-          {/* Column 1: Daily Inspiration + Notifications */}
-          <div className={styles.column}>
-            {/* Daily Inspiration */}
-            <DailyInspirationCard />
-
-            {/* Notifications */}
-            <div className={styles.componentCard}>
-              <div className={styles.componentHeader}>
-                <h3 className={styles.componentTitle}>Notifications</h3>
-              </div>
-              <div className={styles.componentContent}>
-                <NotificationsWidget />
-              </div>
-            </div>
-          </div>
-
-          {/* Column 2: 12 Week Clock with OKRTs */}
-          <div className={styles.column}>
-            <div className={styles.clockCard}>
-              <TwelveWeekClock
-                size={getClockSize()}
-                dayIndex={dayIndex}
-                objectives={objectives}
-                colors={clockColors}
-                dateLabel={currentDate}
-                titlePrefix="Day"
-                onCreateObjective={handleCreateObjective}
-                okrts={filteredOKRTs}
-                {...getTrackProps()}
-              />
-            </div>
-          </div>
-
-          {/* Column 3: Today Widget */}
-          <div className={styles.column}>
-            {/* Today Widget */}
-            <TodayWidget objectives={objectives} todoTasks={todoTasks} />
-          </div>
+          {isMobile ? renderMobileLayout() : isTabletPortrait ? renderTabletPortraitLayout() : renderDesktopLayout()}
         </div>
-
       </div>
 
       {/* OKRT Modal */}

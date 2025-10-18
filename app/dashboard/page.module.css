@@ -1,8 +1,9 @@
 .container {
   height: calc(100vh - 72px);
-  padding: var(--space-4) var(--space-4) var(--space-4) 0;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .content {
@@ -153,46 +154,96 @@
   overflow: hidden;
 }
 
-/* Desktop and Tablet Landscape: 3 columns side by side */
-@media (min-width: 641px) {
+/* Mobile: Single column stacking with 5px margins */
+@media (max-width: 767px) {
+  .container {
+    padding: 5px;
+    margin-left: 0;
+  }
+  
   .dashboardGrid {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-  
-  /* Column 1: 30% width */
-  .column:nth-child(1) {
-    flex: 0 0 calc(30% - var(--space-4) * 2 / 3);
-    min-width: 0;
-  }
-  
-  /* Column 2: 40% width */
-  .column:nth-child(2) {
-    flex: 0 0 calc(40% - var(--space-4) * 2 / 3);
-    min-width: 0;
-  }
-  
-  /* Column 3: 30% width */
-  .column:nth-child(3) {
-    flex: 0 0 calc(30% - var(--space-4) * 2 / 3);
-    min-width: 0;
-  }
-}
-
-/* Mobile: Single column stacking */
-@media (max-width: 640px) {
-  .dashboardGrid {
-    align-items: center;
+    flex-direction: column;
+    gap: var(--space-4);
   }
   
   .column {
     width: 100%;
-    
+    flex: none;
   }
   
   .componentCard {
-    
-    width: 310px;
+    width: 100%;
+  }
+  
+  .clockCard {
+    width: 100%;
+  }
+}
+
+/* Tablet Portrait: 2 columns (40:60 ratio) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container {
+    padding: var(--space-4);
+    margin-left: 0;
+    box-sizing: border-box;
+  }
+  
+  .content {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .dashboardGrid {
+    flex-direction: row !important;
+    align-items: flex-start;
+    gap: var(--space-4);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* Reset all columns first */
+  .column {
+    box-sizing: border-box;
+    flex: none !important;
+  }
+  
+  /* Column 1: Daily Inspiration + Today Clock (40%) */
+  .column:nth-child(1) {
+    flex: 0 0 40% !important;
+    min-width: 0;
+    max-width: 40%;
+  }
+  
+  /* Column 2: 12 Week Clock + Notifications (60%) */
+  .column:nth-child(2) {
+    flex: 0 0 60% !important;
+    min-width: 0;
+    max-width: 60%;
+  }
+  
+  /* Hide any additional columns */
+  .column:nth-child(n+3) {
+    display: none !important;
+    flex: none !important;
+    width: 0 !important;
+    max-width: 0 !important;
+  }
+}
+
+/* Desktop: 3 columns (33:33:33 ratio) */
+@media (min-width: 1024px) {
+  .dashboardGrid {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  
+  /* All columns equal width */
+  .column:nth-child(1),
+  .column:nth-child(2),
+  .column:nth-child(3) {
+    flex: 1 1 33.333%;
+    min-width: 0;
   }
 }
 
@@ -494,17 +545,8 @@
   margin-top: var(--space-8);
 }
 
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .container {
-    padding: var(--space-4) var(--space-3) var(--space-4) var(--space-3); /* Full padding on mobile */
-    margin-left: 0;
-  }
-  
-  .dashboardGrid {
-    gap: var(--space-4);
-  }
-  
+/* Component card responsive adjustments */
+@media (max-width: 767px) {
   .componentCard {
     padding: var(--space-4);
     min-height: 120px;
@@ -520,14 +562,7 @@
   }
 }
 
-/* Mobile responsive adjustments */
-@media (max-width: 767px) {
-  .container {
-    padding: var(--space-4) var(--space-3);
-  }
-}
-
-@media (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .componentCard {
     min-height: 150px;
     height: fit-content;
@@ -720,35 +755,7 @@
   }
 }
 
-/* Responsive adjustments for left menu */
-@media (max-width: 767px) {
-  .container {
-    margin-left: 0; /* No menu on mobile */
-    
-  }
-}
-
-/* Account for narrow menu (768px - 1379px) - UPDATED RANGE */
-@media (min-width: 768px) and (max-width: 1379px) {
-  .container {
-     /* Always narrow menu */
-    padding-left: var(--space-4); /* Smaller gap from narrow menu */
-  }
-}
-
-/* Account for wide menu on large desktop (≥ 1380px) */
-@media (min-width: 1380px) {
-  .container {
-    
-    padding-left: var(--space-4); /* Smaller gap from wide menu */
-  }
-  
-  /* When desktop menu is collapsed */
-  .container.menuCollapsed {
-    
-    padding-left: var(--space-4); /* Consistent gap from collapsed menu */
-  }
-}
+/* Left menu spacing is now handled by layout.js padding-left */
 
 .okrTreeTitle {
   text-align: center;

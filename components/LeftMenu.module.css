@@ -237,15 +237,15 @@
   color: var(--text);
 }
 
-/* Hide on mobile by default - only show on tablet+ or when mobile slide-in is active */
-@media (max-width: 767px) {
+/* Hide on mobile and tablet portrait - only show when mobile slide-in is active */
+@media (max-width: 1023px) {
   .leftMenu:not(.mobileSlideIn) {
     display: none;
   }
 }
 
-/* Medium screens (768px - 1379px) - Allow toggle control */
-@media (min-width: 768px) and (max-width: 1379px) {
+/* Desktop (1024px+) - Show left menu */
+@media (min-width: 1024px) {
   .leftMenu {
     position: fixed;
     z-index: 35;
@@ -273,13 +273,8 @@
   }
 }
 
-/* Desktop - always expanded unless desktopCollapsed */
+/* Large Desktop (1380px+) - Desktop collapsed mode support */
 @media (min-width: 1380px) {
-  .leftMenu {
-    position: fixed;
-    width: 240px;
-  }
-  
   .leftMenu.desktopCollapsed {
     width: 80px;
   }
