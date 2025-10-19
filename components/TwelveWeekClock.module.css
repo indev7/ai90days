@@ -43,6 +43,7 @@
   overflow: hidden;
   flex: 1;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 .okrtsSection {
@@ -147,6 +148,29 @@
 @media (min-width: 1025px) {
   .clockSvg {
     padding: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .clockContainer {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .clockWithBorder {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .clockSvg {
+    padding: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .objectiveText {
+    font-size: 0.8rem;
+    line-height: 1.3;
   }
 }
 

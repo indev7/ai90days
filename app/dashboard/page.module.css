@@ -141,7 +141,8 @@
   flex: 1;
   flex-direction: column;
   width: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Column wrapper for grouping components */
@@ -151,7 +152,8 @@
   gap: var(--space-6);
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Mobile: Single column stacking with 5px margins */
@@ -186,11 +188,13 @@
     padding: var(--space-4);
     margin-left: 0;
     box-sizing: border-box;
+    overflow-x: hidden;
   }
   
   .content {
     width: 100%;
     box-sizing: border-box;
+    overflow-x: hidden;
   }
   
   .dashboardGrid {
@@ -199,26 +203,29 @@
     gap: var(--space-4);
     width: 100%;
     box-sizing: border-box;
+    overflow-x: hidden;
   }
   
   /* Reset all columns first */
   .column {
     box-sizing: border-box;
     flex: none !important;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   /* Column 1: Daily Inspiration + Today Clock (40%) */
   .column:nth-child(1) {
-    flex: 0 0 40% !important;
+    flex: 0 0 calc(40% - var(--space-2)) !important;
     min-width: 0;
-    max-width: 40%;
+    max-width: calc(40% - var(--space-2));
   }
   
   /* Column 2: 12 Week Clock + Notifications (60%) */
   .column:nth-child(2) {
-    flex: 0 0 60% !important;
+    flex: 0 0 calc(60% - var(--space-2)) !important;
     min-width: 0;
-    max-width: 60%;
+    max-width: calc(60% - var(--space-2));
   }
   
   /* Hide any additional columns */
@@ -227,6 +234,18 @@
     flex: none !important;
     width: 0 !important;
     max-width: 0 !important;
+  }
+  
+  .clockCard {
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  
+  .componentCard {
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 }
 
