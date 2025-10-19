@@ -6,6 +6,279 @@ import { useCoach } from '@/contexts/CoachContext';
 import styles from './page.module.css';
 import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
+import { TiMicrophoneOutline } from "react-icons/ti";
+import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
+
+/* ---------- Text-to-Speech Hook ---------- */
+function useTextToSpeech() {
+  const [isTTSEnabled, setIsTTSEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef(null);
+  const audioQueueRef = useRef([]);
+  const isPlayingRef = useRef(false);
+
+  const toggleTTS = () => {
+    setIsTTSEnabled(prev => !prev);
+    // Stop any current playback when disabling
+    if (isTTSEnabled && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      audioQueueRef.current = [];
+      isPlayingRef.current = false;
+      setIsSpeaking(false);
+    }
+  };
+
+  const extractTextContent = (content) => {
+    if (!content) return '';
+    
+    // Remove JSON blocks (tool outputs)
+    let text = content.replace(/```json[\s\S]*?```/g, '');
+    
+    // Remove code blocks
+    text = text.replace(/```[\s\S]*?```/g, '');
+    
+    // Remove inline code
+    text = text.replace(/`[^`]+`/g, '');
+    
+    // Remove ACTION_HTML tags
+    text = text.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '');
+    
+    // Remove markdown links but keep text
+    text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+    
+    // Remove markdown formatting
+    text = text.replace(/[*_~#]/g, '');
+    
+    // Clean up extra whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+    
+    return text;
+  };
+
+  const speak = async (text) => {
+    console.log('[TTS] speak called with:', {
+      isTTSEnabled,
+      textLength: text?.length,
+      text: text?.substring(0, 100)
+    });
+    
+    if (!isTTSEnabled) {
+      console.log('[TTS] TTS is disabled, skipping');
+      return;
+    }
+    
+    if (!text || text.trim().length === 0) {
+      console.log('[TTS] No text provided, skipping');
+      return;
+    }
+
+    const cleanText = extractTextContent(text);
+    console.log('[TTS] Cleaned text:', cleanText.substring(0, 100));
+    
+    if (!cleanText || cleanText.length === 0) {
+      console.log('[TTS] No clean text after extraction, skipping');
+      return;
+    }
+
+    try {
+      console.log('[TTS] Fetching audio from API...');
+      setIsSpeaking(true);
+      
+      const response = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, voice: 'alloy', model: 'tts-1' })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[TTS] API error:', response.status, errorText);
+        throw new Error('Failed to generate speech');
+      }
+
+      console.log('[TTS] Audio received, creating blob...');
+      const audioBlob = await response.blob();
+      console.log('[TTS] Blob size:', audioBlob.size, 'type:', audioBlob.type);
+      
+      const audioUrl = URL.createObjectURL(audioBlob);
+      console.log('[TTS] Audio URL created:', audioUrl);
+      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        console.log('[TTS] Audio playback ended');
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+        setIsSpeaking(false);
+      };
+
+      audio.onerror = (e) => {
+        console.error('[TTS] Audio playback error:', e);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+        setIsSpeaking(false);
+      };
+
+      console.log('[TTS] Starting audio playback...');
+      await audio.play();
+      console.log('[TTS] Audio playing');
+    } catch (error) {
+      console.error('[TTS] Error:', error);
+      setIsSpeaking(false);
+    }
+  };
+
+  return {
+    isTTSEnabled,
+    isSpeaking,
+    toggleTTS,
+    speak
+  };
+}
+
+/* ---------- Audio Recording Hook ---------- */
+function useVoiceRecording(onTranscriptionComplete) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const silenceTimerRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const streamRef = useRef(null);
+  const monitorIntervalRef = useRef(null);
+
+  const SILENCE_THRESHOLD = 0.01; // Audio level threshold for silence
+  const SILENCE_DURATION = 2000; // 2 seconds of silence to auto-stop
+
+  const checkAudioLevel = () => {
+    if (!analyserRef.current) return;
+
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(dataArray);
+    
+    // Calculate average volume
+    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+    const normalizedLevel = average / 255;
+
+    // If audio level is below threshold, start silence timer
+    if (normalizedLevel < SILENCE_THRESHOLD) {
+      if (!silenceTimerRef.current) {
+        silenceTimerRef.current = setTimeout(() => {
+          stopRecording();
+        }, SILENCE_DURATION);
+      }
+    } else {
+      // Reset silence timer if sound detected
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      // Set up audio analysis for silence detection
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      source.connect(analyserRef.current);
+      analyserRef.current.fftSize = 2048;
+
+      // Start monitoring audio levels
+      monitorIntervalRef.current = setInterval(checkAudioLevel, 100);
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        if (monitorIntervalRef.current) {
+          clearInterval(monitorIntervalRef.current);
+          monitorIntervalRef.current = null;
+        }
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Clean up
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+          audioContextRef.current = null;
+        }
+
+        // Send to API
+        setIsProcessing(true);
+        try {
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+
+          const response = await fetch('/api/speech-to-text', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to transcribe audio');
+          }
+
+          const result = await response.json();
+          
+          // Call the callback with transcribed text
+          if (onTranscriptionComplete) {
+            onTranscriptionComplete(result.text);
+          }
+        } catch (error) {
+          console.error('Transcription error:', error);
+          if (onTranscriptionComplete) {
+            onTranscriptionComplete('');
+          }
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  return {
+    isRecording,
+    isProcessing,
+    startRecording,
+    stopRecording
+  };
+}
 
 /* ---------- helpers ---------- */
 
@@ -234,6 +507,22 @@ export default function CoachPage() {
   const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  
+  // Text-to-Speech hook
+  const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech();
+  
+  // Voice recording hook with callback
+  const handleTranscription = (text) => {
+    if (text && text.trim()) {
+      setInput(text);
+      // Focus the input so user can see and edit
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  };
+  
+  const { isRecording, isProcessing, startRecording, stopRecording } = useVoiceRecording(handleTranscription);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => { scrollToBottom(); }, [messages]);
@@ -327,6 +616,15 @@ export default function CoachPage() {
       } else {
         updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
       }
+      
+      // Speak the response if TTS is enabled
+      console.log('[TTS] Message complete, checking TTS:', { isTTSEnabled, textLength: textBuffer.length });
+      if (isTTSEnabled && textBuffer.trim()) {
+        console.log('[TTS] Calling speak function...');
+        speak(textBuffer);
+      } else {
+        console.log('[TTS] Not speaking:', { isTTSEnabled, hasText: !!textBuffer.trim() });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       addMessage({
@@ -411,6 +709,16 @@ export default function CoachPage() {
 
   const handleQuickReply = (text) => sendMessage(text);
 
+  const handleMicrophoneClick = () => {
+    if (isRecording) {
+      // Stop recording manually
+      stopRecording();
+    } else {
+      // Start recording
+      startRecording();
+    }
+  };
+
   return (
     <div className={styles.container}>
 
@@ -447,6 +755,36 @@ export default function CoachPage() {
 
       <form onSubmit={handleSubmit} className={styles.inputForm}>
         <div className={styles.inputContainer}>
+          <button
+            type="button"
+            className={`${styles.micButton} ${isRecording ? styles.micButtonRecording : ''}`}
+            onClick={handleMicrophoneClick}
+            disabled={isLoading || isProcessing}
+            title={isRecording ? 'Stop recording' : 'Start voice input'}
+          >
+            {isProcessing ? (
+              <span className={styles.micProcessing}>⏳</span>
+            ) : isRecording ? (
+              <span className={styles.micRecording}>🔴</span>
+            ) : (
+              <TiMicrophoneOutline className={styles.micIcon} size={24} />
+            )}
+          </button>
+          <button
+            type="button"
+            className={`${styles.speakerButton} ${isTTSEnabled ? styles.speakerButtonEnabled : ''} ${isSpeaking ? styles.speakerButtonSpeaking : ''}`}
+            onClick={toggleTTS}
+            disabled={isLoading}
+            title={isTTSEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
+          >
+            {isSpeaking ? (
+              <PiSpeakerHighBold className={styles.speakerSpeaking} size={24} />
+            ) : isTTSEnabled ? (
+              <PiSpeakerHighBold className={styles.speakerEnabled} size={24} />
+            ) : (
+              <PiSpeakerSlash className={styles.speakerDisabled} size={24} />
+            )}
+          </button>
           <textarea
             ref={inputRef}
             value={input}

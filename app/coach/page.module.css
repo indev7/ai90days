@@ -275,6 +275,137 @@
   align-items: flex-end;
 }
 
+.micButton {
+  background: var(--surface-1);
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.micButton:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  background: var(--bg-solid);
+  transform: scale(1.05);
+}
+
+.micButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.micButtonRecording {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+.micIcon {
+  display: inline-block;
+}
+
+.micRecording {
+  display: inline-block;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.micProcessing {
+  display: inline-block;
+  animation: spin 2s linear infinite;
+}
+
+.speakerButton {
+  background: var(--surface-1);
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.speakerButton:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  background: var(--bg-solid);
+  transform: scale(1.05);
+}
+
+.speakerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.speakerButtonEnabled {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: var(--accent-color);
+}
+
+.speakerButtonSpeaking {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+  animation: speakerPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes speakerPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+}
+
+.speakerDisabled {
+  display: inline-block;
+  opacity: 0.6;
+}
+
+.speakerEnabled {
+  display: inline-block;
+  color: var(--accent-color);
+}
+
+.speakerSpeaking {
+  display: inline-block;
+  color: #22c55e;
+  animation: speakerBounce 0.6s ease-in-out infinite;
+}
+
+@keyframes speakerBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
 .input {
   flex: 1;
   min-height: 44px;
