@@ -8,6 +8,7 @@ import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
 import { TiMicrophoneOutline } from "react-icons/ti";
 import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
+import { SlArrowUpCircle } from "react-icons/sl";
 
 /* ---------- Text-to-Speech Hook ---------- */
 function useTextToSpeech() {
@@ -88,7 +89,7 @@ function useTextToSpeech() {
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, voice: 'alloy', model: 'tts-1' })
+        body: JSON.stringify({ text: cleanText, model: 'tts-1' })
       });
 
       if (!response.ok) {
@@ -785,16 +786,26 @@ export default function CoachPage() {
               <PiSpeakerSlash className={styles.speakerDisabled} size={24} />
             )}
           </button>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask me about your OKRTs..."
-            className={styles.input}
-            disabled={isLoading}
-            rows={1}
-          />
+          <div className={styles.textareaWrapper}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me about your OKRTs..."
+              className={styles.input}
+              disabled={isLoading}
+              rows={1}
+            />
+            <button
+              type="submit"
+              className={styles.mobileSendButton}
+              disabled={isLoading || !input.trim()}
+              aria-label="Send message"
+            >
+              <SlArrowUpCircle size={32} />
+            </button>
+          </div>
           <button type="submit" className={styles.sendButton} disabled={isLoading || !input.trim()}>
             Send
           </button>

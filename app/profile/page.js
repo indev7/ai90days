@@ -123,6 +123,12 @@ export default function ProfilePage() {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+    setError('');
+    setSuccess('');
+  };
+
   const handleCancel = () => {
     setIsEditing(false);
     setError('');
@@ -275,7 +281,7 @@ export default function ProfilePage() {
                   </button>
                 </>
               ) : (
-                <button type="button" onClick={() => setIsEditing(true)} className="btn btn-primary">
+                <button type="button" onClick={handleEdit} className="btn btn-primary">
                   Edit Profile
                 </button>
               )}

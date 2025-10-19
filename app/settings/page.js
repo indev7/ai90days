@@ -10,7 +10,18 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState('coffee');
   const [isLoadingTheme, setIsLoadingTheme] = useState(false);
+  const [preferredVoice, setPreferredVoice] = useState('alloy');
+  const [isSavingVoice, setIsSavingVoice] = useState(false);
   const router = useRouter();
+
+  const voices = [
+    { id: 'alloy', name: 'Alloy', description: 'Neutral and balanced' },
+    { id: 'echo', name: 'Echo', description: 'Warm and friendly' },
+    { id: 'fable', name: 'Fable', description: 'Expressive and dynamic' },
+    { id: 'onyx', name: 'Onyx', description: 'Deep and authoritative' },
+    { id: 'nova', name: 'Nova', description: 'Bright and energetic' },
+    { id: 'shimmer', name: 'Shimmer', description: 'Soft and soothing' },
+  ];
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -19,6 +30,16 @@ export default function SettingsPage() {
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+          
+          // Parse preferences to get preferred voice
+          if (data.user.preferences) {
+            try {
+              const preferences = JSON.parse(data.user.preferences);
+              setPreferredVoice(preferences.preferred_voice || 'alloy');
+            } catch (e) {
+              console.error('Failed to parse preferences:', e);
+            }
+          }
         } else {
           router.push('/login');
         }
@@ -50,6 +71,33 @@ export default function SettingsPage() {
       console.error('Error changing theme:', error);
     } finally {
       setIsLoadingTheme(false);
+    }
+  };
+
+  const handleVoiceChange = async (newVoice) => {
+    setIsSavingVoice(true);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: user.firstName || user.displayName.split(' ')[0] || '',
+          lastName: user.lastName || user.displayName.split(' ').slice(1).join(' ') || '',
+          preferredVoice: newVoice,
+        }),
+      });
+
+      if (response.ok) {
+        setPreferredVoice(newVoice);
+      } else {
+        console.error('Failed to save voice preference');
+      }
+    } catch (error) {
+      console.error('Error saving voice preference:', error);
+    } finally {
+      setIsSavingVoice(false);
     }
   };
 
@@ -117,10 +165,36 @@ export default function SettingsPage() {
           </div>
 
           <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Coming Soon</h2>
-            <p className={styles.sectionText}>
-              Additional settings like notifications, privacy preferences, and account management will be available in future updates.
-            </p>
+            <h2 className={styles.sectionTitle}>Coach Voice</h2>
+            
+            <div className={styles.setting}>
+              <div className={styles.settingInfo}>
+                <label className={styles.settingLabel}>Text-to-Speech Voice</label>
+                <p className={styles.settingDescription}>
+                  Choose the voice for your AI coach
+                </p>
+              </div>
+              
+              <div className={styles.themeToggle}>
+                {voices.map((voice) => (
+                  <button
+                    key={voice.id}
+                    className={`${styles.themeOption} ${preferredVoice === voice.id ? styles.active : ''}`}
+                    onClick={() => handleVoiceChange(voice.id)}
+                    disabled={isSavingVoice}
+                    title={voice.description}
+                  >
+                    <span>{voice.name}</span>
+                  </button>
+                ))}
+              </div>
+              
+              {isSavingVoice && (
+                <div className={styles.loadingIndicator}>
+                  Saving...
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

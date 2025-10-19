@@ -13,7 +13,7 @@ export async function PUT(request) {
       );
     }
 
-    const { firstName, lastName, currentPassword, newPassword } = await request.json();
+    const { firstName, lastName, currentPassword, newPassword, preferredVoice } = await request.json();
 
     // Validate required fields
     if (!firstName || firstName.trim().length === 0) {
@@ -41,6 +41,23 @@ export async function PUT(request) {
       last_name: lastName?.trim() || '',
       updated_at: new Date().toISOString(),
     };
+
+    // Only update preferences if preferredVoice is provided
+    if (preferredVoice) {
+      // Parse existing preferences
+      let preferences = { preferred_voice: 'alloy', theme: 'purple' };
+      if (currentUser.preferences) {
+        try {
+          preferences = JSON.parse(currentUser.preferences);
+        } catch (e) {
+          console.error('Failed to parse preferences:', e);
+        }
+      }
+      
+      // Update preferred voice
+      preferences.preferred_voice = preferredVoice;
+      updateData.preferences = JSON.stringify(preferences);
+    }
 
     // Handle password change if provided
     if (newPassword) {
@@ -92,6 +109,9 @@ export async function PUT(request) {
         username: updatedUser.username,
         displayName: updatedUser.display_name,
         email: updatedUser.email,
+        firstName: updatedUser.first_name,
+        lastName: updatedUser.last_name,
+        preferences: updatedUser.preferences,
       }
     });
 

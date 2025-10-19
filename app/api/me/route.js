@@ -71,6 +71,7 @@ export async function GET(request) {
         profilePictureUrl: user.profile_picture_url,
         authProvider: user.auth_provider,
         microsoftId: user.microsoft_id,
+        preferences: user.preferences,
       }
     });
 

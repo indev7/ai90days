@@ -275,6 +275,48 @@
   align-items: flex-end;
 }
 
+.textareaWrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.mobileSendButton {
+  display: none;
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.mobileSendButton:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.mobileSendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mobileSendButton svg {
+  display: block;
+}
+
 .micButton {
   background: var(--surface-1);
   border: 2px solid var(--border-light);
@@ -465,7 +507,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .container {
     height: 100vh;
   }
@@ -495,5 +537,25 @@
   
   .input {
     font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 80px; /* Accommodate at least 3 lines */
+    padding-right: 48px; /* Space for mobile send button */
+  }
+  
+  .textareaWrapper {
+    flex: 1;
+  }
+  
+  .mobileSendButton {
+    display: flex;
+  }
+  
+  .sendButton {
+    display: none;
+  }
+  
+  .micButton,
+  .speakerButton {
+    width: 40px;
+    height: 40px;
   }
 }
