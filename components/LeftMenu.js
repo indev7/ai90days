@@ -257,12 +257,21 @@ export default function LeftMenu({
     };
   }, []);
 
-  const handleNewClick = () => {
+  const handleNewClick = (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    console.log('Add OKR clicked! pathname:', pathname);
+    
     // Close all expanded items when clicking New
     setExpandedItems(new Set());
     // Dispatch a custom event that the My Goals page can listen to
     if (pathname === '/okrt') {
+      console.log('Dispatching createObjective event');
       window.dispatchEvent(new CustomEvent('createObjective'));
+    } else {
+      console.log('Navigating to /okrt with showAddModal=true');
+      // Navigate to /okrt page first, then show modal
+      router.push('/okrt?showAddModal=true');
     }
     
     // Close mobile menu
@@ -511,7 +520,6 @@ export default function LeftMenu({
                     className={styles.menuLink}
                     onClick={handleNewClick}
                     title="Create New Objective"
-                    disabled={pathname !== '/okrt'}
                   >
                     <span className={styles.icon}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
@@ -545,7 +553,7 @@ export default function LeftMenu({
                         <span className={styles.label}>{item.label}</span>
                       </Link>
                     )}
-                    {item.children && !isDesktopCollapsed && !isCollapsed && isExpanded(item.href) && (
+                    {item.children && (isMobileSlideIn || (!isDesktopCollapsed && !isCollapsed)) && isExpanded(item.href) && (
                       <ul className={styles.childMenuList}>
                         {/* Show objectives for My Goals menu */}
                         {item.href === '/okrt' && objectives.map((objective) => (
@@ -597,7 +605,7 @@ export default function LeftMenu({
                           </li>
                         ))}
                         
-                        {/* Show original children */}
+                        {/* Show original children (action buttons) */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
                           const isAddGroup = child.href === '/groups/create';
@@ -616,10 +624,10 @@ export default function LeftMenu({
                                 </button>
                               ) : isAddOKR ? (
                                 <button
+                                  type="button"
                                   onClick={handleNewClick}
                                   className={styles.childMenuLink}
                                   title="Create New Objective"
-                                  disabled={pathname !== '/okrt'}
                                 >
                                   <span className={styles.icon}>
                                     {getIcon(child.icon, false)}

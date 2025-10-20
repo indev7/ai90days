@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase } from '@/lib/db';
+import { getUserById, updateUser } from '@/lib/db';
 import { verifyPassword, hashPassword, validatePassword } from '@/lib/auth';
 
 export async function PUT(request) {
@@ -23,11 +23,10 @@ export async function PUT(request) {
       );
     }
 
-    const database = await getDatabase();
     const userId = parseInt(session.sub);
 
     // Get current user for password verification
-    const currentUser = await database.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const currentUser = await getUserById(userId);
     if (!currentUser) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -91,17 +90,7 @@ export async function PUT(request) {
     }
 
     // Update user in database
-    const updateFields = Object.keys(updateData);
-    const updateValues = Object.values(updateData);
-    const setClause = updateFields.map(field => `${field} = ?`).join(', ');
-
-    await database.run(
-      `UPDATE users SET ${setClause} WHERE id = ?`,
-      [...updateValues, userId]
-    );
-
-    // Get updated user
-    const updatedUser = await database.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const updatedUser = await updateUser(userId, updateData);
 
     return NextResponse.json({
       user: {
