@@ -1,0 +1,231 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int            @id @default(autoincrement())
+  username            String         @unique
+  passwordHash        String         @map("password_hash")
+  displayName         String         @map("display_name")
+  email               String?        @unique
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  
+  // Phase 2: Microsoft OAuth fields
+  microsoftId         String?        @unique @map("microsoft_id")
+  firstName           String?        @map("first_name")
+  lastName            String?        @map("last_name")
+  profilePictureUrl   String?        @map("profile_picture_url")
+  authProvider        String         @default("email") @map("auth_provider")
+  preferences         String?        @db.Text
+  
+  // Relations
+  okrts               Okrt[]         @relation("OkrtOwner")
+  userGroups          UserGroup[]
+  notifications       Notification[]
+  sentComments        Comment[]      @relation("CommentSender")
+  receivedComments    Comment[]      @relation("CommentReceiver")
+  follows             Follow[]
+  timeBlocks          TimeBlock[]
+  
+  @@index([username])
+  @@index([email])
+  @@index([microsoftId])
+  @@map("users")
+}
+
+model Okrt {
+  id                String         @id
+  type              String         // 'O', 'K', 'T'
+  ownerId           Int            @map("owner_id")
+  parentId          String?        @map("parent_id")
+  title             String?
+  description       String?        @db.Text
+  progress          Float          @default(0)
+  status            String         @default("D") // 'D', 'A', 'C'
+  area              String?
+  cycleQtr          String?        @map("cycle_qtr")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  orderIndex        Int            @default(0) @map("order_index")
+  visibility        String         @default("private") // 'private', 'shared'
+  objectiveKind     String?        @map("objective_kind") // 'committed', 'stretch'
+  krTargetNumber    Float?         @map("kr_target_number")
+  krUnit            String?        @map("kr_unit")
+  krBaselineNumber  Float?         @map("kr_baseline_number")
+  weight            Float          @default(1.0)
+  taskStatus        String?        @map("task_status") // 'todo', 'in_progress', 'done', 'blocked'
+  dueDate           DateTime?      @map("due_date") @db.Date
+  recurrenceJson    String?        @map("recurrence_json") @db.Text
+  blockedBy         String?        @map("blocked_by")
+  headerImageUrl    String?        @map("header_image_url")
+  
+  // Relations
+  owner             User           @relation("OkrtOwner", fields: [ownerId], references: [id])
+  parent            Okrt?          @relation("OkrtHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children          Okrt[]         @relation("OkrtHierarchy")
+  blocker           Okrt?          @relation("OkrtBlocker", fields: [blockedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  blocked           Okrt[]         @relation("OkrtBlocker")
+  shares            Share[]
+  follows           Follow[]
+  comments          Comment[]
+  timeBlocks        TimeBlock[]
+  notifications     Notification[]
+  
+  @@index([ownerId])
+  @@index([parentId])
+  @@index([type])
+  @@index([status])
+  @@index([cycleQtr])
+  @@map("okrt")
+}
+
+model Group {
+  id              String         @id
+  name            String         @unique
+  type            String         // 'Organisation', 'Department', 'Team', etc.
+  parentGroupId   String?        @map("parent_group_id")
+  thumbnailUrl    String?        @map("thumbnail_url")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  
+  // Relations
+  parent          Group?         @relation("GroupHierarchy", fields: [parentGroupId], references: [id], onDelete: Cascade)
+  children        Group[]        @relation("GroupHierarchy")
+  userGroups      UserGroup[]
+  shares          Share[]
+  notifications   Notification[]
+  
+  @@index([parentGroupId])
+  @@index([type])
+  @@index([name])
+  @@map("groups")
+}
+
+model UserGroup {
+  userId      Int            @map("user_id")
+  groupId     String         @map("group_id")
+  isAdmin     Boolean        @default(false) @map("is_admin")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@id([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+  @@index([isAdmin])
+  @@map("user_group")
+}
+
+model Share {
+  okrtId          String         @map("okrt_id")
+  groupOrUserId   String         @map("group_or_user_id")
+  shareType       String         @map("share_type") // 'G' or 'U'
+  createdAt       DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  okrt            Okrt           @relation(fields: [okrtId], references: [id], onDelete: Cascade)
+  group           Group?         @relation(fields: [groupOrUserId], references: [id], onDelete: Cascade)
+  
+  @@id([okrtId, groupOrUserId, shareType])
+  @@index([okrtId])
+  @@index([groupOrUserId])
+  @@index([shareType])
+  @@map("share")
+}
+
+model Follow {
+  id            Int            @id @default(autoincrement())
+  userId        Int            @map("user_id")
+  objectiveId   String         @map("objective_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  objective     Okrt           @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, objectiveId])
+  @@index([userId])
+  @@index([objectiveId])
+  @@map("follows")
+}
+
+model Notification {
+  id              Int            @id @default(autoincrement())
+  userId          Int            @map("user_id")
+  type            String
+  title           String
+  message         String         @db.Text
+  relatedOkrtId   String?        @map("related_okrt_id")
+  relatedGroupId  String?        @map("related_group_id")
+  relatedUserId   Int?           @map("related_user_id")
+  isRead          Boolean        @default(false) @map("is_read")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  
+  // Relations
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedOkrt     Okrt?          @relation(fields: [relatedOkrtId], references: [id], onDelete: Cascade)
+  relatedGroup    Group?         @relation(fields: [relatedGroupId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isRead])
+  @@index([type])
+  @@map("notifications")
+}
+
+model Comment {
+  id                Int            @id @default(autoincrement())
+  comment           String?        @db.Text
+  parentCommentId   Int?           @map("parent_comment_id")
+  type              String         @default("text") // 'text', 'medal', 'cookie', 'star'
+  count             Int            @default(1)
+  sendingUser       Int            @map("sending_user")
+  receivingUser     Int            @map("receiving_user")
+  okrtId            String         @map("okrt_id")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  
+  // Relations
+  parent            Comment?       @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies           Comment[]      @relation("CommentReplies")
+  sender            User           @relation("CommentSender", fields: [sendingUser], references: [id], onDelete: Cascade)
+  receiver          User           @relation("CommentReceiver", fields: [receivingUser], references: [id], onDelete: Cascade)
+  okrt              Okrt           @relation(fields: [okrtId], references: [id], onDelete: Cascade)
+  
+  @@index([okrtId])
+  @@index([sendingUser])
+  @@index([receivingUser])
+  @@index([parentCommentId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+model TimeBlock {
+  id          Int            @id @default(autoincrement())
+  taskId      String         @map("task_id")
+  userId      Int            @map("user_id")
+  startTime   DateTime       @map("start_time")
+  duration    Int            // Duration in minutes
+  objectiveId String?        @map("objective_id")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  
+  // Relations
+  task        Okrt           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, startTime])
+  @@index([taskId])
+  @@map("time_blocks")
+}
