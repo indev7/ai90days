@@ -26,7 +26,10 @@ export default function NotificationsWidget() {
   };
 
   const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
+    // SQLite CURRENT_TIMESTAMP returns UTC, so we need to parse it as UTC
+    // If the string doesn't end with 'Z', append it to indicate UTC
+    const utcDateString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    const date = new Date(utcDateString);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
