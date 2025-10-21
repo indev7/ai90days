@@ -17,6 +17,7 @@ function useTextToSpeech() {
   const audioRef = useRef(null);
   const audioQueueRef = useRef([]);
   const isPlayingRef = useRef(false);
+  const processedTextRef = useRef('');
 
   const toggleTTS = () => {
     setIsTTSEnabled(prev => !prev);
@@ -26,6 +27,7 @@ function useTextToSpeech() {
       audioRef.current = null;
       audioQueueRef.current = [];
       isPlayingRef.current = false;
+      processedTextRef.current = '';
       setIsSpeaking(false);
     }
   };
@@ -57,85 +59,143 @@ function useTextToSpeech() {
     return text;
   };
 
-  const speak = async (text) => {
-    console.log('[TTS] speak called with:', {
-      isTTSEnabled,
-      textLength: text?.length,
-      text: text?.substring(0, 100)
-    });
-    
-    if (!isTTSEnabled) {
-      console.log('[TTS] TTS is disabled, skipping');
+  const processQueue = async () => {
+    if (audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      setIsSpeaking(false);
+      console.log('[TTS] Queue empty, stopping');
       return;
     }
     
-    if (!text || text.trim().length === 0) {
-      console.log('[TTS] No text provided, skipping');
-      return;
-    }
-
-    const cleanText = extractTextContent(text);
-    console.log('[TTS] Cleaned text:', cleanText.substring(0, 100));
+    isPlayingRef.current = true;
+    setIsSpeaking(true);
     
-    if (!cleanText || cleanText.length === 0) {
-      console.log('[TTS] No clean text after extraction, skipping');
-      return;
-    }
-
+    const text = audioQueueRef.current.shift();
+    console.log('[TTS] Processing queue item:', text.substring(0, 50));
+    
     try {
-      console.log('[TTS] Fetching audio from API...');
-      setIsSpeaking(true);
-      
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, model: 'tts-1' })
+        body: JSON.stringify({ text, model: 'tts-1', voice: 'alloy' })
       });
-
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[TTS] API error:', response.status, errorText);
-        throw new Error('Failed to generate speech');
+        console.error('[TTS] API error:', response.status);
+        throw new Error('TTS API failed');
       }
-
-      console.log('[TTS] Audio received, creating blob...');
+      
       const audioBlob = await response.blob();
-      console.log('[TTS] Blob size:', audioBlob.size, 'type:', audioBlob.type);
-      
       const audioUrl = URL.createObjectURL(audioBlob);
-      console.log('[TTS] Audio URL created:', audioUrl);
-      
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
-
+      
       audio.onended = () => {
-        console.log('[TTS] Audio playback ended');
+        console.log('[TTS] Audio chunk ended, processing next');
         URL.revokeObjectURL(audioUrl);
         audioRef.current = null;
-        setIsSpeaking(false);
+        processQueue(); // Process next in queue
       };
-
+      
       audio.onerror = (e) => {
         console.error('[TTS] Audio playback error:', e);
         URL.revokeObjectURL(audioUrl);
         audioRef.current = null;
-        setIsSpeaking(false);
+        processQueue(); // Continue despite error
       };
-
-      console.log('[TTS] Starting audio playback...');
+      
       await audio.play();
-      console.log('[TTS] Audio playing');
+      console.log('[TTS] Playing audio chunk');
     } catch (error) {
-      console.error('[TTS] Error:', error);
+      console.error('[TTS] Error processing queue:', error);
+      processQueue(); // Continue queue on error
+    }
+  };
+
+  const speak = async (text) => {
+    if (!isTTSEnabled) {
+      return;
+    }
+    
+    if (!text || text.trim().length === 0) {
+      return;
+    }
+
+    const cleanText = extractTextContent(text);
+    
+    if (!cleanText || cleanText.length === 0) {
+      return;
+    }
+
+    // Only process new text that hasn't been spoken yet
+    if (cleanText.length <= processedTextRef.current.length) {
+      // No new text to process
+      return;
+    }
+    
+    if (!cleanText.startsWith(processedTextRef.current)) {
+      // Text doesn't match - new conversation, reset everything
+      console.log('[TTS] Text reset detected, clearing queue');
+      processedTextRef.current = '';
+      audioQueueRef.current = [];
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      isPlayingRef.current = false;
       setIsSpeaking(false);
     }
+    
+    // Get only the new text that hasn't been processed
+    const newText = cleanText.substring(processedTextRef.current.length);
+    if (!newText || newText.trim().length === 0) {
+      return;
+    }
+    
+    // Split by newline characters - process complete lines
+    const lines = newText.split('\n').filter(line => line.trim().length > 0);
+    
+    if (lines.length > 0) {
+      console.log('[TTS] Found', lines.length, 'new line(s)');
+      
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.length > 10) { // Only queue substantial lines
+          console.log('[TTS] Queueing line:', trimmed.substring(0, 50));
+          audioQueueRef.current.push(trimmed);
+        }
+      });
+      
+      // Update processed text to include the complete lines we just queued
+      const processedLines = lines.join('\n');
+      processedTextRef.current += processedLines;
+      
+      // Start processing if not already playing
+      if (!isPlayingRef.current && audioQueueRef.current.length > 0) {
+        console.log('[TTS] Starting queue processing');
+        processQueue();
+      }
+    }
+  };
+
+  const reset = () => {
+    console.log('[TTS] Resetting TTS state');
+    processedTextRef.current = '';
+    audioQueueRef.current = [];
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    isPlayingRef.current = false;
+    setIsSpeaking(false);
   };
 
   return {
     isTTSEnabled,
     isSpeaking,
     toggleTTS,
-    speak
+    speak,
+    reset
   };
 }
 
@@ -510,7 +570,7 @@ export default function CoachPage() {
   const inputRef = useRef(null);
   
   // Text-to-Speech hook
-  const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech();
+  const { isTTSEnabled, isSpeaking, toggleTTS, speak, reset } = useTextToSpeech();
   
   // Voice recording hook with callback
   const handleTranscription = (text) => {
@@ -555,6 +615,11 @@ export default function CoachPage() {
     addMessage(userMessage);
     setInput('');
     setLoading(true);
+    
+    // Reset TTS state for new conversation
+    if (isTTSEnabled) {
+      reset();
+    }
 
     try {
       const response = await fetch('/api/llm', {
@@ -593,6 +658,11 @@ export default function CoachPage() {
             if (data.type === 'content') {
               textBuffer += data.data;
               updateMessage(assistantMessageId, { content: textBuffer });
+              
+              // Stream TTS as text arrives
+              if (isTTSEnabled && textBuffer.length > 0) {
+                speak(textBuffer);
+              }
             } else if (data.type === 'preparing_actions') {
               updateMessage(assistantMessageId, { content: textBuffer, preparingActions: true });
             } else if (data.type === 'actions') {
@@ -618,13 +688,9 @@ export default function CoachPage() {
         updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
       }
       
-      // Speak the response if TTS is enabled
-      console.log('[TTS] Message complete, checking TTS:', { isTTSEnabled, textLength: textBuffer.length });
+      // Final call to ensure any remaining text is spoken
       if (isTTSEnabled && textBuffer.trim()) {
-        console.log('[TTS] Calling speak function...');
         speak(textBuffer);
-      } else {
-        console.log('[TTS] Not speaking:', { isTTSEnabled, hasText: !!textBuffer.trim() });
       }
     } catch (error) {
       console.error('Error sending message:', error);

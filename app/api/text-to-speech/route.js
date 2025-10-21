@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getSession } from '@/lib/auth';
 import { getDatabase } from '@/lib/db';
@@ -11,10 +11,17 @@ export async function POST(request) {
   try {
     const { text, voice, model = 'tts-1' } = await request.json();
     
-    // Get user's preferred voice if not explicitly provided
-    let selectedVoice = voice || 'alloy';
+    if (!text || text.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Text is required' },
+        { status: 400 }
+      );
+    }
     
-    if (!voice) {
+    // Get user's preferred voice if not explicitly provided
+    let selectedVoice = voice;
+    
+    if (!selectedVoice) {
       try {
         const session = await getSession();
         if (session) {
@@ -31,12 +38,10 @@ export async function POST(request) {
         // Continue with default voice if there's an error
       }
     }
-
-    if (!text || text.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Text is required' },
-        { status: 400 }
-      );
+    
+    // Fallback to default if still no voice selected
+    if (!selectedVoice) {
+      selectedVoice = 'alloy';
     }
 
     // Generate speech using OpenAI TTS
