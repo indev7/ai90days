@@ -77,7 +77,7 @@ function useTextToSpeech() {
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, model: 'tts-1', voice: 'alloy' })
+        body: JSON.stringify({ text, model: 'tts-1' })
       });
       
       if (!response.ok) {
@@ -152,23 +152,30 @@ function useTextToSpeech() {
       return;
     }
     
-    // Split by newline characters - process complete lines
-    const lines = newText.split('\n').filter(line => line.trim().length > 0);
+    // Split by sentence boundaries (. ! ?) to reduce latency
+    // Match sentences ending with punctuation followed by space or end of string
+    const sentenceRegex = /[^.!?]+[.!?]+(?:\s|$)/g;
+    const allText = processedTextRef.current + newText;
+    const sentences = allText.match(sentenceRegex) || [];
     
-    if (lines.length > 0) {
-      console.log('[TTS] Found', lines.length, 'new line(s)');
+    // Calculate how many sentences we've already processed
+    const processedSentences = processedTextRef.current.match(sentenceRegex) || [];
+    const newSentences = sentences.slice(processedSentences.length);
+    
+    if (newSentences.length > 0) {
+      console.log('[TTS] Found', newSentences.length, 'new sentence(s)');
       
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed.length > 10) { // Only queue substantial lines
-          console.log('[TTS] Queueing line:', trimmed.substring(0, 50));
+      newSentences.forEach(sentence => {
+        const trimmed = sentence.trim();
+        if (trimmed.length > 10) { // Only queue substantial sentences
+          console.log('[TTS] Queueing sentence:', trimmed.substring(0, 50));
           audioQueueRef.current.push(trimmed);
         }
       });
       
-      // Update processed text to include the complete lines we just queued
-      const processedLines = lines.join('\n');
-      processedTextRef.current += processedLines;
+      // Update processed text to include the complete sentences we just queued
+      const processedSentencesText = sentences.join('');
+      processedTextRef.current = processedSentencesText;
       
       // Start processing if not already playing
       if (!isPlayingRef.current && audioQueueRef.current.length > 0) {
