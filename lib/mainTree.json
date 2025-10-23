@@ -1,0 +1,164 @@
+{
+  "snapshotMeta": {
+    "currentUserId": null,
+    "lastRefreshed": null,
+    "source": "sqlite",
+    "notes": "This file is a dataset container for a full snapshot of the current user's related database tables. Each table contains a 'schema' (column list) and a 'rows' array for actual records. Rows should be filled by the server-side exporter for the authenticated user."
+  },
+  "tables": {
+    "users": {
+      "schema": {
+        "table": "users",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "pk": true },
+          { "name": "username", "type": "TEXT" },
+          { "name": "password_hash", "type": "TEXT" },
+          { "name": "display_name", "type": "TEXT" },
+          { "name": "email", "type": "TEXT" },
+          { "name": "created_at", "type": "TEXT" },
+          { "name": "updated_at", "type": "TEXT" },
+          { "name": "microsoft_id", "type": "TEXT" },
+          { "name": "first_name", "type": "TEXT" },
+          { "name": "last_name", "type": "TEXT" },
+          { "name": "profile_picture_url", "type": "TEXT" },
+          { "name": "auth_provider", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    },
+    "okrt": {
+      "schema": {
+        "table": "okrt",
+        "columns": [
+          { "name": "id", "type": "TEXT", "pk": true },
+          { "name": "type", "type": "TEXT" },
+          { "name": "owner_id", "type": "TEXT" },
+          { "name": "parent_id", "type": "TEXT" },
+          { "name": "title", "type": "TEXT" },
+          { "name": "description", "type": "TEXT" },
+          { "name": "progress", "type": "REAL" },
+          { "name": "status", "type": "TEXT" },
+          { "name": "area", "type": "TEXT" },
+          { "name": "cycle_qtr", "type": "TEXT" },
+          { "name": "created_at", "type": "TEXT" },
+          { "name": "updated_at", "type": "TEXT" },
+          { "name": "order_index", "type": "INTEGER" },
+          { "name": "visibility", "type": "TEXT" },
+          { "name": "objective_kind", "type": "TEXT" },
+          { "name": "kr_target_number", "type": "REAL" },
+          { "name": "kr_unit", "type": "TEXT" },
+          { "name": "kr_baseline_number", "type": "REAL" },
+          { "name": "weight", "type": "REAL" },
+          { "name": "task_status", "type": "TEXT" },
+          { "name": "due_date", "type": "DATE" },
+          { "name": "recurrence_json", "type": "TEXT" },
+          { "name": "blocked_by", "type": "TEXT" },
+          { "name": "header_image_url", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    },
+    "notifications": {
+      "schema": {
+        "table": "notifications",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "pk": true },
+          { "name": "user_id", "type": "INTEGER" },
+          { "name": "type", "type": "TEXT" },
+          { "name": "title", "type": "TEXT" },
+          { "name": "message", "type": "TEXT" },
+          { "name": "related_okrt_id", "type": "TEXT" },
+          { "name": "related_group_id", "type": "TEXT" },
+          { "name": "related_user_id", "type": "INTEGER" },
+          { "name": "is_read", "type": "BOOLEAN" },
+          { "name": "created_at", "type": "DATETIME" }
+        ]
+      },
+      "rows": []
+    },
+    "time_blocks": {
+      "schema": {
+        "table": "time_blocks",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "pk": true },
+          { "name": "task_id", "type": "TEXT" },
+          { "name": "user_id", "type": "INTEGER" },
+          { "name": "start_time", "type": "TEXT" },
+          { "name": "duration", "type": "INTEGER" },
+          { "name": "created_at", "type": "TEXT" },
+          { "name": "updated_at", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    },
+    "groups": {
+      "schema": {
+        "table": "groups",
+        "columns": [
+          { "name": "id", "type": "TEXT", "pk": true },
+          { "name": "name", "type": "TEXT" },
+          { "name": "type", "type": "TEXT" },
+          { "name": "parent_group_id", "type": "TEXT" },
+          { "name": "thumbnail_url", "type": "TEXT" },
+          { "name": "created_at", "type": "TEXT" },
+          { "name": "updated_at", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    },
+    "comments": {
+      "schema": {
+        "table": "comments",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "pk": true },
+          { "name": "comment", "type": "TEXT" },
+          { "name": "parent_comment_id", "type": "INTEGER" },
+          { "name": "type", "type": "TEXT" },
+          { "name": "count", "type": "INTEGER" },
+          { "name": "sending_user", "type": "INTEGER" },
+          { "name": "receiving_user", "type": "INTEGER" },
+          { "name": "okrt_id", "type": "TEXT" },
+          { "name": "created_at", "type": "TEXT" },
+          { "name": "updated_at", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    },
+    "share": {
+      "schema": {
+        "table": "share",
+        "columns": [
+          { "name": "okrt_id", "type": "TEXT" },
+          { "name": "group_or_user_id", "type": "TEXT" },
+          { "name": "share_type", "type": "TEXT" },
+          { "name": "created_at", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    },
+    "follows": {
+      "schema": {
+        "table": "follows",
+        "columns": [
+          { "name": "id", "type": "INTEGER", "pk": true },
+          { "name": "user_id", "type": "INTEGER" },
+          { "name": "objective_id", "type": "INTEGER" },
+          { "name": "created_at", "type": "DATETIME" }
+        ]
+      },
+      "rows": []
+    },
+    "user_group": {
+      "schema": {
+        "table": "user_group",
+        "columns": [
+          { "name": "user_id", "type": "INTEGER" },
+          { "name": "group_id", "type": "TEXT" },
+          { "name": "is_admin", "type": "BOOLEAN" },
+          { "name": "created_at", "type": "TEXT" }
+        ]
+      },
+      "rows": []
+    }
+  }
+}
