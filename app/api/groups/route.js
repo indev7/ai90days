@@ -22,6 +22,13 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const userId = searchParams.get('userId');
+    const hierarchy = searchParams.get('hierarchy');
+
+    // If hierarchy is requested, build the complete tree structure
+    if (hierarchy === 'true') {
+      const groups = await buildGroupHierarchy();
+      return NextResponse.json({ groups });
+    }
 
     let groups;
     if (type === 'root') {
@@ -37,6 +44,55 @@ export async function GET(request) {
     console.error('Error fetching groups:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// Helper function to build group hierarchy with counts
+async function buildGroupHierarchy() {
+  const database = await import('@/lib/db').then(m => m.getDatabase());
+  const db = await database;
+  
+  // Get all groups with member and objective counts
+  const groupsWithCounts = await db.all(`
+    SELECT
+      g.id,
+      g.name,
+      g.type,
+      g.parent_group_id,
+      g.thumbnail_url,
+      COUNT(DISTINCT ug.user_id) as memberCount,
+      COUNT(DISTINCT s.okrt_id) as objectiveCount
+    FROM groups g
+    LEFT JOIN user_group ug ON g.id = ug.group_id
+    LEFT JOIN share s ON g.id = s.group_or_user_id AND s.share_type = 'G'
+    LEFT JOIN okrt o ON s.okrt_id = o.id AND o.visibility = 'shared'
+    GROUP BY g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url
+    ORDER BY g.name ASC
+  `);
+
+  // Build a map for quick lookup
+  const groupMap = new Map();
+  groupsWithCounts.forEach(group => {
+    groupMap.set(group.id, {
+      ...group,
+      children: []
+    });
+  });
+
+  // Build the tree structure
+  const rootGroups = [];
+  groupsWithCounts.forEach(group => {
+    const groupNode = groupMap.get(group.id);
+    if (group.parent_group_id) {
+      const parent = groupMap.get(group.parent_group_id);
+      if (parent) {
+        parent.children.push(groupNode);
+      }
+    } else {
+      rootGroups.push(groupNode);
+    }
+  });
+
+  return rootGroups;
 }
 
 export async function POST(request) {

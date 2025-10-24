@@ -46,6 +46,7 @@ const topMenuItems = [
       { href: '/groups/create', label: 'Add Group', icon: 'new' }
     ]
   },
+  { href: '/organisation', label: 'Organisation', icon: 'organisation', disabled: false },
 ];
 
 const bottomMenuItems = [
@@ -61,6 +62,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     calendar: <RiCalendarScheduleLine size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
+    organisation: <RiOrganizationChart size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
