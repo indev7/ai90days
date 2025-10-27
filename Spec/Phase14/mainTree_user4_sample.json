@@ -20,7 +20,8 @@
       "task_status": null,
       "due_date": null,
       "created_at": "2025-09-29 11:31:40",
-      "updated_at": "2025-09-30T03:27:09.045Z"
+      "updated_at": "2025-09-30T03:27:09.045Z",
+      "comments": []
     },
     {
       "id": "gen-l0r9av7h",
@@ -42,7 +43,8 @@
       "task_status": null,
       "due_date": null,
       "created_at": "2025-09-30 06:19:14",
-      "updated_at": "2025-10-14 05:25:07"
+      "updated_at": "2025-10-14 05:25:07",
+      "comments": []
     },
     {
       "id": "gen-blg8g5qk",
@@ -64,7 +66,8 @@
       "task_status": null,
       "due_date": null,
       "created_at": "2025-10-22 06:23:18",
-      "updated_at": "2025-10-22 06:23:18"
+      "updated_at": "2025-10-22 06:23:18",
+      "comments": []
     },
     {
       "id": "gen-j3g2ltnr",
@@ -86,7 +89,8 @@
       "task_status": null,
       "due_date": null,
       "created_at": "2025-10-22 07:48:58",
-      "updated_at": "2025-10-22 07:48:58"
+      "updated_at": "2025-10-22 07:48:58",
+      "comments": []
     },
     {
       "id": "gen-nnqr8kj4",
@@ -416,7 +420,8 @@
       "task_status": null,
       "due_date": null,
       "created_at": "2025-10-20 16:00:57",
-      "updated_at": "2025-10-20T16:23:48.172Z"
+      "updated_at": "2025-10-20T16:23:48.172Z",
+      "comments": []
     },
     {
       "id": "114ee4d2-3647-487e-83c3-f0847f5e204c",
@@ -438,7 +443,8 @@
       "task_status": null,
       "due_date": null,
       "created_at": "2025-10-20 16:04:57",
-      "updated_at": "2025-10-21T13:34:17.824Z"
+      "updated_at": "2025-10-21T13:34:17.824Z",
+      "comments": []
     },
     {
       "id": "gen-2c8vkgjz",
@@ -1149,7 +1155,29 @@
       "owner_name": "indev7",
       "owner_first_name": "Lakshitha",
       "owner_last_name": "Atapattu",
-      "is_following": 1
+      "is_following": 1,
+      "comments": [
+        {
+          "id": 7,
+          "comment": "Great work!",
+          "parent_comment_id": null,
+          "type": "cookie",
+          "count": 5,
+          "sending_user": 4,
+          "receiving_user": 2,
+          "okrt_id": "gen-9daysapp1",
+          "created_at": "2025-10-20 15:52:58",
+          "updated_at": "2025-10-20 15:52:58",
+          "sender_name": "Lakshitha",
+          "sender_first_name": "Lakshitha",
+          "sender_last_name": "",
+          "sender_avatar": null,
+          "receiver_name": "indev7",
+          "receiver_first_name": "Lakshitha",
+          "receiver_last_name": "Atapattu",
+          "receiver_avatar": ""
+        }
+      ]
     },
     {
       "id": "114ee4d2-3647-487e-83c3-f0847f5e204c",
@@ -1176,7 +1204,8 @@
       "owner_name": "Lakshitha",
       "owner_first_name": "Lakshitha",
       "owner_last_name": "",
-      "is_following": 0
+      "is_following": 0,
+      "comments": []
     },
     {
       "id": "3cf20ded-8422-4b61-a076-03af2204bde3",
@@ -1203,7 +1232,8 @@
       "owner_name": "Lakshitha",
       "owner_first_name": "Lakshitha",
       "owner_last_name": "",
-      "is_following": 0
+      "is_following": 0,
+      "comments": []
     }
   ],
   "notifications": [
