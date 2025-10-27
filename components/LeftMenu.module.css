@@ -14,6 +14,12 @@
   backdrop-filter: blur(12px);
 }
 
+.leftMenu *,
+.leftMenu *::before,
+.leftMenu *::after {
+  box-sizing: border-box;
+}
+
 .leftMenu.collapsed {
   width: 80px;
 }
@@ -206,9 +212,12 @@
 .childMenuLink .label {
   white-space: normal;
   word-wrap: break-word;
-  overflow: visible;
-  text-overflow: unset;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .collapsed .label {
@@ -279,10 +288,15 @@
     width: 80px;
   }
   
-  .leftMenu:not(.desktopCollapsed) .label {
+  .leftMenu:not(.desktopCollapsed) .menuLink > .label {
     opacity: 1 !important;
     width: auto !important;
     overflow: visible !important;
+  }
+  
+  /* Keep truncation for child menu labels */
+  .leftMenu:not(.desktopCollapsed) .childMenuLink .label {
+    overflow: hidden !important;
   }
 }
 

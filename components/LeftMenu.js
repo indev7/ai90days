@@ -37,15 +37,6 @@ const topMenuItems = [
     children: [] // Will be populated with scheduled tasks dynamically
   },
   { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
-  {
-    href: '/groups',
-    label: 'Group OKRs',
-    icon: 'groups',
-    disabled: false,
-    children: [
-      { href: '/groups/create', label: 'Add Group', icon: 'new' }
-    ]
-  },
   { href: '/organisation', label: 'Organisation', icon: 'organisation', disabled: false },
 ];
 

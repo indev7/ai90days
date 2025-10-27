@@ -1,6 +1,11 @@
-/* Global CSS Reset and Base Styles */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}/* Global CSS Reset and Base Styles */
 html,
 body {
+  box-sizing: border-box;
   max-width: 100vw;
   overflow-x: hidden;
   background: var(--bg);

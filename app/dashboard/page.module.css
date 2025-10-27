@@ -6,6 +6,12 @@
   box-sizing: border-box;
 }
 
+.container *,
+.container *::before,
+.container *::after {
+  box-sizing: border-box;
+}
+
 .content {
   width: 100%;
   flex: 1;
