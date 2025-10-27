@@ -7,8 +7,7 @@ import { GoTrophy } from "react-icons/go";
 import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from "react-icons/gi";
 import { LiaGolfBallSolid } from "react-icons/lia";
-import { LuExpand } from "react-icons/lu";
-import { BiCollapse } from "react-icons/bi";
+import { MdFilterCenterFocus } from "react-icons/md";
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
@@ -172,10 +171,12 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
                 Share
               </button>
               <button
-                className={`${styles.focusButton} ${isFocused ? styles.focusButtonActive : ''}`}
+                className={`${styles.shareButton} ${isFocused ? styles.focusButtonActive : ''}`}
                 onClick={() => onFocusObjective(objective.id)}
+                title="Focus on this objective"
               >
-                {isFocused ? <BiCollapse size={16} /> : <LuExpand size={16} />}
+                <MdFilterCenterFocus size={16} />
+                Focus
               </button>
               <button
                 className={styles.objectiveToggleButton}

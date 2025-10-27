@@ -37,15 +37,7 @@ const topMenuItems = [
     children: [] // Will be populated with scheduled tasks dynamically
   },
   { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
-  {
-    href: '/groups',
-    label: 'Group OKRs',
-    icon: 'groups',
-    disabled: false,
-    children: [
-      { href: '/groups/create', label: 'Add Group', icon: 'new' }
-    ]
-  },
+  { href: '/organisation', label: 'Organisation', icon: 'organisation', disabled: false },
 ];
 
 const bottomMenuItems = [
@@ -61,6 +53,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     calendar: <RiCalendarScheduleLine size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
+    organisation: <RiOrganizationChart size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
