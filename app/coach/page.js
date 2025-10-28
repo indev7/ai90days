@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCoach } from '@/contexts/CoachContext';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
 import styles from './page.module.css';
 import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
@@ -326,6 +328,8 @@ function normalizeActions(rawActions = []) {
 function ActionButtons({ actions, onActionClick, onRunAll }) {
   if (!actions || actions.length === 0) return null;
   const [descriptions, setDescriptions] = useState({});
+  const [disabledButtons, setDisabledButtons] = useState({});
+  const [acceptAllDisabled, setAcceptAllDisabled] = useState(false);
 
   useEffect(() => {
     const fetchDescriptions = async () => {
@@ -349,6 +353,22 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
     fetchDescriptions();
   }, [actions]);
 
+  const handleActionClick = (action) => {
+    setDisabledButtons(prev => ({ ...prev, [action.key]: true }));
+    onActionClick(action);
+  };
+
+  const handleRunAll = () => {
+    setAcceptAllDisabled(true);
+    // Disable all individual buttons as well
+    const allDisabled = {};
+    actions.forEach(action => {
+      allDisabled[action.key] = true;
+    });
+    setDisabledButtons(allDisabled);
+    onRunAll();
+  };
+
   return (
     <table className={styles.actionButtons}>
       <tbody>
@@ -369,8 +389,9 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
               <td>
                 <button
                   className={styles.actionButton}
-                  onClick={() => onActionClick(action)}
+                  onClick={() => handleActionClick(action)}
                   title={JSON.stringify(action.body || {}, null, 2)}
+                  disabled={disabledButtons[action.key] || acceptAllDisabled}
                 >
                   Accept
                 </button>
@@ -384,8 +405,9 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
             <td>
               <button
                 className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
-                onClick={onRunAll}
+                onClick={handleRunAll}
                 title="Execute all actions in order"
+                disabled={acceptAllDisabled}
               >
                 Accept All
               </button>
@@ -509,6 +531,11 @@ export default function CoachPage() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   
+  // Subscribe to mainTreeStore to get all OKRTs and store actions
+  const { mainTree } = useMainTree();
+  const { myOKRTs } = mainTree;
+  const { addMyOKRT, updateMyOKRT, removeMyOKRT } = useMainTreeStore();
+  
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech();
   
@@ -557,10 +584,30 @@ export default function CoachPage() {
     setLoading(true);
 
     try {
+      // Prepare OKRT context from mainTreeStore
+      const okrtContext = {
+        objectives: myOKRTs.filter(okrt => okrt.type === 'O').map(obj => {
+          const krs = myOKRTs.filter(okrt => okrt.type === 'K' && okrt.parent_id === obj.id);
+          return {
+            ...obj,
+            krs: krs.map(kr => {
+              const tasks = myOKRTs.filter(okrt => okrt.type === 'T' && okrt.parent_id === kr.id);
+              return {
+                ...kr,
+                tasks
+              };
+            })
+          };
+        })
+      };
+
       const response = await fetch('/api/llm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMessage].slice(-10) }),
+        body: JSON.stringify({
+          messages: [...messages, userMessage].slice(-10),
+          okrtContext // Send the OKRT context from mainTreeStore
+        }),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
@@ -650,6 +697,22 @@ export default function CoachPage() {
         body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
+      
+      const result = await res.json();
+      
+      // Handle cache update if provided by the API
+      if (result._cacheUpdate) {
+        const { action: cacheAction, data } = result._cacheUpdate;
+        
+        if (cacheAction === 'addMyOKRT' && data) {
+          addMyOKRT(data);
+        } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
+          updateMyOKRT(data.id, data.updates);
+        } else if (cacheAction === 'removeMyOKRT' && data?.id) {
+          removeMyOKRT(data.id);
+        }
+      }
+      
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ ${action.label} completed successfully!`, timestamp: new Date() });
     } catch (err) {
       console.error('Action error:', err);
@@ -670,6 +733,21 @@ export default function CoachPage() {
           body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
         });
         if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
+        
+        const result = await res.json();
+        
+        // Handle cache update if provided by the API
+        if (result._cacheUpdate) {
+          const { action: cacheAction, data } = result._cacheUpdate;
+          
+          if (cacheAction === 'addMyOKRT' && data) {
+            addMyOKRT(data);
+          } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
+            updateMyOKRT(data.id, data.updates);
+          } else if (cacheAction === 'removeMyOKRT' && data?.id) {
+            removeMyOKRT(data.id);
+          }
+        }
       }
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ All actions completed successfully!`, timestamp: new Date() });
     } catch (err) {
@@ -689,6 +767,22 @@ export default function CoachPage() {
         body: method === 'DELETE' ? undefined : JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
+      
+      const result = await res.json();
+      
+      // Handle cache update if provided by the API
+      if (result._cacheUpdate) {
+        const { action: cacheAction, data: cacheData } = result._cacheUpdate;
+        
+        if (cacheAction === 'addMyOKRT' && cacheData) {
+          addMyOKRT(cacheData);
+        } else if (cacheAction === 'updateMyOKRT' && cacheData?.id && cacheData?.updates) {
+          updateMyOKRT(cacheData.id, cacheData.updates);
+        } else if (cacheAction === 'removeMyOKRT' && cacheData?.id) {
+          removeMyOKRT(cacheData.id);
+        }
+      }
+      
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ Request completed successfully!`, timestamp: new Date() });
     } catch (error) {
       console.error('Form submission error:', error);

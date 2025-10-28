@@ -17,6 +17,10 @@ import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
 import styles from './page.module.css';
 
+// Selector to get myOKRTs and groups from store
+const selectMyOKRTs = (state) => state.mainTree.myOKRTs;
+const selectGroups = (state) => state.mainTree.groups;
+
 // Progress bar component
 function ProgressBar({ value }) {
   const pct = Math.round(Math.max(0, Math.min(100, value)));
@@ -249,7 +253,10 @@ export default function GroupsPage() {
   
   // Use mainTree hook to get data
   const { mainTree, isLoading: mainTreeLoading } = useMainTree();
-  const { myOKRTs } = useMainTreeStore();
+  
+  // Subscribe to store changes with selectors for proper re-rendering
+  const myOKRTs = useMainTreeStore(selectMyOKRTs);
+  const groups = useMainTreeStore(selectGroups);
   
   const [selectedId, setSelectedId] = useState(null);
   const [expanded, setExpanded] = useState({});
@@ -260,9 +267,6 @@ export default function GroupsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [viewType, setViewType] = useState('groups'); // 'groups' or 'objectives'
-
-  // Get groups from mainTree
-  const groups = mainTree.groups || [];
   
   // Build groupDetails from mainTree data
   const groupDetails = useMemo(() => {

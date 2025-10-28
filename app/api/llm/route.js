@@ -332,12 +332,21 @@ export async function POST(request) {
     const requestBody = await request.json();
     logHumanReadable('COMPLETE API REQUEST JSON', requestBody);
     
-    const { messages } = requestBody;
+    const { messages, okrtContext: clientOkrtContext } = requestBody;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
     }
 
-    const okrtContext = await getOKRTContext(userId);
+    // Use client-provided OKRT context if available, otherwise fetch from DB
+    const okrtContext = clientOkrtContext || await getOKRTContext(userId);
+    
+    // Add user display name if not present in client context
+    if (clientOkrtContext && !clientOkrtContext.user) {
+      const db = await getDatabase();
+      const user = await db.get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
+      okrtContext.user = { displayName: user?.display_name || 'User' };
+    }
+    
     const systemPrompt = getCoachSystemPrompt(okrtContext);
 
     const llmMessages = [

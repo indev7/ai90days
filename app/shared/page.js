@@ -125,10 +125,10 @@ export default function SharedGoalsPage() {
         <div className={styles.header}>
           <div className={styles.titleSection}>
             <RiUserSharedLine className={styles.pageIcon} />
-            <h1>Shared Goals</h1>
+            <h1>Shared OKRs</h1>
           </div>
         </div>
-        <div className={styles.loading}>Loading shared goals...</div>
+        <div className={styles.loading}>Loading shared OKRs...</div>
       </div>
     );
   }
@@ -138,7 +138,7 @@ export default function SharedGoalsPage() {
       <div className={styles.header}>
         <div className={styles.titleSection}>
           <RiUserSharedLine className={styles.pageIcon} />
-          <h1>Shared Goals</h1>
+          <h1>Shared OKRs</h1>
           <span className={styles.count}>({sharedOKRTs.length})</span>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function SharedGoalsPage() {
       {sharedOKRTs.length === 0 ? (
         <div className={styles.emptyState}>
           <RiUserSharedLine className={styles.emptyIcon} />
-          <h3>No Shared Goals</h3>
+          <h3>No Shared OKRs</h3>
           <p>Goals shared with you by other users or groups will appear here.</p>
         </div>
       ) : (
