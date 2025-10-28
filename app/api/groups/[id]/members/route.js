@@ -56,9 +56,20 @@ export async function POST(request, { params }) {
     // Add user to group
     await addUserToGroup(targetUser.id, id, makeAdmin);
 
-    // Return updated member list
+    // Return updated member list with cache update instruction
     const members = await getGroupMembers(id);
-    return NextResponse.json({ members }, { status: 201 });
+    return NextResponse.json({
+      members,
+      _cacheUpdate: {
+        action: 'updateGroupMembership',
+        data: {
+          groupId: id,
+          userId: targetUser.id,
+          isMember: true,
+          role: makeAdmin ? 'admin' : 'member'
+        }
+      }
+    }, { status: 201 });
   } catch (error) {
     console.error('Error adding group member:', error);
     if (error.message.includes('UNIQUE constraint failed')) {

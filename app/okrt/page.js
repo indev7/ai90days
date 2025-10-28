@@ -12,6 +12,9 @@ import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
 import RewardsDisplay from '../../components/RewardsDisplay';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
 
 /* =========================
    Utility Components
@@ -439,6 +442,13 @@ export default function OKRTPage() {
     objective: null
   });
 
+  // Load mainTree data (will use cached data if available)
+  const { isLoading: mainTreeLoading } = useMainTree();
+  
+  // Subscribe to mainTree from Zustand store
+  const mainTree = useMainTreeStore((state) => state.mainTree);
+  const lastUpdated = useMainTreeStore((state) => state.lastUpdated);
+
   // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
@@ -456,36 +466,28 @@ export default function OKRTPage() {
     fetchUser();
   }, []);
 
-  // Fetch OKRT data
+  // Process mainTree data whenever it changes (from cross-tab sync or initial load)
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch user's own objectives
-        const response = await fetch('/api/okrt');
-        const data = await response.json();
-        
-        if (response.ok) {
-          console.log('API Response:', data); // Debug log
-          const allItems = data.okrts || [];
-          const objs = allItems.filter(item => item.type === 'O');
-          const krs = allItems.filter(item => item.type === 'K');
-          const tsks = allItems.filter(item => item.type === 'T');
-          
-          setObjectives(objs);
-          setKeyResults(krs);
-          setTasks(tsks);
-        } else {
-          console.error('API Error:', data.error || 'Failed to fetch OKRTs');
-        }
-      } catch (error) {
-        console.error('Error fetching OKRT data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (mainTree && mainTree.myOKRTs) {
+      console.log('Processing mainTree data for My OKRs page');
+      const allItems = mainTree.myOKRTs || [];
+      const objs = allItems.filter(item => item.type === 'O');
+      const krs = allItems.filter(item => item.type === 'K');
+      const tsks = allItems.filter(item => item.type === 'T');
+      
+      setObjectives(objs);
+      setKeyResults(krs);
+      setTasks(tsks);
+      setLoading(false);
+    }
+  }, [mainTree]);
 
-    fetchData();
-  }, []);
+  // Initial loading state management
+  useEffect(() => {
+    if (!mainTreeLoading && (!mainTree || !mainTree.myOKRTs)) {
+      setLoading(false);
+    }
+  }, [mainTreeLoading, mainTree]);
 
   // Listen for create objective events from LeftMenu
   useEffect(() => {
@@ -622,20 +624,20 @@ export default function OKRTPage() {
         throw new Error('Failed to save OKRT');
       }
 
-      // Refresh data after successful save
-      const fetchResponse = await fetch('/api/okrt');
-      const data = await fetchResponse.json();
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Update local state from mainTree store
+      const { mainTree } = useMainTreeStore.getState();
+      const allItems = mainTree.myOKRTs || [];
+      const objs = allItems.filter(item => item.type === 'O');
+      const krs = allItems.filter(item => item.type === 'K');
+      const tsks = allItems.filter(item => item.type === 'T');
       
-      if (fetchResponse.ok) {
-        const allItems = data.okrts || [];
-        const objs = allItems.filter(item => item.type === 'O');
-        const krs = allItems.filter(item => item.type === 'K');
-        const tsks = allItems.filter(item => item.type === 'T');
-        
-        setObjectives(objs);
-        setKeyResults(krs);
-        setTasks(tsks);
-      }
+      setObjectives(objs);
+      setKeyResults(krs);
+      setTasks(tsks);
     } catch (error) {
       console.error('Error saving OKRT:', error);
       throw error;
@@ -657,20 +659,20 @@ export default function OKRTPage() {
         throw new Error('Failed to delete OKRT');
       }
 
-      // Refresh data after successful delete
-      const fetchResponse = await fetch('/api/okrt');
-      const data = await fetchResponse.json();
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Update local state from mainTree store
+      const { mainTree } = useMainTreeStore.getState();
+      const allItems = mainTree.myOKRTs || [];
+      const objs = allItems.filter(item => item.type === 'O');
+      const krs = allItems.filter(item => item.type === 'K');
+      const tsks = allItems.filter(item => item.type === 'T');
       
-      if (fetchResponse.ok) {
-        const allItems = data.okrts || [];
-        const objs = allItems.filter(item => item.type === 'O');
-        const krs = allItems.filter(item => item.type === 'K');
-        const tsks = allItems.filter(item => item.type === 'T');
-        
-        setObjectives(objs);
-        setKeyResults(krs);
-        setTasks(tsks);
-      }
+      setObjectives(objs);
+      setKeyResults(krs);
+      setTasks(tsks);
     } catch (error) {
       console.error('Error deleting OKRT:', error);
       throw error;

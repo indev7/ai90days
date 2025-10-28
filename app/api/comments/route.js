@@ -151,7 +151,15 @@ export async function POST(request) {
     };
 
     const newComment = await createComment(commentData);
-    return NextResponse.json({ comment: newComment }, { status: 201 });
+    
+    // Return response with cache update instruction
+    return NextResponse.json({
+      comment: newComment,
+      _cacheUpdate: {
+        action: 'updateComment',
+        data: { okrtId: okrt_id, comment: newComment }
+      }
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating comment:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
