@@ -2,7 +2,11 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getThemeColorPalette } from '@/lib/clockUtils';
 import styles from './TodayClock.module.css';
+
+// Get colors from centralized source (same as TwelveWeekClock)
+const PROTOTYPE_COLORS = getThemeColorPalette();
 
 export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -115,7 +119,7 @@ export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
         // 12AM-6AM period shows 12AM-12PM tasks
         return taskHour >= 0 && taskHour < 12;
       } else if (currentPeriod.period === 2) {
-        // 6AM-12PM period shows 6AM-6PM tasks  
+        // 6AM-12PM period shows 6AM-6PM tasks
         return taskHour >= 6 && taskHour < 18;
       } else if (currentPeriod.period === 3) {
         // 12PM-6PM period shows 12PM-12AM tasks
@@ -141,8 +145,13 @@ export default function TodayClock({ todoTasks, size = 200, onTaskClick }) {
       const durationDegrees = (durationMinutes / 60) * 30;
       const endAngle = startAngle + durationDegrees;
       
+      // Get color from centralized palette using objectiveIndex (same as TwelveWeekClock)
+      const objectiveIndex = task.objectiveIndex || 0;
+      const color = PROTOTYPE_COLORS[objectiveIndex % PROTOTYPE_COLORS.length];
+      
       return {
         ...task,
+        color: color, // Add color from centralized palette
         startAngle,
         endAngle,
         hour: displayHour

@@ -17,6 +17,9 @@ import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
 import TaskUpdateModal from './TaskUpdateModal';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
+import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
 import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
@@ -103,102 +106,71 @@ export default function LeftMenu({
     task: null
   });
 
-  // Fetch admin groups, objectives, scheduled tasks, and setup notifications on component mount
+  // Load mainTree data (will use cached data if available)
+  useMainTree();
+  
+  // Get mainTree from Zustand store
+  const { mainTree, getUnreadNotificationCount } = useMainTreeStore();
+
+  // Process data from mainTree store
   useEffect(() => {
-    const fetchAdminGroups = async () => {
-      try {
-        const response = await fetch('/api/groups/admin');
-        if (response.ok) {
-          const data = await response.json();
-          setAdminGroups(data.groups || []);
-        }
-      } catch (error) {
-        console.error('Error fetching admin groups:', error);
-      }
-    };
+    // Extract objectives from mainTree
+    const myOKRTs = mainTree.myOKRTs || [];
+    const objs = myOKRTs.filter(item => item.type === 'O');
+    setObjectives(objs);
 
-    const fetchObjectives = async () => {
-      try {
-        const response = await fetch('/api/okrt');
-        if (response.ok) {
-          const data = await response.json();
-          const allItems = data.okrts || [];
-          const objs = allItems.filter(item => item.type === 'O');
-          setObjectives(objs);
-        }
-      } catch (error) {
-        console.error('Error fetching objectives:', error);
-      }
-    };
+    // Extract admin groups from mainTree
+    const groups = mainTree.groups || [];
+    const adminGroupsList = groups.filter(group => group.is_admin);
+    setAdminGroups(adminGroupsList);
 
-    const fetchScheduledTasks = async () => {
-      try {
-        const response = await fetch('/api/time-blocks');
-        if (response.ok) {
-          const data = await response.json();
-          const timeBlocks = data.timeBlocks || [];
-          
-          // Get current date and one week from now for filtering
-          const now = new Date();
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const oneWeekFromNow = new Date(today);
-          oneWeekFromNow.setDate(today.getDate() + 7);
-          
-          // Transform time blocks into task format with additional info
-          const tasksWithSchedule = await Promise.all(
-            timeBlocks.map(async (block) => {
-              try {
-                // Fetch task details
-                const taskResponse = await fetch(`/api/okrt/${block.task_id}`);
-                if (taskResponse.ok) {
-                  const taskData = await taskResponse.json();
-                  return {
-                    ...taskData.okrt,
-                    timeBlockId: block.id,
-                    scheduledDateTime: block.start_time,
-                    duration: block.duration,
-                    isScheduled: true
-                  };
-                }
-              } catch (error) {
-                console.error('Error fetching task details:', error);
-              }
-              return null;
-            })
-          );
-          
-          // Filter out null values, filter by date range (today to one week), and sort by scheduled time
-          const validTasks = tasksWithSchedule
-            .filter(task => {
-              if (task === null) return false;
-              
-              const taskDate = new Date(task.scheduledDateTime);
-              const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-              
-              // Include tasks from today up to one week from now
-              return taskDateOnly >= today && taskDateOnly <= oneWeekFromNow;
-            })
-            .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
-          
-          setScheduledTasks(validTasks);
-        }
-      } catch (error) {
-        console.error('Error fetching scheduled tasks:', error);
-      }
-    };
+    // Process scheduled tasks from mainTree
+    const timeBlocks = mainTree.timeBlocks || [];
+    
+    // Get current date and one week from now for filtering
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const oneWeekFromNow = new Date(today);
+    oneWeekFromNow.setDate(today.getDate() + 7);
+    
+    // Transform time blocks into task format with additional info
+    const tasksWithSchedule = timeBlocks
+      .map((block) => {
+        // Find the task in myOKRTs
+        const task = myOKRTs.find(okrt => okrt.id === block.task_id);
+        if (!task) return null;
+        
+        return {
+          ...task,
+          timeBlockId: block.id,
+          scheduledDateTime: block.start_time,
+          duration: block.duration,
+          isScheduled: true,
+          taskDescription: task.description || task.title,
+          task_status: task.task_status,
+          progress: task.progress || 0
+        };
+      })
+      .filter(task => {
+        if (task === null) return false;
+        
+        const taskDate = new Date(task.scheduledDateTime);
+        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+        
+        // Include tasks from today up to one week from now
+        return taskDateOnly >= today && taskDateOnly <= oneWeekFromNow;
+      })
+      .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
+    
+    setScheduledTasks(tasksWithSchedule);
 
-    const fetchUnreadCount = async () => {
-      try {
-        const response = await fetch('/api/notifications?count=true');
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadCount(data.count || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching unread count:', error);
-      }
-    };
+    // Get unread notification count from store
+    const count = getUnreadNotificationCount();
+    setUnreadCount(count);
+  }, [mainTree, getUnreadNotificationCount]);
 
+  // Setup SSE for real-time notification updates
+  useEffect(() => {
     const setupSSE = () => {
       const eventSource = new EventSource('/api/notifications/sse');
       
@@ -223,10 +195,6 @@ export default function LeftMenu({
       return eventSource;
     };
 
-    fetchAdminGroups();
-    fetchObjectives();
-    fetchScheduledTasks();
-    fetchUnreadCount();
     const eventSource = setupSSE();
 
     // Listen for focus mode events
@@ -377,47 +345,9 @@ export default function LeftMenu({
       // Close modal
       handleCloseTaskUpdateModal();
 
-      // Refresh scheduled tasks to show updated status
-      const fetchScheduledTasks = async () => {
-        try {
-          const response = await fetch('/api/time-blocks');
-          if (response.ok) {
-            const data = await response.json();
-            const timeBlocks = data.timeBlocks || [];
-            
-            const tasksWithSchedule = await Promise.all(
-              timeBlocks.map(async (block) => {
-                try {
-                  const taskResponse = await fetch(`/api/okrt/${block.task_id}`);
-                  if (taskResponse.ok) {
-                    const taskData = await taskResponse.json();
-                    return {
-                      ...taskData.okrt,
-                      timeBlockId: block.id,
-                      scheduledDateTime: block.start_time,
-                      duration: block.duration,
-                      isScheduled: true
-                    };
-                  }
-                } catch (error) {
-                  console.error('Error fetching task details:', error);
-                }
-                return null;
-              })
-            );
-            
-            const validTasks = tasksWithSchedule
-              .filter(task => task !== null)
-              .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
-            
-            setScheduledTasks(validTasks);
-          }
-        } catch (error) {
-          console.error('Error fetching scheduled tasks:', error);
-        }
-      };
-      
-      fetchScheduledTasks();
+      // Trigger a refresh of the mainTree data
+      // The parent component (dashboard or layout) should handle this
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
 
     } catch (error) {
       console.error('Error updating task:', error);

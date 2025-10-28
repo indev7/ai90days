@@ -1,8 +1,38 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+
+/**
+ * Cross-tab synchronization middleware
+ * Listens to storage events and updates the store when changes occur in other tabs
+ */
+const crossTabSync = (config) => (set, get, api) => {
+  const storeKey = 'main-tree-storage';
+  
+  // Listen for storage events from other tabs
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key === storeKey && e.newValue) {
+        try {
+          const newState = JSON.parse(e.newValue);
+          // Update the store with the new state from another tab
+          set({
+            mainTree: newState.state.mainTree,
+            lastUpdated: newState.state.lastUpdated
+          });
+          console.log('Cross-tab sync: Store updated from another tab');
+        } catch (error) {
+          console.error('Cross-tab sync error:', error);
+        }
+      }
+    });
+  }
+  
+  return config(set, get, api);
+};
 
 /**
  * Main Tree Store - Global state management for user data
- * 
+ *
  * Structure:
  * {
  *   myOKRTs: [],        // User's own OKRTs (lazy loaded fields)
@@ -13,7 +43,10 @@ import { create } from 'zustand';
  * }
  */
 
-const useMainTreeStore = create((set, get) => ({
+const useMainTreeStore = create(
+  crossTabSync(
+    persist(
+      (set, get) => ({
   // Main tree data structure
   mainTree: {
     myOKRTs: [],
@@ -205,6 +238,18 @@ const useMainTreeStore = create((set, get) => ({
       return blockDate === date;
     });
   }
-}));
+}),
+      {
+        name: 'main-tree-storage', // unique name for localStorage key
+        storage: createJSONStorage(() => localStorage),
+        // Only persist the mainTree data, not loading/error states
+        partialize: (state) => ({
+          mainTree: state.mainTree,
+          lastUpdated: state.lastUpdated
+        })
+      }
+    )
+  )
+);
 
 export default useMainTreeStore;

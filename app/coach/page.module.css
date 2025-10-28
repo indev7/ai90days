@@ -142,10 +142,18 @@
   padding-top: 3px;
 }
 
-.actionButton:hover {
+.actionButton:hover:not(:disabled) {
   background: var(--accent-color-dark);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
+}
+
+.actionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--text-secondary);
+  box-shadow: none;
+  transform: none;
 }
 
 .actionForms {

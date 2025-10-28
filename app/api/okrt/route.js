@@ -130,7 +130,15 @@ export async function POST(request) {
     console.log('==================');
 
     const newOKRT = await createOKRT(okrtData);
-    return NextResponse.json({ okrt: newOKRT });
+    
+    // Return response with cache update instruction
+    return NextResponse.json({
+      okrt: newOKRT,
+      _cacheUpdate: {
+        action: 'addMyOKRT',
+        data: newOKRT
+      }
+    });
   } catch (error) {
     console.error('Error creating OKRT:', error);
     return NextResponse.json({ error: 'Failed to create OKRT' }, { status: 500 });

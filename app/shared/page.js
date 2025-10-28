@@ -6,18 +6,21 @@ import { RiUserSharedLine } from 'react-icons/ri';
 import { GrTrophy } from 'react-icons/gr';
 import { FaUser } from 'react-icons/fa';
 import styles from './page.module.css';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
 
 export default function SharedGoalsPage() {
-  const [sharedOKRTs, setSharedOKRTs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [followingLoading, setFollowingLoading] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const router = useRouter();
+  
+  // Subscribe to mainTreeStore
+  const { mainTree, isLoading } = useMainTree();
+  const { setSharedOKRTs } = useMainTreeStore();
+  const sharedOKRTs = mainTree.sharedOKRTs || [];
 
   useEffect(() => {
     fetchCurrentUser();
-    fetchSharedOKRTs();
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -25,27 +28,10 @@ export default function SharedGoalsPage() {
       const response = await fetch('/api/me');
       if (response.ok) {
         const userData = await response.json();
-        setCurrentUser(userData.user); // Extract the user object from the response
+        setCurrentUser(userData.user);
       }
     } catch (err) {
       console.error('Failed to fetch current user:', err);
-    }
-  };
-
-  const fetchSharedOKRTs = async () => {
-    try {
-      const response = await fetch('/api/shared');
-      if (response.ok) {
-        const data = await response.json();
-        setSharedOKRTs(data.okrts);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to fetch shared goals');
-      }
-    } catch (err) {
-      setError('Network error occurred');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -107,54 +93,42 @@ export default function SharedGoalsPage() {
       });
 
       if (response.ok) {
-        // Update the local state
-        setSharedOKRTs(prev =>
-          prev.map(okrt =>
+        // Update the store with new follow status
+        const updatedOKRTs = sharedOKRTs
+          .map(okrt =>
             okrt.id === okrtId
               ? { ...okrt, is_following: isCurrentlyFollowing ? 0 : 1 }
               : okrt
-          ).sort((a, b) => {
+          )
+          .sort((a, b) => {
             // Sort followed items to the top
             if (a.is_following && !b.is_following) return -1;
             if (!a.is_following && b.is_following) return 1;
             return new Date(b.updated_at) - new Date(a.updated_at);
-          })
-        );
+          });
+        
+        setSharedOKRTs(updatedOKRTs);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to update follow status');
+        console.error(errorData.error || 'Failed to update follow status');
       }
     } catch (err) {
-      setError('Network error occurred');
+      console.error('Network error occurred:', err);
     } finally {
       setFollowingLoading(prev => ({ ...prev, [okrtId]: false }));
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
           <div className={styles.titleSection}>
             <RiUserSharedLine className={styles.pageIcon} />
-            <h1>Shared Goals</h1>
+            <h1>Shared OKRs</h1>
           </div>
         </div>
-        <div className={styles.loading}>Loading shared goals...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <div className={styles.titleSection}>
-            <RiUserSharedLine className={styles.pageIcon} />
-            <h1>Shared Goals</h1>
-          </div>
-        </div>
-        <div className={styles.error}>{error}</div>
+        <div className={styles.loading}>Loading shared OKRs...</div>
       </div>
     );
   }
@@ -164,7 +138,7 @@ export default function SharedGoalsPage() {
       <div className={styles.header}>
         <div className={styles.titleSection}>
           <RiUserSharedLine className={styles.pageIcon} />
-          <h1>Shared Goals</h1>
+          <h1>Shared OKRs</h1>
           <span className={styles.count}>({sharedOKRTs.length})</span>
         </div>
       </div>
@@ -172,7 +146,7 @@ export default function SharedGoalsPage() {
       {sharedOKRTs.length === 0 ? (
         <div className={styles.emptyState}>
           <RiUserSharedLine className={styles.emptyIcon} />
-          <h3>No Shared Goals</h3>
+          <h3>No Shared OKRs</h3>
           <p>Goals shared with you by other users or groups will appear here.</p>
         </div>
       ) : (

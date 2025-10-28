@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './AvatarDropdown.module.css';
 
 /**
@@ -66,6 +67,8 @@ export default function AvatarDropdown({ user }) {
     setIsOpen(!isOpen);
   };
 
+  const clearMainTree = useMainTreeStore((state) => state.clearMainTree);
+  
   const handleLogout = async () => {
     setIsOpen(false);
     
@@ -85,6 +88,12 @@ export default function AvatarDropdown({ user }) {
       console.error('Logout error:', error);
     }
 
+    // Clear mainTree from Zustand store and localStorage
+    clearMainTree();
+    
+    // Clear the persisted mainTree from localStorage
+    window.localStorage.removeItem('main-tree-storage');
+    
     // Clear any client-side auth state
     window.localStorage.setItem('authChange', Date.now().toString());
     window.localStorage.removeItem('authChange');

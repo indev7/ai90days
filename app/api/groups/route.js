@@ -196,7 +196,18 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ group }, { status: 201 });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      group,
+      _cacheUpdate: {
+        action: 'addGroup',
+        data: {
+          ...group,
+          is_admin: true,
+          members: body.members || []
+        }
+      }
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating group:', error);
     if (error.message.includes('UNIQUE constraint failed')) {

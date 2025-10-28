@@ -13,7 +13,13 @@ import AddGroupModal from '../../components/AddGroupModal';
 import ObjectiveHierarchy from '../../components/ObjectiveHierarchy';
 import { createTreeLayout } from '../../lib/tidyTree';
 import Avatar from 'boring-avatars';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
 import styles from './page.module.css';
+
+// Selector to get myOKRTs and groups from store
+const selectMyOKRTs = (state) => state.mainTree.myOKRTs;
+const selectGroups = (state) => state.mainTree.groups;
 
 // Progress bar component
 function ProgressBar({ value }) {
@@ -244,11 +250,16 @@ function ExpandedGroupContent({ group, objectives = [], members = [] }) {
 
 export default function GroupsPage() {
   const router = useRouter();
-  const [groups, setGroups] = useState([]);
-  const [groupDetails, setGroupDetails] = useState({});
+  
+  // Use mainTree hook to get data
+  const { mainTree, isLoading: mainTreeLoading } = useMainTree();
+  
+  // Subscribe to store changes with selectors for proper re-rendering
+  const myOKRTs = useMainTreeStore(selectMyOKRTs);
+  const groups = useMainTreeStore(selectGroups);
+  
   const [selectedId, setSelectedId] = useState(null);
   const [expanded, setExpanded] = useState({});
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -256,10 +267,39 @@ export default function GroupsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [viewType, setViewType] = useState('groups'); // 'groups' or 'objectives'
+  
+  // Build groupDetails from mainTree data
+  const groupDetails = useMemo(() => {
+    const details = {};
+    
+    groups.forEach(group => {
+      // Get objectives for this group from myOKRTs using objectiveIds
+      const objectives = group.objectiveIds
+        ? group.objectiveIds
+            .map(objId => myOKRTs.find(okrt => okrt.id === objId && okrt.type === 'O'))
+            .filter(Boolean)
+        : [];
+      
+      details[group.id] = {
+        members: group.members || [],
+        objectives: objectives,
+        count: objectives.length,
+        memberCount: group.members?.length || 0
+      };
+    });
+    
+    return details;
+  }, [groups, myOKRTs]);
 
+  // Set initial selected group
   useEffect(() => {
-    fetchGroups();
-  }, []);
+    if (groups.length > 0 && !selectedId) {
+      const rootGroup = groups.find(g => !g.parent_group_id);
+      if (rootGroup) {
+        setSelectedId(rootGroup.id);
+      }
+    }
+  }, [groups, selectedId]);
 
   useEffect(() => {
     // Check URL parameters for showAddModal or editGroup
@@ -280,7 +320,7 @@ export default function GroupsPage() {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-  }, []);
+  }, [groups]);
 
   useEffect(() => {
     // Listen for createGroup and editGroup events from left menu
@@ -305,68 +345,12 @@ export default function GroupsPage() {
     };
   }, [groups]);
 
-  const fetchGroups = async () => {
-    try {
-      const response = await fetch('/api/groups');
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data.groups);
-        
-        // Fetch details for all groups to show correct counts initially
-        if (data.groups.length > 0) {
-          const rootGroup = data.groups.find(g => !g.parent_group_id);
-          if (rootGroup) {
-            setSelectedId(rootGroup.id);
-          }
-          
-          // Fetch details for all groups
-          await Promise.all(
-            data.groups.map(group => fetchGroupDetails(group.id))
-          );
-        }
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to fetch groups');
-      }
-    } catch (err) {
-      setError('Network error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchGroupDetails = async (groupId) => {
-    try {
-      const response = await fetch(`/api/groups/${groupId}?include=members,objectives`);
-      if (response.ok) {
-        const data = await response.json();
-        setGroupDetails(prev => ({
-          ...prev,
-          [groupId]: {
-            members: data.members || [],
-            objectives: data.objectives || [],
-            count: data.objectiveCount || 0,
-            memberCount: data.members?.length || 0
-          }
-        }));
-      }
-    } catch (err) {
-      console.error('Error fetching group details:', err);
-    }
-  };
-
   const handleGroupSelect = (groupId) => {
     setSelectedId(groupId);
-    if (!groupDetails[groupId]) {
-      fetchGroupDetails(groupId);
-    }
   };
 
   const handleToggleExpanded = (groupId) => {
     setExpanded(prev => ({ ...prev, [groupId]: !prev[groupId] }));
-    if (!groupDetails[groupId]) {
-      fetchGroupDetails(groupId);
-    }
   };
 
   const handleAddGroup = () => {
@@ -384,8 +368,12 @@ export default function GroupsPage() {
       });
 
       if (response.ok) {
-        // Refresh groups list
-        await fetchGroups();
+        // Reload mainTree to get updated groups
+        const mainTreeResponse = await fetch('/api/main-tree');
+        if (mainTreeResponse.ok) {
+          const data = await mainTreeResponse.json();
+          useMainTreeStore.getState().setMainTree(data.mainTree);
+        }
         setShowAddModal(false);
       } else {
         const errorData = await response.json();
@@ -408,8 +396,12 @@ export default function GroupsPage() {
       });
 
       if (response.ok) {
-        // Refresh groups list
-        await fetchGroups();
+        // Reload mainTree to get updated groups
+        const mainTreeResponse = await fetch('/api/main-tree');
+        if (mainTreeResponse.ok) {
+          const data = await mainTreeResponse.json();
+          useMainTreeStore.getState().setMainTree(data.mainTree);
+        }
         setShowEditModal(false);
         setEditingGroup(null);
       } else {
@@ -431,8 +423,12 @@ export default function GroupsPage() {
       });
 
       if (response.ok) {
-        // Refresh groups list
-        await fetchGroups();
+        // Reload mainTree to get updated groups
+        const mainTreeResponse = await fetch('/api/main-tree');
+        if (mainTreeResponse.ok) {
+          const data = await mainTreeResponse.json();
+          useMainTreeStore.getState().setMainTree(data.mainTree);
+        }
         setShowDeleteConfirm(false);
         setGroupToDelete(null);
         setShowEditModal(false);
@@ -477,7 +473,7 @@ export default function GroupsPage() {
     }
   }, [groups]);
 
-  if (loading) {
+  if (mainTreeLoading) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>

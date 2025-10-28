@@ -1,29 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useMainTree } from '@/hooks/useMainTree';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './NotificationsWidget.module.css';
 
 export default function NotificationsWidget() {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch('/api/notifications?limit=10');
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.notifications || []);
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Load mainTree data (will use cached data if available)
+  useMainTree();
+  
+  // Get notifications from Zustand store
+  const { mainTree, isLoading } = useMainTreeStore();
+  const notifications = mainTree.notifications || [];
+  const loading = isLoading;
 
   const formatDateTime = (dateString) => {
     // SQLite CURRENT_TIMESTAMP returns UTC, so we need to parse it as UTC
