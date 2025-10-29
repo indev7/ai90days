@@ -1,0 +1,537 @@
+2025-10-29T09:40:52.854Z [ROUTE] GET /api/me
+2025-10-29T09:41:00.253Z [ROUTE] POST /api/login
+2025-10-29T09:41:00.254Z [DB] SELECT * FROM users WHERE email = ? -- params=["test@intervest.lk"]
+2025-10-29T09:41:01.491Z [ROUTE] GET /api/main-tree
+2025-10-29T09:41:01.492Z [ROUTE] GET /api/me
+2025-10-29T09:41:01.493Z [DB] SELECT o.id, o.type, o.parent_id, o.title, o.description, o.progress, o.status, o.area, o.cycle_qtr, o.order_index, o.visibility, o.objective_kind, o.kr_target_number, o.kr_unit, o.kr_baseline_number, o.weight, o.task_status, o.due_date, o.created_at, o.updated_at FROM okrt o WHERE o.owner_id = ? ORDER BY CASE WHEN o.parent_id IS NULL THEN 0 ELSE 1 END, o.order_index ASC -- params=[1]
+2025-10-29T09:41:01.494Z [ROUTE] GET /api/me
+2025-10-29T09:41:01.495Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:01.495Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:01.513Z [ROUTE] GET /api/me
+2025-10-29T09:41:01.516Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:01.579Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:01.579Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:01.580Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:41:01.580Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:41:01.580Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:01.910Z [DB] SELECT DISTINCT ON (o.id) o.id, o.type, o.parent_id, o.title, o.description, o.progress, o.status, o.area, o.cycle_qtr, o.order_index, o.visibility, o.objective_kind, o.kr_target_number, o.kr_unit, o.kr_baseline_number, o.weight, o.task_status, o.due_date, o.created_at, o.updated_at, o.owner_id, u.display_name as owner_name, u.first_name as owner_first_name, u.last_name as owner_last_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY o.id, CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=[1,1,1]
+2025-10-29T09:41:01.961Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:01.961Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:01.961Z [DB] SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count, c.sending_user, c.receiving_user, c.okrt_id, c.created_at, c.updated_at, su.display_name as sender_name, su.first_name as sender_first_name, su.last_name as sender_last_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.first_name as receiver_first_name, ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:02.008Z [DB] SELECT n.id, n.type, n.title, n.message, n.is_read, n.created_at, n.related_okrt_id, n.related_group_id, n.related_user_id, u.display_name as related_user_name, u.first_name as related_user_first_name, u.last_name as related_user_last_name, o.title as related_okrt_title, g.name as related_group_name FROM notifications n LEFT JOIN users u ON n.related_user_id = u.id LEFT JOIN okrt o ON n.related_okrt_id = o.id LEFT JOIN groups g ON n.related_group_id = g.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50 -- params=[1]
+2025-10-29T09:41:02.054Z [DB] SELECT tb.id, tb.task_id, tb.user_id, tb.start_time, tb.duration, tb.objective_id, tb.created_at, tb.updated_at, t.title as task_title, t.description as task_description, t.task_status, t.progress as task_progress, o.title as objective_title, o.area as objective_area FROM time_blocks tb JOIN okrt t ON tb.task_id = t.id LEFT JOIN okrt o ON tb.objective_id = o.id WHERE tb.user_id = ? ORDER BY tb.start_time ASC -- params=[1]
+2025-10-29T09:41:02.117Z [ROUTE] GET /api/me
+2025-10-29T09:41:02.122Z [DB] SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url, g.created_at, g.updated_at, ug.is_admin FROM groups g JOIN user_group ug ON g.id = ug.group_id WHERE ug.user_id = ? ORDER BY g.name ASC -- params=[1]
+2025-10-29T09:41:02.123Z [DB] SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE -- params=[1]
+2025-10-29T09:41:02.126Z [ROUTE] GET /api/me
+2025-10-29T09:41:02.127Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:02.127Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:02.167Z [DB] SELECT u.id, u.display_name, u.email, u.first_name, u.last_name, u.profile_picture_url, ug.is_admin FROM users u JOIN user_group ug ON u.id = ug.user_id WHERE ug.group_id = ? ORDER BY ug.is_admin DESC, u.display_name ASC -- params=["Ay8NawuzF0rhFV1m23TUr"]
+2025-10-29T09:41:02.167Z [DB] SELECT u.id, u.display_name, u.email, u.first_name, u.last_name, u.profile_picture_url, ug.is_admin FROM users u JOIN user_group ug ON u.id = ug.user_id WHERE ug.group_id = ? ORDER BY ug.is_admin DESC, u.display_name ASC -- params=["caDo4C2boNgYAR65qh5U4"]
+2025-10-29T09:41:02.167Z [DB] SELECT u.id, u.display_name, u.email, u.first_name, u.last_name, u.profile_picture_url, ug.is_admin FROM users u JOIN user_group ug ON u.id = ug.user_id WHERE ug.group_id = ? ORDER BY ug.is_admin DESC, u.display_name ASC -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:41:02.213Z [DB] SELECT DISTINCT s.okrt_id, o.updated_at FROM share s JOIN okrt o ON s.okrt_id = o.id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' ORDER BY o.updated_at DESC -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:41:02.214Z [DB] SELECT DISTINCT s.okrt_id, o.updated_at FROM share s JOIN okrt o ON s.okrt_id = o.id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' ORDER BY o.updated_at DESC -- params=["caDo4C2boNgYAR65qh5U4"]
+2025-10-29T09:41:02.215Z [DB] SELECT DISTINCT s.okrt_id, o.updated_at FROM share s JOIN okrt o ON s.okrt_id = o.id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' ORDER BY o.updated_at DESC -- params=["Ay8NawuzF0rhFV1m23TUr"]
+2025-10-29T09:41:39.214Z [ROUTE] GET /api/me
+2025-10-29T09:41:39.220Z [ROUTE] GET /api/me
+2025-10-29T09:41:39.221Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.224Z [ROUTE] GET /api/me
+2025-10-29T09:41:39.231Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.229Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.233Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.234Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.234Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.234Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.558Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:39.561Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:39.864Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.869Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.874Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.875Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.876Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.876Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.891Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.893Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:39.893Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.894Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:39.921Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:41:39.922Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:39.922Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:41:39.937Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:39.938Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:40.266Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:40.271Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:40.269Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:41:40.272Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.274Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.276Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.276Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.276Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.276Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.276Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.322Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:41:40.323Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:41:40.324Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:40.324Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:40.325Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:40.675Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.681Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.684Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.687Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.688Z [ROUTE] GET /api/comments
+2025-10-29T09:41:40.689Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.690Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.690Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.690Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.690Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:40.734Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:40.735Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:41:40.735Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:41:40.736Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:40.736Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:41.055Z [ROUTE] GET /api/comments
+2025-10-29T09:41:41.059Z [ROUTE] GET /api/comments
+2025-10-29T09:41:41.062Z [ROUTE] GET /api/comments
+2025-10-29T09:41:41.063Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:41.063Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:41.064Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:41:41.108Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:41:41.111Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:41:41.111Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:48.832Z [ROUTE] GET /api/okrt
+2025-10-29T09:41:48.836Z [ROUTE] GET /api/shared
+2025-10-29T09:41:48.838Z [DB] SELECT * FROM okrt WHERE owner_id = ? ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, order_index ASC -- params=["1"]
+2025-10-29T09:41:48.839Z [DB] SELECT DISTINCT o.*, u.display_name as owner_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?::text) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=["1","1","1"]
+2025-10-29T09:41:49.046Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.046Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.046Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.046Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.047Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:41:49.094Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:41:49.093Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:41:49.094Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:41:49.095Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:41:49.146Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2fc6644f-877c-48e6-a781-c56955a50d56"]
+2025-10-29T09:41:49.147Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["19b97e7c-c8e4-4caa-9b87-e2072f12cb9d"]
+2025-10-29T09:41:49.192Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:41:49.191Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:41:49.370Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b453a32f-390c-45cc-8c90-a69643815d23"]
+2025-10-29T09:41:49.371Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3f3cc512-a257-48a9-9151-f242526b8aa2"]
+2025-10-29T09:41:49.372Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["971212dc-6958-4075-ad36-28b5268f0e83"]
+2025-10-29T09:41:49.373Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:41:49.374Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3a1c5bd0-1ff6-4aa6-a035-27b896c2a2b2"]
+2025-10-29T09:41:49.376Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:41:49.420Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:16.666Z [DB] INSERT INTO okrt ( id, type, owner_id, parent_id, title, description, progress, status, area, cycle_qtr, order_index, visibility, objective_kind, kr_target_number, kr_unit, kr_baseline_number, weight, task_status, due_date, recurrence_json, blocked_by ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING * -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7","O","1",null,"new testing object","test ob",0,"D","Work","2025-Q4",0,"private","committed",null,null,null,null,null,null,null,null]
+2025-10-29T09:42:17.334Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:42:17.336Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:42:17.338Z [ROUTE] GET /api/comments
+2025-10-29T09:42:17.340Z [ROUTE] GET /api/comments
+2025-10-29T09:42:17.341Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:42:17.342Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:42:17.342Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:42:17.343Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:42:17.389Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:42:17.675Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:42:17.676Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:42:17.676Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:42:23.590Z [ROUTE] GET /api/okrt
+2025-10-29T09:42:23.592Z [ROUTE] GET /api/shared
+2025-10-29T09:42:23.594Z [DB] SELECT * FROM okrt WHERE owner_id = ? ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, order_index ASC -- params=["1"]
+2025-10-29T09:42:23.595Z [DB] SELECT DISTINCT o.*, u.display_name as owner_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?::text) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=["1","1","1"]
+2025-10-29T09:42:23.698Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.699Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:23.743Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:42:23.747Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:42:23.747Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:42:23.792Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["19b97e7c-c8e4-4caa-9b87-e2072f12cb9d"]
+2025-10-29T09:42:23.794Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2fc6644f-877c-48e6-a781-c56955a50d56"]
+2025-10-29T09:42:23.794Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b453a32f-390c-45cc-8c90-a69643815d23"]
+2025-10-29T09:42:23.850Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:23.855Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:24.048Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["971212dc-6958-4075-ad36-28b5268f0e83"]
+2025-10-29T09:42:24.049Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:42:24.049Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3a1c5bd0-1ff6-4aa6-a035-27b896c2a2b2"]
+2025-10-29T09:42:24.050Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:42:24.050Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3f3cc512-a257-48a9-9151-f242526b8aa2"]
+2025-10-29T09:42:24.051Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:42:24.051Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:42:24.095Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:35.580Z [DB] INSERT INTO okrt ( id, type, owner_id, parent_id, title, description, progress, status, area, cycle_qtr, order_index, visibility, objective_kind, kr_target_number, kr_unit, kr_baseline_number, weight, task_status, due_date, recurrence_json, blocked_by ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING * -- params=["5c5bd840-25ba-413c-a933-7f553033c42f","K","1","e0e7a775-48f0-40da-825e-1f85fea413c7","","kr 1",0,"D","Work","2025-Q4",0,"private",null,1,"%",1,1,null,"2025-11-01",null,null]
+2025-10-29T09:42:39.447Z [ROUTE] GET /api/okrt
+2025-10-29T09:42:39.450Z [ROUTE] GET /api/shared
+2025-10-29T09:42:39.453Z [DB] SELECT * FROM okrt WHERE owner_id = ? ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, order_index ASC -- params=["1"]
+2025-10-29T09:42:39.453Z [DB] SELECT DISTINCT o.*, u.display_name as owner_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?::text) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=["1","1","1"]
+2025-10-29T09:42:39.553Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.553Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.554Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:42:39.609Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:42:39.677Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["971212dc-6958-4075-ad36-28b5268f0e83"]
+2025-10-29T09:42:39.735Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:42:39.779Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2fc6644f-877c-48e6-a781-c56955a50d56"]
+2025-10-29T09:42:39.889Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["19b97e7c-c8e4-4caa-9b87-e2072f12cb9d"]
+2025-10-29T09:42:39.966Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:42:39.967Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b453a32f-390c-45cc-8c90-a69643815d23"]
+2025-10-29T09:42:40.017Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:42:40.018Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3f3cc512-a257-48a9-9151-f242526b8aa2"]
+2025-10-29T09:42:40.018Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:42:40.018Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3a1c5bd0-1ff6-4aa6-a035-27b896c2a2b2"]
+2025-10-29T09:42:40.019Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:42:40.020Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:42:40.019Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:42:40.064Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:40.065Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:40.065Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:42:43.377Z [DB] SELECT * FROM okrt WHERE id = ? -- params=["5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:42:43.427Z [DB] UPDATE okrt SET type = $1, title = $2, description = $3, area = $4, cycle_qtr = $5, visibility = $6, kr_target_number = $7, kr_unit = $8, kr_baseline_number = $9, weight = $10, due_date = $11, progress = $12, updated_at = $13 WHERE id = $14 -- params=["K","","kr 1","Work","2025-Q4","private","1","%","1","1","2025-10-31T18:30:00.000Z",10,"2025-10-29T09:42:43.427Z","5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:42:43.473Z [DB] SELECT * FROM okrt WHERE id = ? -- params=["5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:42:43.517Z [DB] SELECT f.user_id, u.display_name FROM follows f JOIN users u ON f.user_id = u.id WHERE f.objective_id = ? -- params=["5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:42:53.265Z [ROUTE] GET /api/me
+2025-10-29T09:42:53.269Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:43:00.833Z [DB] INSERT INTO time_blocks (task_id, user_id, start_time, duration, objective_id) VALUES (?, ?, ?, ?, ?) RETURNING * -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073","1","2025-10-30T03:30:00.000Z",30,"17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:43:08.567Z [DB] SELECT * FROM okrt WHERE id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:43:08.612Z [DB] UPDATE okrt SET progress = $1, task_status = $2, updated_at = $3 WHERE id = $4 -- params=[23,"in_progress","2025-10-29T09:43:08.612Z","b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:43:08.659Z [DB] SELECT * FROM okrt WHERE id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:43:08.709Z [DB] SELECT f.user_id, u.display_name FROM follows f JOIN users u ON f.user_id = u.id WHERE f.objective_id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:44:45.780Z [ROUTE] GET /api/me
+2025-10-29T09:44:45.784Z [ROUTE] GET /api/me
+2025-10-29T09:44:45.787Z [ROUTE] GET /api/me
+2025-10-29T09:44:45.791Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:44:45.792Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:44:45.793Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:44:49.131Z [ROUTE] GET /api/me
+2025-10-29T09:44:49.137Z [ROUTE] GET /api/groups
+2025-10-29T09:44:49.138Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:44:49.140Z [ROUTE] GET /api/me
+2025-10-29T09:44:49.147Z [ROUTE] GET /api/me
+2025-10-29T09:44:49.149Z [ROUTE] GET /api/groups
+2025-10-29T09:44:49.151Z [DB] SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url, COUNT(DISTINCT ug.user_id) as memberCount, COUNT(DISTINCT s.okrt_id) as objectiveCount FROM groups g LEFT JOIN user_group ug ON g.id = ug.group_id LEFT JOIN share s ON g.id = s.group_or_user_id AND s.share_type = 'G' LEFT JOIN okrt o ON s.okrt_id = o.id AND o.visibility = 'shared' GROUP BY g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url ORDER BY g.name ASC -- params=[]
+2025-10-29T09:44:49.152Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:44:49.152Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:44:49.153Z [DB] SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url, COUNT(DISTINCT ug.user_id) as memberCount, COUNT(DISTINCT s.okrt_id) as objectiveCount FROM groups g LEFT JOIN user_group ug ON g.id = ug.group_id LEFT JOIN share s ON g.id = s.group_or_user_id AND s.share_type = 'G' LEFT JOIN okrt o ON s.okrt_id = o.id AND o.visibility = 'shared' GROUP BY g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url ORDER BY g.name ASC -- params=[]
+2025-10-29T09:45:15.639Z [DB] INSERT INTO groups (id, name, type, parent_group_id, thumbnail_url) VALUES (?, ?, ?, ?, ?) RETURNING * -- params=["N7BWzBJRWBeXDI6CiRh-A","group 11","Chapter",null,"/groups/N7BWzBJRWBeXDI6CiRh-A.svg"]
+2025-10-29T09:45:15.966Z [DB] INSERT INTO user_group (user_id, group_id, is_admin) VALUES (?, ?, ?) ON CONFLICT (user_id, group_id) DO UPDATE SET is_admin = EXCLUDED.is_admin -- params=["1","N7BWzBJRWBeXDI6CiRh-A",true]
+2025-10-29T09:45:16.260Z [ROUTE] GET /api/groups
+2025-10-29T09:45:16.264Z [DB] SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url, COUNT(DISTINCT ug.user_id) as memberCount, COUNT(DISTINCT s.okrt_id) as objectiveCount FROM groups g LEFT JOIN user_group ug ON g.id = ug.group_id LEFT JOIN share s ON g.id = s.group_or_user_id AND s.share_type = 'G' LEFT JOIN okrt o ON s.okrt_id = o.id AND o.visibility = 'shared' GROUP BY g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url ORDER BY g.name ASC -- params=[]
+2025-10-29T09:45:20.944Z [DB] SELECT * FROM groups WHERE id = ? -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:45:21.015Z [DB] SELECT u.id, u.display_name, u.email, u.first_name, u.last_name, u.profile_picture_url, ug.is_admin FROM users u JOIN user_group ug ON u.id = ug.user_id WHERE ug.group_id = ? ORDER BY ug.is_admin DESC, u.display_name ASC -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:45:21.075Z [DB] SELECT o.*, u.display_name as owner_name FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' ORDER BY o.updated_at DESC -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:45:21.150Z [DB] SELECT COUNT(*) as count FROM share s JOIN okrt o ON s.okrt_id = o.id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:45:37.307Z [ROUTE] GET /api/shared
+2025-10-29T09:45:37.309Z [DB] SELECT DISTINCT o.*, u.display_name as owner_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?::text) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=["1","1","1"]
+2025-10-29T09:45:45.254Z [ROUTE] GET /api/me
+2025-10-29T09:45:45.258Z [ROUTE] GET /api/me
+2025-10-29T09:45:45.260Z [ROUTE] GET /api/me
+2025-10-29T09:45:45.261Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.262Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.262Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.269Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.271Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.273Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.274Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.657Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:45:45.660Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:45:45.983Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.987Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.990Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.992Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.993Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:45.994Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.994Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.994Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.995Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:45.995Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.042Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:45:46.043Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:45:46.043Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:45:46.044Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:45:46.044Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:45:46.399Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:46.402Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:46.404Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:46.405Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:46.407Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:45:46.408Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.408Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.408Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.409Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.409Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.468Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:45:46.467Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:45:46.468Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:45:46.469Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:45:46.469Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:45:46.843Z [ROUTE] GET /api/comments
+2025-10-29T09:45:46.845Z [ROUTE] GET /api/comments
+2025-10-29T09:45:46.847Z [ROUTE] GET /api/comments
+2025-10-29T09:45:46.848Z [ROUTE] GET /api/comments
+2025-10-29T09:45:46.849Z [ROUTE] GET /api/comments
+2025-10-29T09:45:46.851Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.851Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.851Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.851Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.851Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:46.902Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:45:46.903Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:45:46.904Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:45:46.905Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:45:46.905Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:45:47.253Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.256Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.259Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.260Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.262Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.262Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.264Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.265Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.265Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.265Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.311Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:45:47.311Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:45:47.311Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:45:47.314Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:45:47.314Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:45:47.506Z [ROUTE] GET /api/okrt
+2025-10-29T09:45:47.509Z [DB] SELECT * FROM okrt WHERE owner_id = ? ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, order_index ASC -- params=["1"]
+2025-10-29T09:45:47.516Z [ROUTE] GET /api/shared
+2025-10-29T09:45:47.518Z [DB] SELECT DISTINCT o.*, u.display_name as owner_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?::text) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=["1","1","1"]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.628Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:45:47.634Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.638Z [ROUTE] GET /api/comments
+2025-10-29T09:45:47.639Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.640Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:47.677Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:45:47.678Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:45:47.678Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:45:47.678Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:45:47.729Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:45:47.730Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2fc6644f-877c-48e6-a781-c56955a50d56"]
+2025-10-29T09:45:47.730Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:45:47.731Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3f3cc512-a257-48a9-9151-f242526b8aa2"]
+2025-10-29T09:45:47.778Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:45:47.779Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:45:47.780Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:45:47.822Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:45:47.979Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b453a32f-390c-45cc-8c90-a69643815d23"]
+2025-10-29T09:45:47.979Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:45:47.980Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3a1c5bd0-1ff6-4aa6-a035-27b896c2a2b2"]
+2025-10-29T09:45:47.980Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["971212dc-6958-4075-ad36-28b5268f0e83"]
+2025-10-29T09:45:47.981Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["19b97e7c-c8e4-4caa-9b87-e2072f12cb9d"]
+2025-10-29T09:45:47.981Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:45:48.031Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:45:58.267Z [ROUTE] GET /api/me
+2025-10-29T09:45:58.271Z [ROUTE] GET /api/me
+2025-10-29T09:45:58.273Z [ROUTE] GET /api/me
+2025-10-29T09:45:58.275Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:58.278Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:45:58.278Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:03.141Z [ROUTE] GET /api/me
+2025-10-29T09:46:03.146Z [ROUTE] GET /api/groups
+2025-10-29T09:46:03.149Z [ROUTE] GET /api/me
+2025-10-29T09:46:03.150Z [ROUTE] GET /api/me
+2025-10-29T09:46:03.154Z [ROUTE] GET /api/groups
+2025-10-29T09:46:03.157Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:03.157Z [DB] SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url, COUNT(DISTINCT ug.user_id) as memberCount, COUNT(DISTINCT s.okrt_id) as objectiveCount FROM groups g LEFT JOIN user_group ug ON g.id = ug.group_id LEFT JOIN share s ON g.id = s.group_or_user_id AND s.share_type = 'G' LEFT JOIN okrt o ON s.okrt_id = o.id AND o.visibility = 'shared' GROUP BY g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url ORDER BY g.name ASC -- params=[]
+2025-10-29T09:46:03.158Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:03.158Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:03.159Z [DB] SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url, COUNT(DISTINCT ug.user_id) as memberCount, COUNT(DISTINCT s.okrt_id) as objectiveCount FROM groups g LEFT JOIN user_group ug ON g.id = ug.group_id LEFT JOIN share s ON g.id = s.group_or_user_id AND s.share_type = 'G' LEFT JOIN okrt o ON s.okrt_id = o.id AND o.visibility = 'shared' GROUP BY g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url ORDER BY g.name ASC -- params=[]
+2025-10-29T09:46:05.534Z [DB] SELECT * FROM groups WHERE id = ? -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:46:05.581Z [DB] SELECT u.id, u.display_name, u.email, u.first_name, u.last_name, u.profile_picture_url, ug.is_admin FROM users u JOIN user_group ug ON u.id = ug.user_id WHERE ug.group_id = ? ORDER BY ug.is_admin DESC, u.display_name ASC -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:46:05.630Z [DB] SELECT o.*, u.display_name as owner_name FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' ORDER BY o.updated_at DESC -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:46:05.676Z [DB] SELECT COUNT(*) as count FROM share s JOIN okrt o ON s.okrt_id = o.id WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared' -- params=["N7BWzBJRWBeXDI6CiRh-A"]
+2025-10-29T09:46:11.036Z [ROUTE] GET /api/me
+2025-10-29T09:46:11.038Z [DB] SELECT n.*, u.display_name as related_user_name, o.title as related_okrt_title, g.name as related_group_name FROM notifications n LEFT JOIN users u ON n.related_user_id = u.id LEFT JOIN okrt o ON n.related_okrt_id = o.id LEFT JOIN groups g ON n.related_group_id = g.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT ? -- params=[1,50]
+2025-10-29T09:46:11.040Z [DB] SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE -- params=[1]
+2025-10-29T09:46:11.039Z [DB] SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE -- params=[1]
+2025-10-29T09:46:11.041Z [DB] SELECT n.*, u.display_name as related_user_name, o.title as related_okrt_title, g.name as related_group_name FROM notifications n LEFT JOIN users u ON n.related_user_id = u.id LEFT JOIN okrt o ON n.related_okrt_id = o.id LEFT JOIN groups g ON n.related_group_id = g.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT ? -- params=[1,50]
+2025-10-29T09:46:11.041Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.081Z [ROUTE] GET /api/me
+2025-10-29T09:46:14.085Z [ROUTE] GET /api/me
+2025-10-29T09:46:14.088Z [ROUTE] GET /api/me
+2025-10-29T09:46:14.097Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.097Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.097Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.421Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:14.425Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:14.427Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:14.428Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.428Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.428Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.473Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:46:14.473Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:46:14.474Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:46:14.785Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:14.788Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:14.790Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:14.791Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.791Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.791Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:14.836Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:46:14.838Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:46:14.837Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:46:15.175Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:15.179Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:15.181Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:15.182Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.182Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.182Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.229Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:46:15.230Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:46:15.230Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:46:15.564Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:15.568Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:15.571Z [ROUTE] GET /api/comments/rewards
+2025-10-29T09:46:15.573Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.574Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.574Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.630Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:46:15.631Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:46:15.632Z [DB] SELECT type, SUM(count) as total_count FROM comments WHERE okrt_id = ? AND type IN ('medal', 'star', 'cookie') GROUP BY type -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:46:15.976Z [ROUTE] GET /api/comments
+2025-10-29T09:46:15.980Z [ROUTE] GET /api/comments
+2025-10-29T09:46:15.982Z [ROUTE] GET /api/comments
+2025-10-29T09:46:15.983Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.983Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:15.984Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.030Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:46:16.032Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:46:16.033Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:46:16.343Z [ROUTE] GET /api/comments
+2025-10-29T09:46:16.346Z [ROUTE] GET /api/comments
+2025-10-29T09:46:16.349Z [ROUTE] GET /api/comments
+2025-10-29T09:46:16.350Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.350Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.351Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.397Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:46:16.400Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:46:16.399Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:46:16.706Z [ROUTE] GET /api/comments
+2025-10-29T09:46:16.710Z [ROUTE] GET /api/comments
+2025-10-29T09:46:16.713Z [ROUTE] GET /api/comments
+2025-10-29T09:46:16.714Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.714Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.714Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:16.760Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:46:16.760Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:46:16.759Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:46:17.072Z [ROUTE] GET /api/comments
+2025-10-29T09:46:17.074Z [ROUTE] GET /api/comments
+2025-10-29T09:46:17.075Z [ROUTE] GET /api/comments
+2025-10-29T09:46:17.076Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:17.076Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:17.077Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:17.122Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:46:17.122Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:46:17.123Z [DB] SELECT c.*, su.display_name as sender_name, su.profile_picture_url as sender_avatar, ru.display_name as receiver_name, ru.profile_picture_url as receiver_avatar FROM comments c JOIN users su ON c.sending_user = su.id JOIN users ru ON c.receiving_user = ru.id WHERE c.okrt_id = ? ORDER BY c.created_at ASC -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:46:21.938Z [ROUTE] GET /api/okrt
+2025-10-29T09:46:21.940Z [ROUTE] GET /api/shared
+2025-10-29T09:46:21.941Z [DB] SELECT * FROM okrt WHERE owner_id = ? ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, order_index ASC -- params=["1"]
+2025-10-29T09:46:21.942Z [DB] SELECT DISTINCT o.*, u.display_name as owner_name, CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following FROM okrt o JOIN users u ON o.owner_id = u.id JOIN share s ON o.id = s.okrt_id LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ? WHERE ( (s.share_type = 'U' AND s.group_or_user_id = ?::text) OR (s.share_type = 'G' AND s.group_or_user_id IN ( SELECT group_id FROM user_group WHERE user_id = ? )) ) AND o.visibility = 'shared' ORDER BY CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC -- params=["1","1","1"]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.057Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:22.102Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["e0e7a775-48f0-40da-825e-1f85fea413c7"]
+2025-10-29T09:46:22.103Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2b64fcea-b76d-40bd-92ba-55cfbbb147bd"]
+2025-10-29T09:46:22.154Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3f3cc512-a257-48a9-9151-f242526b8aa2"]
+2025-10-29T09:46:22.154Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["2fc6644f-877c-48e6-a781-c56955a50d56"]
+2025-10-29T09:46:22.207Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b33bf977-1d0d-49fb-971d-ed72fc8ca073"]
+2025-10-29T09:46:22.207Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["5c5bd840-25ba-413c-a933-7f553033c42f"]
+2025-10-29T09:46:22.379Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["971212dc-6958-4075-ad36-28b5268f0e83"]
+2025-10-29T09:46:22.380Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["19b97e7c-c8e4-4caa-9b87-e2072f12cb9d"]
+2025-10-29T09:46:22.382Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["1b63ba19-fb67-4a57-b37a-dfc8466107d7"]
+2025-10-29T09:46:22.382Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["17b3e0a2-30bf-47f7-9bf5-cead3aa56b51"]
+2025-10-29T09:46:22.383Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["97e3b598-0a77-4bb7-8d2a-0aecfd46dc77"]
+2025-10-29T09:46:22.384Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["b453a32f-390c-45cc-8c90-a69643815d23"]
+2025-10-29T09:46:22.385Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["acdc55dd-dc11-486f-bbaf-73da24612a90"]
+2025-10-29T09:46:22.386Z [DB] SELECT * FROM share WHERE okrt_id = ? -- params=["3a1c5bd0-1ff6-4aa6-a035-27b896c2a2b2"]
+2025-10-29T09:46:22.426Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:46:22.428Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:46:22.427Z [DB] SELECT * FROM groups WHERE id = ? -- params=["TwUD4YrbGhu2-rWN78UL9"]
+2025-10-29T09:46:42.949Z [ROUTE] GET /api/me
+2025-10-29T09:46:42.952Z [ROUTE] GET /api/me
+2025-10-29T09:46:42.954Z [ROUTE] GET /api/me
+2025-10-29T09:46:42.956Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:42.956Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:42.957Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:48.871Z [ROUTE] GET /api/me
+2025-10-29T09:46:48.871Z [DB] SELECT n.*, u.display_name as related_user_name, o.title as related_okrt_title, g.name as related_group_name FROM notifications n LEFT JOIN users u ON n.related_user_id = u.id LEFT JOIN okrt o ON n.related_okrt_id = o.id LEFT JOIN groups g ON n.related_group_id = g.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT ? -- params=[1,50]
+2025-10-29T09:46:48.872Z [DB] SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE -- params=[1]
+2025-10-29T09:46:48.873Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:49.209Z [DB] SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE -- params=[1]
+2025-10-29T09:46:49.211Z [DB] SELECT n.*, u.display_name as related_user_name, o.title as related_okrt_title, g.name as related_group_name FROM notifications n LEFT JOIN users u ON n.related_user_id = u.id LEFT JOIN okrt o ON n.related_okrt_id = o.id LEFT JOIN groups g ON n.related_group_id = g.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT ? -- params=[1,50]
+2025-10-29T09:46:53.041Z [ROUTE] GET /api/me
+2025-10-29T09:46:53.044Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:53.356Z [ROUTE] GET /api/me
+2025-10-29T09:46:53.357Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:53.656Z [ROUTE] GET /api/me
+2025-10-29T09:46:53.658Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:46:55.938Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:55.983Z [DB] UPDATE users SET display_name = $1, first_name = $2, last_name = $3, updated_at = $4 WHERE id = $5 -- params=["test","test","","2025-10-29T09:46:55.983Z",1]
+2025-10-29T09:46:56.028Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:46:56.317Z [ROUTE] GET /api/me
+2025-10-29T09:46:56.320Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:47:03.851Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:47:03.913Z [DB] UPDATE users SET display_name = $1, first_name = $2, last_name = $3, updated_at = $4 WHERE id = $5 -- params=["test 1","test","1","2025-10-29T09:47:03.913Z",1]
+2025-10-29T09:47:03.962Z [DB] SELECT * FROM users WHERE id = ? -- params=[1]
+2025-10-29T09:47:04.260Z [ROUTE] GET /api/me
+2025-10-29T09:47:04.263Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:47:09.381Z [ROUTE] GET /api/me
+2025-10-29T09:47:09.384Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:47:09.684Z [ROUTE] GET /api/me
+2025-10-29T09:47:09.686Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+2025-10-29T09:47:09.986Z [ROUTE] GET /api/me
+2025-10-29T09:47:09.990Z [DB] SELECT * FROM users WHERE id = ? -- params=["1"]
+

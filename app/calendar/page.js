@@ -272,6 +272,16 @@ export default function CalendarPage() {
 
         setLoading(true);
         try {
+            // Format the date in local timezone as ISO string without converting to UTC
+            // This ensures the time is stored as the user intended in their local timezone
+            const year = startTime.getFullYear();
+            const month = String(startTime.getMonth() + 1).padStart(2, '0');
+            const day = String(startTime.getDate()).padStart(2, '0');
+            const hours = String(startTime.getHours()).padStart(2, '0');
+            const minutes = String(startTime.getMinutes()).padStart(2, '0');
+            const seconds = String(startTime.getSeconds()).padStart(2, '0');
+            const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+
             const response = await fetch('/api/time-blocks', {
                 method: 'POST',
                 headers: {
@@ -279,7 +289,7 @@ export default function CalendarPage() {
                 },
                 body: JSON.stringify({
                     task_id: selectedTask,
-                    start_time: startTime.toISOString(),
+                    start_time: localISOString,
                     duration: selectedDuration,
                     objective_id: selectedObjectiveId
                 })
