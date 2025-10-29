@@ -17,6 +17,11 @@ import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
 import TaskUpdateModal from './TaskUpdateModal';
+import OKRTModal from './OKRTModal';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
+import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
@@ -37,15 +42,7 @@ const topMenuItems = [
     children: [] // Will be populated with scheduled tasks dynamically
   },
   { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
-  {
-    href: '/groups',
-    label: 'Group OKRs',
-    icon: 'groups',
-    disabled: false,
-    children: [
-      { href: '/groups/create', label: 'Add Group', icon: 'new' }
-    ]
-  },
+  { href: '/organisation', label: 'Organisation', icon: 'organisation', disabled: false },
 ];
 
 const bottomMenuItems = [
@@ -61,6 +58,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     calendar: <RiCalendarScheduleLine size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
+    organisation: <RiOrganizationChart size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
@@ -109,103 +107,78 @@ export default function LeftMenu({
     isOpen: false,
     task: null
   });
+  const [okrtModalState, setOkrtModalState] = useState({
+    isOpen: false,
+    mode: 'create',
+    okrt: null,
+    parentOkrt: null
+  });
 
-  // Fetch admin groups, objectives, scheduled tasks, and setup notifications on component mount
+  // Load mainTree data (will use cached data if available)
+  useMainTree();
+  
+  // Get mainTree from Zustand store
+  const { mainTree, getUnreadNotificationCount } = useMainTreeStore();
+
+  // Process data from mainTree store
   useEffect(() => {
-    const fetchAdminGroups = async () => {
-      try {
-        const response = await fetch('/api/groups/admin');
-        if (response.ok) {
-          const data = await response.json();
-          setAdminGroups(data.groups || []);
-        }
-      } catch (error) {
-        console.error('Error fetching admin groups:', error);
-      }
-    };
+    // Extract objectives from mainTree
+    const myOKRTs = mainTree.myOKRTs || [];
+    const objs = myOKRTs.filter(item => item.type === 'O');
+    setObjectives(objs);
 
-    const fetchObjectives = async () => {
-      try {
-        const response = await fetch('/api/okrt');
-        if (response.ok) {
-          const data = await response.json();
-          const allItems = data.okrts || [];
-          const objs = allItems.filter(item => item.type === 'O');
-          setObjectives(objs);
-        }
-      } catch (error) {
-        console.error('Error fetching objectives:', error);
-      }
-    };
+    // Extract admin groups from mainTree
+    const groups = mainTree.groups || [];
+    const adminGroupsList = groups.filter(group => group.is_admin);
+    setAdminGroups(adminGroupsList);
 
-    const fetchScheduledTasks = async () => {
-      try {
-        const response = await fetch('/api/time-blocks');
-        if (response.ok) {
-          const data = await response.json();
-          const timeBlocks = data.timeBlocks || [];
-          
-          // Get current date and one week from now for filtering
-          const now = new Date();
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const oneWeekFromNow = new Date(today);
-          oneWeekFromNow.setDate(today.getDate() + 7);
-          
-          // Transform time blocks into task format with additional info
-          const tasksWithSchedule = await Promise.all(
-            timeBlocks.map(async (block) => {
-              try {
-                // Fetch task details
-                const taskResponse = await fetch(`/api/okrt/${block.task_id}`);
-                if (taskResponse.ok) {
-                  const taskData = await taskResponse.json();
-                  return {
-                    ...taskData.okrt,
-                    timeBlockId: block.id,
-                    scheduledDateTime: block.start_time,
-                    duration: block.duration,
-                    isScheduled: true
-                  };
-                }
-              } catch (error) {
-                console.error('Error fetching task details:', error);
-              }
-              return null;
-            })
-          );
-          
-          // Filter out null values, filter by date range (today to one week), and sort by scheduled time
-          const validTasks = tasksWithSchedule
-            .filter(task => {
-              if (task === null) return false;
-              
-              const taskDate = new Date(task.scheduledDateTime);
-              const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-              
-              // Include tasks from today up to one week from now
-              return taskDateOnly >= today && taskDateOnly <= oneWeekFromNow;
-            })
-            .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
-          
-          setScheduledTasks(validTasks);
-        }
-      } catch (error) {
-        console.error('Error fetching scheduled tasks:', error);
-      }
-    };
+    // Process scheduled tasks from mainTree
+    const timeBlocks = mainTree.timeBlocks || [];
+    
+    // Get current date and one week from now for filtering
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const oneWeekFromNow = new Date(today);
+    oneWeekFromNow.setDate(today.getDate() + 7);
+    
+    // Transform time blocks into task format with additional info
+    const tasksWithSchedule = timeBlocks
+      .map((block) => {
+        // Find the task in myOKRTs
+        const task = myOKRTs.find(okrt => okrt.id === block.task_id);
+        if (!task) return null;
+        
+        return {
+          ...task,
+          timeBlockId: block.id,
+          scheduledDateTime: block.start_time,
+          duration: block.duration,
+          isScheduled: true,
+          taskDescription: task.description || task.title,
+          task_status: task.task_status,
+          progress: task.progress || 0
+        };
+      })
+      .filter(task => {
+        if (task === null) return false;
+        
+        const taskDate = new Date(task.scheduledDateTime);
+        const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+        
+        // Include tasks from today up to one week from now
+        return taskDateOnly >= today && taskDateOnly <= oneWeekFromNow;
+      })
+      .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
+    
+    setScheduledTasks(tasksWithSchedule);
 
-    const fetchUnreadCount = async () => {
-      try {
-        const response = await fetch('/api/notifications?count=true');
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadCount(data.count || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching unread count:', error);
-      }
-    };
+    // Get unread notification count from store
+    const count = getUnreadNotificationCount();
+    setUnreadCount(count);
+  }, [mainTree, getUnreadNotificationCount]);
 
+  // Setup SSE for real-time notification updates
+  useEffect(() => {
     const setupSSE = () => {
       const eventSource = new EventSource('/api/notifications/sse');
       
@@ -230,10 +203,6 @@ export default function LeftMenu({
       return eventSource;
     };
 
-    fetchAdminGroups();
-    fetchObjectives();
-    fetchScheduledTasks();
-    fetchUnreadCount();
     const eventSource = setupSSE();
 
     // Listen for focus mode events
@@ -264,15 +233,14 @@ export default function LeftMenu({
     
     // Close all expanded items when clicking New
     setExpandedItems(new Set());
-    // Dispatch a custom event that the My Goals page can listen to
-    if (pathname === '/okrt') {
-      console.log('Dispatching createObjective event');
-      window.dispatchEvent(new CustomEvent('createObjective'));
-    } else {
-      console.log('Navigating to /okrt with showAddModal=true');
-      // Navigate to /okrt page first, then show modal
-      router.push('/okrt?showAddModal=true');
-    }
+    // Open the OKRT modal directly
+    setOkrtModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+
     
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
@@ -283,11 +251,11 @@ export default function LeftMenu({
   const handleAddGroupClick = (e) => {
     e.preventDefault();
     // Always dispatch the event to show modal
-    if (pathname === '/groups') {
+    if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('createGroup'));
     } else {
-      // Navigate to groups page and show modal after navigation
-      router.push('/groups?showAddModal=true');
+      // Navigate to organisation page and show modal after navigation
+      router.push('/organisation?showAddModal=true');
     }
     
     // Close mobile menu
@@ -298,11 +266,11 @@ export default function LeftMenu({
 
   const handleGroupEditClick = (groupId, e) => {
     e.preventDefault();
-    // Navigate to groups page with edit mode for specific group
-    if (pathname === '/groups') {
+    // Navigate to organisation page with edit mode for specific group
+    if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('editGroup', { detail: { groupId } }));
     } else {
-      router.push(`/groups?editGroup=${groupId}`);
+      router.push(`/organisation?editGroup=${groupId}`);
     }
     
     // Close mobile menu
@@ -393,50 +361,89 @@ export default function LeftMenu({
       // Close modal
       handleCloseTaskUpdateModal();
 
-      // Refresh scheduled tasks to show updated status
-      const fetchScheduledTasks = async () => {
-        try {
-          const response = await fetch('/api/time-blocks');
-          if (response.ok) {
-            const data = await response.json();
-            const timeBlocks = data.timeBlocks || [];
-            
-            const tasksWithSchedule = await Promise.all(
-              timeBlocks.map(async (block) => {
-                try {
-                  const taskResponse = await fetch(`/api/okrt/${block.task_id}`);
-                  if (taskResponse.ok) {
-                    const taskData = await taskResponse.json();
-                    return {
-                      ...taskData.okrt,
-                      timeBlockId: block.id,
-                      scheduledDateTime: block.start_time,
-                      duration: block.duration,
-                      isScheduled: true
-                    };
-                  }
-                } catch (error) {
-                  console.error('Error fetching task details:', error);
-                }
-                return null;
-              })
-            );
-            
-            const validTasks = tasksWithSchedule
-              .filter(task => task !== null)
-              .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
-            
-            setScheduledTasks(validTasks);
-          }
-        } catch (error) {
-          console.error('Error fetching scheduled tasks:', error);
-        }
-      };
-      
-      fetchScheduledTasks();
+      // Trigger a refresh of the mainTree data
+      // The parent component (dashboard or layout) should handle this
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
 
     } catch (error) {
       console.error('Error updating task:', error);
+      throw error;
+    }
+  };
+
+  // OKRT Modal handlers
+  const handleCloseOkrtModal = () => {
+    setOkrtModalState({
+      isOpen: false,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleSaveOkrt = async (okrtData) => {
+    try {
+      const url = okrtModalState.mode === 'edit'
+        ? `/api/okrt/${okrtModalState.okrt.id}`
+        : '/api/okrt';
+      
+      const method = okrtModalState.mode === 'edit' ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(okrtData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save OKRT');
+      }
+
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Close modal
+      handleCloseOkrtModal();
+
+      // Trigger a refresh of the mainTree data
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+
+    } catch (error) {
+      console.error('Error saving OKRT:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteOkrt = async () => {
+    try {
+      const url = `/api/okrt/${okrtModalState.okrt.id}`;
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete OKRT');
+      }
+
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Close modal
+      handleCloseOkrtModal();
+
+      // Trigger a refresh of the mainTree data
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+
+    } catch (error) {
+      console.error('Error deleting OKRT:', error);
       throw error;
     }
   };
@@ -468,8 +475,8 @@ export default function LeftMenu({
   };
 
   const isExpanded = (itemHref) => {
-    // Auto-expand Groups submenu when on groups page
-    if (itemHref === '/groups' && pathname === '/groups') {
+    // Auto-expand Organisation submenu when on organisation page
+    if (itemHref === '/organisation' && pathname === '/organisation') {
       return true;
     }
     // Auto-expand My Goals submenu when on OKRT page
@@ -592,7 +599,7 @@ export default function LeftMenu({
                         })}
                         
                         {/* Show admin groups first */}
-                        {item.href === '/groups' && adminGroups.map((group) => (
+                        {item.href === '/organisation' && adminGroups.map((group) => (
                           <li key={`group-${group.id}`} className={styles.childMenuItem}>
                             <button
                               onClick={(e) => handleGroupEditClick(group.id, e)}
@@ -608,7 +615,7 @@ export default function LeftMenu({
                         {/* Show original children (action buttons) */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
-                          const isAddGroup = child.href === '/groups/create';
+                          const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
                           return (
                             <li key={child.href} className={styles.childMenuItem}>
@@ -733,6 +740,17 @@ export default function LeftMenu({
         onClose={handleCloseTaskUpdateModal}
         task={taskUpdateModalState.task}
         onSave={handleSaveTaskUpdate}
+      />
+
+      {/* OKRT Modal */}
+      <OKRTModal
+        isOpen={okrtModalState.isOpen}
+        onClose={handleCloseOkrtModal}
+        onSave={handleSaveOkrt}
+        onDelete={okrtModalState.mode === 'edit' ? handleDeleteOkrt : null}
+        okrt={okrtModalState.okrt}
+        parentOkrt={okrtModalState.parentOkrt}
+        mode={okrtModalState.mode}
       />
     </>
   );

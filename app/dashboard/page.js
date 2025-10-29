@@ -8,6 +8,9 @@ import OKRTModal from '@/components/OKRTModal';
 import NotificationsWidget from '@/components/NotificationsWidget';
 import DailyInspirationCard from '@/components/DailyInspirationCard';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
+import useMainTreeStore from '@/store/mainTreeStore';
 import {
   transformOKRTsToObjectives,
   calculateDayIndex,
@@ -20,12 +23,22 @@ import styles from './page.module.css';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [session, setSession] = useState(null);
+  const { user: session, isLoading: userLoading } = useUser();
   const [objectives, setObjectives] = useState([]);
   const [dayIndex, setDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [todoTasks, setTodoTasks] = useState([]);
   const [filteredOKRTs, setFilteredOKRTs] = useState([]);
+  
+  // Load mainTree data (will use cached data if available)
+  const { isLoading: mainTreeLoading } = useMainTree();
+  
+  // Zustand store - subscribe to specific parts that should trigger re-renders
+  const mainTree = useMainTreeStore((state) => state.mainTree);
+  const lastUpdated = useMainTreeStore((state) => state.lastUpdated);
+  const setMainTree = useMainTreeStore((state) => state.setMainTree);
+  const setStoreLoading = useMainTreeStore((state) => state.setLoading);
+  const setError = useMainTreeStore((state) => state.setError);
   
   // OKRT Modal state
   const [modalState, setModalState] = useState({
@@ -63,121 +76,136 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Get session via API
-      const sessionResponse = await fetch('/api/me');
-      if (!sessionResponse.ok) {
-        router.push('/login');
-        return;
-      }
-      const sessionData = await sessionResponse.json();
-      setSession(sessionData.user);
+      // Calculate day index based on current quarter
+      setDayIndex(calculateDayIndex());
+      
+      // Don't process mainTree here - let the useEffect handle it
+      
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Get user's OKRTs via API
-      const okrtsResponse = await fetch('/api/okrt');
-      let timeBlocks = [];
-      if (okrtsResponse.ok) {
-        const okrtsData = await okrtsResponse.json();
-        const okrts = okrtsData.okrts || [];
-        
-        // Get user's time blocks
-        const timeBlocksResponse = await fetch('/api/time-blocks');
-        if (timeBlocksResponse.ok) {
-          const timeBlocksData = await timeBlocksResponse.json();
-          timeBlocks = timeBlocksData.timeBlocks || [];
-          console.log(`Fetched ${timeBlocks.length} time blocks:`, timeBlocks);
-        }
-          
-          // Get current quarter info for filtering
-          const currentDate = new Date();
-          const currentYear = currentDate.getFullYear();
-          const currentMonth = currentDate.getMonth() + 1; // 1-12
-          const currentQuarter = Math.ceil(currentMonth / 3);
-          
-          // Format current quarter - support both "2025Q4" and "2025-Q4" formats
-          const currentCycleQtr1 = `${currentYear}Q${currentQuarter}`;
-          const currentCycleQtr2 = `${currentYear}-Q${currentQuarter}`;
-          
-          console.log('Filtering objectives for current quarter:', currentCycleQtr1, 'or', currentCycleQtr2);
-          
-          // Filter OKRTs to only include current quarter objectives and their children
-          const currentQuarterObjectives = okrts.filter(okrt => 
-            okrt.type === 'O' && 
-            (okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2)
-          );
-          
-          const objectiveIds = currentQuarterObjectives.map(obj => obj.id);
-          console.log('Current quarter objective IDs:', objectiveIds);
-          
-          // Include objectives and all their children (KRs and Tasks)
-          const filteredOKRTs = okrts.filter(okrt => {
-            if (okrt.type === 'O') {
-              // Only include objectives from current quarter
-              return okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2;
-            } else {
-              // For KRs and Tasks, include if they belong to current quarter objectives
-              return objectiveIds.includes(okrt.parent_id) || 
-                     okrts.some(parent => 
-                       parent.id === okrt.parent_id && 
-                       objectiveIds.includes(parent.parent_id)
-                     );
-            }
-          });
-          
-          console.log('Filtered OKRTs for current quarter:', filteredOKRTs.length, 'out of', okrts.length);
-          
-          // Transform filtered OKRTs to objectives format
-          const colorPalette = getThemeColorPalette();
-          const transformedObjectives = transformOKRTsToObjectives(filteredOKRTs, colorPalette);
-          console.log('Dashboard transformed objectives:', transformedObjectives.map((obj, index) => ({
-            id: obj.id,
-            title: obj.title,
-            created_at: obj.created_at,
-            index: index,
-            color: obj.color
-          })));
-          setObjectives(transformedObjectives);
-          
-          // Add color information to filtered OKRTs for tree display
-          const okrtsWithColors = filteredOKRTs.map(okrt => {
-            if (okrt.type === 'O') {
-              const foundObj = transformedObjectives.find(obj => obj.id === okrt.id);
-              return { ...okrt, color: foundObj?.color || colorPalette[0] };
-            }
-            return okrt;
-          });
-          setFilteredOKRTs(okrtsWithColors);
-          
-          // Extract tasks from filtered OKRTs for todo list (used by TodayWidget)
-          extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocks);
-        }
-        
-        // Calculate day index based on current quarter
-        setDayIndex(calculateDayIndex());
-        
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        router.push('/login');
-      } finally {
-        setLoading(false);
+  // Process mainTree data for dashboard display
+  const processMainTreeForDashboard = (loadedMainTree) => {
+    // Use myOKRTs from mainTree for dashboard display
+    const okrts = loadedMainTree.myOKRTs || [];
+    const timeBlocks = loadedMainTree.timeBlocks || [];
+    
+    // Get current quarter info for filtering
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentQuarter = Math.ceil(currentMonth / 3);
+    
+    // Format current quarter - support both "2025Q4" and "2025-Q4" formats
+    const currentCycleQtr1 = `${currentYear}Q${currentQuarter}`;
+    const currentCycleQtr2 = `${currentYear}-Q${currentQuarter}`;
+    
+    console.log('Filtering objectives for current quarter:', currentCycleQtr1, 'or', currentCycleQtr2);
+    
+    // Filter OKRTs to only include current quarter objectives and their children
+    const currentQuarterObjectives = okrts.filter(okrt =>
+      okrt.type === 'O' &&
+      (okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2)
+    );
+    
+    const objectiveIds = currentQuarterObjectives.map(obj => obj.id);
+    console.log('Current quarter objective IDs:', objectiveIds);
+    
+    // Include objectives and all their children (KRs and Tasks)
+    const filteredOKRTs = okrts.filter(okrt => {
+      if (okrt.type === 'O') {
+        // Only include objectives from current quarter
+        return okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2;
+      } else {
+        // For KRs and Tasks, include if they belong to current quarter objectives
+        return objectiveIds.includes(okrt.parent_id) ||
+               okrts.some(parent =>
+                 parent.id === okrt.parent_id &&
+                 objectiveIds.includes(parent.parent_id)
+               );
       }
-    };
+    });
+    
+    console.log('Filtered OKRTs for current quarter:', filteredOKRTs.length, 'out of', okrts.length);
+    
+    // Transform filtered OKRTs to objectives format
+    const colorPalette = getThemeColorPalette();
+    const transformedObjectives = transformOKRTsToObjectives(filteredOKRTs, colorPalette);
+    console.log('Dashboard transformed objectives:', transformedObjectives.map((obj, index) => ({
+      id: obj.id,
+      title: obj.title,
+      created_at: obj.created_at,
+      index: index,
+      color: obj.color
+    })));
+    setObjectives(transformedObjectives);
+    
+    // Add color information to filtered OKRTs for tree display
+    const okrtsWithColors = filteredOKRTs.map(okrt => {
+      if (okrt.type === 'O') {
+        const foundObj = transformedObjectives.find(obj => obj.id === okrt.id);
+        return { ...okrt, color: foundObj?.color || colorPalette[0] };
+      }
+      return okrt;
+    });
+    setFilteredOKRTs(okrtsWithColors);
+    
+    // Extract tasks from filtered OKRTs for todo list (used by TodayWidget)
+    extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocks);
+  };
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    fetchData();
-  }, [router]);
+    if (!userLoading && !session) {
+      router.push('/login');
+    }
+  }, [session, userLoading, router]);
+
+  // Process mainTree data whenever it changes (from cross-tab sync or initial load)
+  // Only process if we have a session and mainTree is loaded
+  useEffect(() => {
+    if (session && mainTree && mainTree.myOKRTs) {
+      console.log('Processing mainTree for dashboard with', mainTree.myOKRTs.length, 'OKRTs');
+      processMainTreeForDashboard(mainTree);
+    }
+  }, [mainTree, session]);
+
+  // Initial data fetch on mount only
+  useEffect(() => {
+    if (session) {
+      fetchData();
+    }
+  }, [session]);
 
   // Add window focus listener to refresh data when user comes back to the page
+  // But only if the data is stale (older than 5 minutes)
   useEffect(() => {
     const handleFocus = () => {
-      console.log('Window focused, refreshing dashboard data...');
-      fetchData();
+      if (lastUpdated) {
+        const lastUpdateTime = new Date(lastUpdated).getTime();
+        const now = new Date().getTime();
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        // Only refetch if data is stale
+        if (now - lastUpdateTime >= fiveMinutes) {
+          console.log('Window focused with stale data, refreshing dashboard data...');
+          fetchData();
+        } else {
+          console.log('Window focused but data is fresh, skipping refresh');
+        }
+      }
     };
 
     window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [lastUpdated]);
 
   // Helper function to format date and time
   const formatScheduledDateTime = (startTime) => {
@@ -374,7 +402,7 @@ export default function Dashboard() {
 
 
 
-  if (loading) {
+  if (loading || mainTreeLoading || userLoading) {
     return (
       <div className={styles.container}>
         <div className={styles.content}>
@@ -386,6 +414,17 @@ export default function Dashboard() {
 
   if (!session) {
     return null; // Will redirect
+  }
+  
+  // Don't render until we have both session and mainTree data
+  if (!mainTree || !mainTree.myOKRTs) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.content}>
+          <div className={styles.loading}>Loading data...</div>
+        </div>
+      </div>
+    );
   }
 
   const currentDate = formatCurrentDate();

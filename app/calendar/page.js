@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { IoChevronBack, IoChevronForward } from 'react-icons/io5';
 import styles from './page.module.css';
 import { createObjectiveColorMap, getThemeColorPalette, transformOKRTsToObjectives } from '../../lib/clockUtils';
 import TaskUpdateModal from '../../components/TaskUpdateModal';
+import useMainTreeStore from '../../store/mainTreeStore';
 
 const DURATION_OPTIONS = [
     { value: 15, label: '15 min' },
@@ -58,6 +59,11 @@ const getDaysOfWeek = (currentDate) => {
 const formatTimeSlotId = (dayIndex, hour) => `${dayIndex}-${hour}`;
 
 export default function CalendarPage() {
+    // Subscribe to mainTreeStore
+    const { mainTree } = useMainTreeStore();
+    const allTimeBlocks = mainTree.timeBlocks || [];
+    const myOKRTs = mainTree.myOKRTs || [];
+
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
         const day = today.getDay();
@@ -72,7 +78,6 @@ export default function CalendarPage() {
     const [timeBlockToDelete, setTimeBlockToDelete] = useState(null);
     const [showTaskUpdateModal, setShowTaskUpdateModal] = useState(false);
     const [selectedTimeBlock, setSelectedTimeBlock] = useState(null);
-    const [timeBlocks, setTimeBlocks] = useState([]);
     const [taskHierarchy, setTaskHierarchy] = useState([]);
     const [selectedTask, setSelectedTask] = useState('');
     const [selectedTaskTitle, setSelectedTaskTitle] = useState('');
@@ -96,145 +101,142 @@ export default function CalendarPage() {
         day.date.toISOString().split('T')[0] === todayStr
     );
 
-    // Fetch time blocks for the current week
-    const fetchTimeBlocks = useCallback(async () => {
-        try {
-            const weekStart = new Date(currentWeekStart);
-            const currentDays = getDaysOfWeek(weekStart);
+    // Filter time blocks for the current week from mainTreeStore and enrich with task details
+    const timeBlocks = useMemo(() => {
+        const weekStart = new Date(currentWeekStart);
+        const currentDays = getDaysOfWeek(weekStart);
+        const weekDates = currentDays.map(day => day.date.toISOString().split('T')[0]);
 
-            // Fetch time blocks for each day of the week
-            const promises = currentDays.map(day => {
-                const dateStr = day.date.toISOString().split('T')[0];
-                return fetch(`/api/time-blocks?date=${dateStr}`)
-                    .then(res => res.json())
-                    .then(data => ({ date: dateStr, blocks: data.timeBlocks || [] }));
-            });
+        // Create a map of task_id to task details for quick lookup
+        const taskMap = {};
+        myOKRTs.forEach(okrt => {
+            if (okrt.type === 'T') {
+                taskMap[okrt.id] = {
+                    title: okrt.title,
+                    description: okrt.description,
+                    task_status: okrt.task_status,
+                    progress: okrt.progress
+                };
+            }
+        });
 
-            const results = await Promise.all(promises);
-            const allBlocks = results.flatMap(result =>
-                result.blocks.map(block => ({
+        return allTimeBlocks
+            .filter(block => {
+                const blockDate = new Date(block.start_time).toISOString().split('T')[0];
+                return weekDates.includes(blockDate);
+            })
+            .map(block => {
+                // Enrich time block with task details from myOKRTs
+                const taskDetails = taskMap[block.task_id];
+                return {
                     ...block,
-                    date: result.date
-                }))
+                    date: new Date(block.start_time).toISOString().split('T')[0],
+                    task_title: taskDetails?.title || block.task_title,
+                    task_description: taskDetails?.description || block.task_description,
+                    task_status: taskDetails?.task_status || block.task_status,
+                    progress: taskDetails?.progress || block.progress
+                };
+            });
+    }, [allTimeBlocks, currentWeekStart, myOKRTs]);
+
+    // Build task hierarchy from mainTreeStore data
+    useEffect(() => {
+        try {
+            const okrts = myOKRTs;
+
+            // Filter to current quarter first (same logic as dashboard)
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentQuarter = Math.ceil(currentMonth / 3);
+            const currentCycleQtr1 = `${currentYear}Q${currentQuarter}`;
+            const currentCycleQtr2 = `${currentYear}-Q${currentQuarter}`;
+
+            console.log('Calendar filtering objectives for current quarter:', currentCycleQtr1, 'or', currentCycleQtr2);
+
+            const currentQuarterObjectives = okrts.filter(okrt =>
+                okrt.type === 'O' &&
+                (okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2)
             );
 
-            setTimeBlocks(allBlocks);
-        } catch (error) {
-            console.error('Error fetching time blocks:', error);
-        }
-    }, [currentWeekStart]);
+            const objectiveIds = currentQuarterObjectives.map(obj => obj.id);
+            console.log('Calendar current quarter objective IDs:', objectiveIds);
 
-    // Fetch available tasks hierarchy for scheduling - only fetch once on mount
-    useEffect(() => {
-        const fetchTaskHierarchy = async () => {
-            try {
-                // Use the same API as dashboard for consistency
-                const response = await fetch('/api/okrt');
-                if (response.ok) {
-                    const data = await response.json();
-                    const okrts = data.okrts || [];
+            // Include objectives and all their children (KRs and Tasks) - same as dashboard
+            const filteredOKRTs = okrts.filter(okrt => {
+                if (okrt.type === 'O') {
+                    // Only include objectives from current quarter
+                    return okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2;
+                } else {
+                    // For KRs and Tasks, include if they belong to current quarter objectives
+                    return objectiveIds.includes(okrt.parent_id) ||
+                        okrts.some(parent =>
+                            parent.id === okrt.parent_id &&
+                            objectiveIds.includes(parent.parent_id)
+                        );
+                }
+            });
 
-                    // Filter to current quarter first (same logic as dashboard)
-                    const currentDate = new Date();
-                    const currentYear = currentDate.getFullYear();
-                    const currentMonth = currentDate.getMonth() + 1;
-                    const currentQuarter = Math.ceil(currentMonth / 3);
-                    const currentCycleQtr1 = `${currentYear}Q${currentQuarter}`;
-                    const currentCycleQtr2 = `${currentYear}-Q${currentQuarter}`;
+            console.log('Calendar filtered OKRTs for current quarter:', filteredOKRTs.length, 'out of', okrts.length);
 
-                    console.log('Calendar filtering objectives for current quarter:', currentCycleQtr1, 'or', currentCycleQtr2);
+            // Transform filtered OKRTs to objectives (same as dashboard)
+            const transformedObjectives = transformOKRTsToObjectives(filteredOKRTs, getThemeColorPalette());
+            console.log('Calendar transformed objectives:', transformedObjectives.map((obj, index) => ({
+                id: obj.id,
+                title: obj.title,
+                created_at: obj.created_at,
+                index: index,
+                color: obj.color
+            })));
 
-                    const currentQuarterObjectives = okrts.filter(okrt =>
-                        okrt.type === 'O' &&
-                        (okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2)
-                    );
+            const keyResults = filteredOKRTs.filter(okrt => okrt.type === 'K');
+            const tasks = filteredOKRTs.filter(okrt =>
+                okrt.type === 'T' && (okrt.task_status === 'todo' || okrt.task_status === 'in_progress')
+            );
 
-                    const objectiveIds = currentQuarterObjectives.map(obj => obj.id);
-                    console.log('Calendar current quarter objective IDs:', objectiveIds);
+            // Build hierarchy with same sorting as transformOKRTsToObjectives
+            const hierarchy = currentQuarterObjectives
+                .sort((a, b) => {
+                    const dateA = new Date(a.created_at || 0);
+                    const dateB = new Date(b.created_at || 0);
+                    return dateA - dateB;
+                })
+                .map(objective => {
+                    const objectiveKRs = keyResults.filter(kr => kr.parent_id === objective.id);
 
-                    // Include objectives and all their children (KRs and Tasks) - same as dashboard
-                    const filteredOKRTs = okrts.filter(okrt => {
-                        if (okrt.type === 'O') {
-                            // Only include objectives from current quarter
-                            return okrt.cycle_qtr === currentCycleQtr1 || okrt.cycle_qtr === currentCycleQtr2;
-                        } else {
-                            // For KRs and Tasks, include if they belong to current quarter objectives
-                            return objectiveIds.includes(okrt.parent_id) ||
-                                okrts.some(parent =>
-                                    parent.id === okrt.parent_id &&
-                                    objectiveIds.includes(parent.parent_id)
-                                );
-                        }
-                    });
-
-                    console.log('Calendar filtered OKRTs for current quarter:', filteredOKRTs.length, 'out of', okrts.length);
-
-                    // Transform filtered OKRTs to objectives (same as dashboard)
-                    const transformedObjectives = transformOKRTsToObjectives(filteredOKRTs, getThemeColorPalette());
-                    console.log('Calendar transformed objectives:', transformedObjectives.map((obj, index) => ({
-                        id: obj.id,
-                        title: obj.title,
-                        created_at: obj.created_at,
-                        index: index,
-                        color: obj.color
-                    })));
-
-                    const keyResults = filteredOKRTs.filter(okrt => okrt.type === 'K');
-                    const tasks = filteredOKRTs.filter(okrt =>
-                        okrt.type === 'T' && (okrt.task_status === 'todo' || okrt.task_status === 'in_progress')
-                    );
-
-                    // Build hierarchy with same sorting as transformOKRTsToObjectives
-                    const hierarchy = currentQuarterObjectives
-                        .sort((a, b) => {
-                            const dateA = new Date(a.created_at || 0);
-                            const dateB = new Date(b.created_at || 0);
-                            return dateA - dateB;
-                        })
-                        .map(objective => {
-                            const objectiveKRs = keyResults.filter(kr => kr.parent_id === objective.id);
+                    return {
+                        id: objective.id,
+                        title: objective.title || objective.description || 'Untitled Objective',
+                        type: 'objective',
+                        created_at: objective.created_at,
+                        keyResults: objectiveKRs.map(kr => {
+                            const krTasks = tasks.filter(task => task.parent_id === kr.id);
 
                             return {
-                                id: objective.id,
-                                title: objective.title || objective.description || 'Untitled Objective',
-                                type: 'objective',
-                                created_at: objective.created_at,
-                                keyResults: objectiveKRs.map(kr => {
-                                    const krTasks = tasks.filter(task => task.parent_id === kr.id);
-
-                                    return {
-                                        id: kr.id,
-                                        title: kr.title || kr.description || 'Untitled Key Result',
-                                        type: 'keyResult',
-                                        tasks: krTasks.map(task => ({
-                                            id: task.id,
-                                            title: task.title || task.description || 'Untitled Task',
-                                            description: task.description,
-                                            task_status: task.task_status,
-                                            type: 'task'
-                                        }))
-                                    };
-                                }).filter(kr => kr.tasks.length > 0)
+                                id: kr.id,
+                                title: kr.title || kr.description || 'Untitled Key Result',
+                                type: 'keyResult',
+                                tasks: krTasks.map(task => ({
+                                    id: task.id,
+                                    title: task.title || task.description || 'Untitled Task',
+                                    description: task.description,
+                                    task_status: task.task_status,
+                                    type: 'task'
+                                }))
                             };
-                        }).filter(obj => obj.keyResults.length > 0);
+                        }).filter(kr => kr.tasks.length > 0)
+                    };
+                }).filter(obj => obj.keyResults.length > 0);
 
-                    setTaskHierarchy(hierarchy);
+            setTaskHierarchy(hierarchy);
 
-                    // Create objective color map using same logic as dashboard
-                    const colorMap = createObjectiveColorMap(transformedObjectives);
-                    setObjectiveColorMap(colorMap);
-                }
-            } catch (error) {
-                console.error('Error fetching task hierarchy:', error);
-            }
-        };
-
-        fetchTaskHierarchy();
-    }, []);
-
-    useEffect(() => {
-        fetchTimeBlocks();
-    }, [fetchTimeBlocks]);
+            // Create objective color map using same logic as dashboard
+            const colorMap = createObjectiveColorMap(transformedObjectives);
+            setObjectiveColorMap(colorMap);
+        } catch (error) {
+            console.error('Error building task hierarchy:', error);
+        }
+    }, [myOKRTs]);
 
     const handleTimeSlotClick = (dayIndex, hour) => {
         const slotId = formatTimeSlotId(dayIndex, hour);
@@ -270,6 +272,16 @@ export default function CalendarPage() {
 
         setLoading(true);
         try {
+            // Format the date in local timezone as ISO string without converting to UTC
+            // This ensures the time is stored as the user intended in their local timezone
+            const year = startTime.getFullYear();
+            const month = String(startTime.getMonth() + 1).padStart(2, '0');
+            const day = String(startTime.getDate()).padStart(2, '0');
+            const hours = String(startTime.getHours()).padStart(2, '0');
+            const minutes = String(startTime.getMinutes()).padStart(2, '0');
+            const seconds = String(startTime.getSeconds()).padStart(2, '0');
+            const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+
             const response = await fetch('/api/time-blocks', {
                 method: 'POST',
                 headers: {
@@ -277,15 +289,19 @@ export default function CalendarPage() {
                 },
                 body: JSON.stringify({
                     task_id: selectedTask,
-                    start_time: startTime.toISOString(),
+                    start_time: localISOString,
                     duration: selectedDuration,
                     objective_id: selectedObjectiveId
                 })
             });
 
             if (response.ok) {
+                const data = await response.json();
+                // Process cache update - this will update mainTreeStore
+                const { processCacheUpdateFromData } = await import('@/lib/apiClient');
+                processCacheUpdateFromData(data);
+                
                 resetModal();
-                await fetchTimeBlocks(); // Refresh time blocks
             } else {
                 console.error('Error creating time block');
             }
@@ -383,9 +399,13 @@ export default function CalendarPage() {
             });
 
             if (response.ok) {
+                const data = await response.json();
+                // Process cache update - this will update mainTreeStore
+                const { processCacheUpdateFromData } = await import('@/lib/apiClient');
+                processCacheUpdateFromData(data);
+                
                 setShowDeleteModal(false);
                 setTimeBlockToDelete(null);
-                await fetchTimeBlocks(); // Refresh time blocks
             } else {
                 console.error('Error deleting time block');
                 alert('Failed to delete time block');
@@ -431,8 +451,10 @@ export default function CalendarPage() {
             });
 
             if (response.ok) {
-                // Refresh time blocks to show updated progress
-                await fetchTimeBlocks();
+                const data = await response.json();
+                // Process cache update - this will update mainTreeStore
+                const { processCacheUpdateFromData } = await import('@/lib/apiClient');
+                processCacheUpdateFromData(data);
             } else {
                 throw new Error('Failed to update task');
             }
@@ -537,48 +559,53 @@ export default function CalendarPage() {
                                             </button>
                                         )}
 
-                                        {blocksInSlot.map((block) => {
-                                            // Calculate height based on duration (60px per hour)
-                                            const heightPercentage = (block.duration / 60) * 100;
-                                            const blockHeight = `${heightPercentage}%`;
-                                            
-                                            // Calculate top offset based on minutes past the hour
-                                            const blockStart = new Date(block.start_time);
-                                            const minutes = blockStart.getMinutes();
-                                            const topOffset = `${(minutes / 60) * 100}%`;
-                                            
-                                            return (
-                                                <div
-                                                    key={block.id}
-                                                    className={styles.timeBlock}
-                                                    style={{
-                                                        backgroundColor: getTimeBlockColor(block),
-                                                        height: blockHeight,
-                                                        top: topOffset,
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    onMouseEnter={() => setHoveredBlockId(block.id)}
-                                                    onMouseLeave={() => setHoveredBlockId(null)}
-                                                    onClick={(e) => handleTimeBlockClick(block, e)}
-                                                >
-                                                    <div className={styles.timeBlockTitle}>
-                                                        {block.task_title || block.task_description || `Task ${block.task_id}`}
-                                                    </div>
-                                                    {hoveredBlockId === block.id && (
-                                                    <button
-                                                        className={styles.deleteButton}
-                                                        onClick={(e) => openDeleteModal(block.id, e)}
-                                                        aria-label="Delete time block"
-                                                    >
-                                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                            <circle cx="8" cy="8" r="7" fill="white" stroke="currentColor" strokeWidth="1"/>
-                                                            <path d="M5 5L11 11M11 5L5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                                                        </svg>
-                                                    </button>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                       {blocksInSlot.map((block) => {
+                                           // Calculate height based on duration (60px per hour)
+                                           const heightPercentage = (block.duration / 60) * 100;
+                                           const blockHeight = `${heightPercentage}%`;
+                                           
+                                           // Calculate top offset based on minutes past the hour
+                                           const blockStart = new Date(block.start_time);
+                                           const minutes = blockStart.getMinutes();
+                                           const topOffset = `${(minutes / 60) * 100}%`;
+                                           
+                                           // Get full description for tooltip
+                                           const fullDescription = block.task_description || block.task_title || `Task ${block.task_id}`;
+                                           const displayText = block.task_title || block.task_description || `Task ${block.task_id}`;
+                                           
+                                           return (
+                                               <div
+                                                   key={block.id}
+                                                   className={styles.timeBlock}
+                                                   style={{
+                                                       backgroundColor: getTimeBlockColor(block),
+                                                       height: blockHeight,
+                                                       top: topOffset,
+                                                       cursor: 'pointer'
+                                                   }}
+                                                   title={fullDescription}
+                                                   onMouseEnter={() => setHoveredBlockId(block.id)}
+                                                   onMouseLeave={() => setHoveredBlockId(null)}
+                                                   onClick={(e) => handleTimeBlockClick(block, e)}
+                                               >
+                                                   <div className={styles.timeBlockTitle}>
+                                                       {displayText}
+                                                   </div>
+                                                   {hoveredBlockId === block.id && (
+                                                   <button
+                                                       className={styles.deleteButton}
+                                                       onClick={(e) => openDeleteModal(block.id, e)}
+                                                       aria-label="Delete time block"
+                                                   >
+                                                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                           <circle cx="8" cy="8" r="7" fill="white" stroke="currentColor" strokeWidth="1"/>
+                                                           <path d="M5 5L11 11M11 5L5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                                       </svg>
+                                                   </button>
+                                                   )}
+                                               </div>
+                                           );
+                                       })}
                                     </div>
                                 );
                             })}
@@ -649,6 +676,10 @@ export default function CalendarPage() {
                                                 const minutes = blockStart.getMinutes();
                                                 const topOffset = `${(minutes / 60) * 100}%`;
                                                 
+                                                // Get full description for tooltip
+                                                const fullDescription = block.task_description || block.task_title || `Task ${block.task_id}`;
+                                                const displayText = block.task_title || block.task_description || `Task ${block.task_id}`;
+                                                
                                                 return (
                                                     <div
                                                         key={block.id}
@@ -659,12 +690,13 @@ export default function CalendarPage() {
                                                             top: topOffset,
                                                             cursor: 'pointer'
                                                         }}
+                                                        title={fullDescription}
                                                         onMouseEnter={() => setHoveredBlockId(block.id)}
                                                         onMouseLeave={() => setHoveredBlockId(null)}
                                                         onClick={(e) => handleTimeBlockClick(block, e)}
                                                     >
                                                         <div className={styles.timeBlockTitle}>
-                                                            {block.task_title || block.task_description || `Task ${block.task_id}`}
+                                                            {displayText}
                                                         </div>
                                                     {hoveredBlockId === block.id && (
                                                         <button

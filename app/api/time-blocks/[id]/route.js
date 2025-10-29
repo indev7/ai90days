@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { 
+import {
   getTimeBlockById,
   updateTimeBlock,
   deleteTimeBlock
-} from '../../../../lib/db';
+} from '../../../../lib/pgdb';
 
 // GET /api/time-blocks/[id] - Get specific time block
 export async function GET(request, { params }) {
@@ -82,7 +82,14 @@ export async function PUT(request, { params }) {
 
     const updatedTimeBlock = await updateTimeBlock(id, updateData);
 
-    return NextResponse.json({ timeBlock: updatedTimeBlock });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      timeBlock: updatedTimeBlock,
+      _cacheUpdate: {
+        action: 'updateTimeBlock',
+        data: { id: parseInt(id), updates: updatedTimeBlock }
+      }
+    });
   } catch (error) {
     console.error('Error updating time block:', error);
     return NextResponse.json(
@@ -115,7 +122,14 @@ export async function DELETE(request, { params }) {
 
     await deleteTimeBlock(id);
 
-    return NextResponse.json({ message: 'Time block deleted successfully' });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      message: 'Time block deleted successfully',
+      _cacheUpdate: {
+        action: 'removeTimeBlock',
+        data: { id: parseInt(id) }
+      }
+    });
   } catch (error) {
     console.error('Error deleting time block:', error);
     return NextResponse.json(

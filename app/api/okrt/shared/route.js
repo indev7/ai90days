@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase, getUserById, getOKRTShares, getGroupById } from '@/lib/db';
+import { getDatabase, get, all, getUserById, getOKRTShares, getGroupById } from '@/lib/pgdb';
 
 export async function GET(request) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Objective ID is required' }, { status: 400 });
     }
 
-    const db = await getDatabase();
+    await getDatabase(); // Ensure database is initialized
     const userId = session.sub;
 
     // Check if user has access to this shared objective
@@ -40,7 +40,7 @@ export async function GET(request) {
         )
     `;
 
-    const objective = await db.get(accessQuery, [objectiveId, userId.toString(), userId]);
+    const objective = await get(accessQuery, [objectiveId, userId.toString(), userId]);
     
     if (!objective) {
       return NextResponse.json({ error: 'Objective not found or access denied' }, { status: 404 });
@@ -85,8 +85,8 @@ export async function GET(request) {
       ORDER BY created_at ASC
     `;
 
-    const keyResults = await db.all(keyResultsQuery, [objectiveId]);
-    const tasks = await db.all(tasksQuery, [objectiveId]);
+    const keyResults = await all(keyResultsQuery, [objectiveId]);
+    const tasks = await all(tasksQuery, [objectiveId]);
 
     // Combine into the expected format
     const allItems = [enhancedObjective, ...keyResults, ...tasks];

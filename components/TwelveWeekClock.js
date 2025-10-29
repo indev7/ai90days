@@ -230,37 +230,75 @@ function TwelveWeekClock({
               <g key={`ring-${i}`}>
                 <circle cx={cx} cy={cy} r={r} stroke={tracksBg} strokeWidth={trackWidth} fill="none" opacity={0.6} />
                 {prog > 0 && (
-                  <g className={`jelly-progress-${i}`}>
-                    {/* Main progress arc with jelly effect */}
-                    <path 
-                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
-                      stroke={color} 
-                      strokeWidth={trackWidth} 
-                      fill="none" 
-                      strokeLinecap="round" 
-                      opacity={0.85}
-                      filter="url(#jellyShadow)"
-                    />
-                    {/* Highlight overlay for jelly effect */}
-                    <path 
-                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
-                      stroke="url(#jellyGradient)" 
-                      strokeWidth={trackWidth * 0.8} 
-                      fill="none" 
-                      strokeLinecap="round" 
-                      opacity={0.6}
-                    />
-                    {/* Inner glow */}
-                    <path 
-                      d={arcPath(cx, cy, r, 0, endDeg || 0.01)} 
-                      stroke={color} 
-                      strokeWidth={trackWidth * 0.4} 
-                      fill="none" 
-                      strokeLinecap="round" 
-                      opacity={0.8}
-                      filter="url(#jellyGlow)"
-                    />
-                  </g>
+                  prog >= 1 ? (
+                    // For 100% progress, draw a full circle instead of an arc
+                    <g className={`jelly-progress-${i}`}>
+                      {/* Main progress circle with jelly effect */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
+                        stroke={color}
+                        strokeWidth={trackWidth}
+                        fill="none"
+                        opacity={0.85}
+                        filter="url(#jellyShadow)"
+                      />
+                      {/* Highlight overlay for jelly effect */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
+                        stroke="url(#jellyGradient)"
+                        strokeWidth={trackWidth * 0.8}
+                        fill="none"
+                        opacity={0.6}
+                      />
+                      {/* Inner glow */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
+                        stroke={color}
+                        strokeWidth={trackWidth * 0.4}
+                        fill="none"
+                        opacity={0.8}
+                        filter="url(#jellyGlow)"
+                      />
+                    </g>
+                  ) : (
+                    <g className={`jelly-progress-${i}`}>
+                      {/* Main progress arc with jelly effect */}
+                      <path
+                        d={arcPath(cx, cy, r, 0, endDeg || 0.01)}
+                        stroke={color}
+                        strokeWidth={trackWidth}
+                        fill="none"
+                        strokeLinecap="round"
+                        opacity={0.85}
+                        filter="url(#jellyShadow)"
+                      />
+                      {/* Highlight overlay for jelly effect */}
+                      <path
+                        d={arcPath(cx, cy, r, 0, endDeg || 0.01)}
+                        stroke="url(#jellyGradient)"
+                        strokeWidth={trackWidth * 0.8}
+                        fill="none"
+                        strokeLinecap="round"
+                        opacity={0.6}
+                      />
+                      {/* Inner glow */}
+                      <path
+                        d={arcPath(cx, cy, r, 0, endDeg || 0.01)}
+                        stroke={color}
+                        strokeWidth={trackWidth * 0.4}
+                        fill="none"
+                        strokeLinecap="round"
+                        opacity={0.8}
+                        filter="url(#jellyGlow)"
+                      />
+                    </g>
+                  )
                 )}
                 {(obj?.krs ?? []).map((kr) => placeKR(r, clamp(kr.dueDay, 0, TOTAL_DAYS - 1), color))}
               </g>

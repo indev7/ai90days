@@ -10,7 +10,7 @@ import {
   getGroupSharedOKRTCount,
   isUserGroupAdmin,
   addUserToGroup
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function GET(request, { params }) {
   try {
@@ -102,7 +102,14 @@ export async function PUT(request, { params }) {
       }
     }
 
-    return NextResponse.json({ group });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      group,
+      _cacheUpdate: {
+        action: 'updateGroup',
+        data: { id, updates: group }
+      }
+    });
   } catch (error) {
     console.error('Error updating group:', error);
     if (error.message.includes('UNIQUE constraint failed')) {
@@ -140,7 +147,14 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ message: 'Group deleted successfully' });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      message: 'Group deleted successfully',
+      _cacheUpdate: {
+        action: 'removeGroup',
+        data: { id }
+      }
+    });
   } catch (error) {
     console.error('Error deleting group:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

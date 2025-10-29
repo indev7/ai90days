@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getUserById, getUserByEmail } from '@/lib/db';
+import { getUserById, getUserByEmail } from '@/lib/pgdb';
 import { getServerSession } from 'next-auth';
 import NextAuth from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';

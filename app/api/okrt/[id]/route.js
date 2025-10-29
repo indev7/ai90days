@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTById, updateOKRT, deleteOKRTCascade, getOKRTFollowers, getUserById } from '../../../../lib/db';
+import { getOKRTById, updateOKRT, deleteOKRTCascade, getOKRTFollowers, getUserById } from '../../../../lib/pgdb';
 import { notifyProgressUpdate } from '../../../../lib/notifications';
 
 // GET /api/okrt/[id] - Get a specific OKRT by ID
@@ -124,7 +124,14 @@ export async function PUT(request, { params }) {
       }
     }
     
-    return NextResponse.json({ okrt: updatedOKRT });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      okrt: updatedOKRT,
+      _cacheUpdate: {
+        action: 'updateMyOKRT',
+        data: { id: updatedOKRT.id, updates: updatedOKRT }
+      }
+    });
   } catch (error) {
     console.error('Error updating OKRT:', error);
     return NextResponse.json({ error: 'Failed to update OKRT' }, { status: 500 });
@@ -152,7 +159,15 @@ export async function DELETE(request, { params }) {
     }
 
     await deleteOKRTCascade(id);
-    return NextResponse.json({ message: 'OKRT (and its children) deleted successfully' });
+    
+    // Return response with cache update instruction
+    return NextResponse.json({
+      message: 'OKRT (and its children) deleted successfully',
+      _cacheUpdate: {
+        action: 'removeMyOKRT',
+        data: { id }
+      }
+    });
   } catch (error) {
     console.error('Error deleting OKRT:', error);
     return NextResponse.json({ error: 'Failed to delete OKRT' }, { status: 500 });

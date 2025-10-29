@@ -5,7 +5,7 @@ import {
   addUserToGroup,
   isUserGroupAdmin,
   getGroupMembers
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function PUT(request, { params }) {
   try {
@@ -67,9 +67,20 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'User is not a member of this group' }, { status: 404 });
     }
 
-    // Return updated member list
+    // Return updated member list with cache update instruction
     const members = await getGroupMembers(groupId);
-    return NextResponse.json({ members });
+    return NextResponse.json({
+      members,
+      _cacheUpdate: {
+        action: 'updateGroupMembership',
+        data: {
+          groupId,
+          userId: parseInt(userId),
+          isMember: false,
+          role: null
+        }
+      }
+    });
   } catch (error) {
     console.error('Error removing group member:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

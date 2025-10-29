@@ -46,7 +46,6 @@ export default function LoginPage() {
         window.localStorage.removeItem('authChange');
         
         router.push('/dashboard');
-        router.refresh();
       } else {
         setError(data.error || 'Login failed');
       }

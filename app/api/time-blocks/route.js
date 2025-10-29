@@ -4,7 +4,7 @@ import {
   createTimeBlock, 
   getTimeBlocksByUserAndDate, 
   getTimeBlocksByUser
-} from '../../../lib/db';
+} from '../../../lib/pgdb';
 
 // GET /api/time-blocks - Get time blocks for current user by date or all
 export async function GET(request) {
@@ -74,7 +74,14 @@ export async function POST(request) {
 
     const timeBlock = await createTimeBlock(timeBlockData);
 
-    return NextResponse.json({ timeBlock }, { status: 201 });
+    // Return response with cache update instruction
+    return NextResponse.json({
+      timeBlock,
+      _cacheUpdate: {
+        action: 'addTimeBlock',
+        data: timeBlock
+      }
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating time block:', error);
     return NextResponse.json(

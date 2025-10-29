@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase } from '@/lib/db';
+import { getDatabase } from '@/lib/pgdb';
 
 // Get current quarter for context
 function getCurrentQuarter() {

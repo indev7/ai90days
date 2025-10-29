@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getUserById, updateUser } from '@/lib/db';
+import { getUserById, updateUser } from '@/lib/pgdb';
 import { verifyPassword, hashPassword, validatePassword } from '@/lib/auth';
 
 export async function PUT(request) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTsByOwner } from '../../../../lib/db';
+import { getOKRTsByOwner } from '../../../../lib/pgdb';
 
 // GET /api/time-blocks/tasks - Get tasks available for scheduling in hierarchical structure
 export async function GET(request) {

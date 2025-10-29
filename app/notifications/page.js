@@ -7,6 +7,7 @@ import { Badge } from 'primereact/badge';
 import { Skeleton } from 'primereact/skeleton';
 import { Toast } from 'primereact/toast';
 import { useRef } from 'react';
+import { formatNotificationTime } from '@/lib/dateUtils';
 import styles from './page.module.css';
 
 export default function NotificationsPage() {
@@ -163,18 +164,6 @@ export default function NotificationsPage() {
     return severityMap[type] || 'info';
   };
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return date.toLocaleDateString();
-  };
-
   const itemTemplate = (notification) => {
     return (
       <div className={`${styles.notificationItem} ${!notification.is_read ? styles.unread : ''}`}>
@@ -186,7 +175,7 @@ export default function NotificationsPage() {
             <h4 className={styles.notificationTitle}>{notification.title}</h4>
             <div className={styles.notificationMeta}>
               <span className={styles.notificationTime}>
-                {formatTimeAgo(notification.created_at)}
+                {formatNotificationTime(notification.created_at)}
               </span>
               {!notification.is_read && (
                 <Badge value="New" severity="info" className={styles.newBadge} />

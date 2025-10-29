@@ -5,6 +5,12 @@
     background: var(--bg);
 }
 
+.calendarContainer *,
+.calendarContainer *::before,
+.calendarContainer *::after {
+    box-sizing: border-box;
+}
+
 .calendarHeader {
     display: flex;
     flex-direction: row;

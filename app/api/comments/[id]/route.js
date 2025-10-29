@@ -7,9 +7,9 @@ import {
   updateComment,
   deleteComment,
   getReplies,
-  getDatabase,
+  getUserById,
   getUserByEmail
-} from '../../../../lib/db';
+} from '@/lib/pgdb';
 
 const nextAuthOptions = {
   providers: [
@@ -28,11 +28,10 @@ async function getCurrentUser() {
   // Try custom session first (for email/password login)
   let session = await getSession();
   let user = null;
-  const database = await getDatabase();
   
   if (session) {
     // Custom JWT session
-    user = await database.get('SELECT * FROM users WHERE id = ?', [session.sub]);
+    user = await getUserById(session.sub);
   } else {
     // Try NextAuth session (for Microsoft login)
     const nextAuthSession = await getServerSession(nextAuthOptions);
@@ -96,10 +95,18 @@ export async function PUT(request, { params }) {
 
     // Only allow updating the comment text for text type comments
     if (existingComment.type === 'text' && body.comment) {
-      const updatedComment = await updateComment(id, { 
-        comment: body.comment.trim() 
+      const updatedComment = await updateComment(id, {
+        comment: body.comment.trim()
       });
-      return NextResponse.json({ comment: updatedComment });
+      
+      // Return response with cache update instruction
+      return NextResponse.json({
+        comment: updatedComment,
+        _cacheUpdate: {
+          action: 'updateComment',
+          data: { okrtId: existingComment.okrt_id, comment: updatedComment }
+        }
+      });
     } else {
       return NextResponse.json({ 
         error: 'Only text comments can be updated' 
@@ -132,7 +139,15 @@ export async function DELETE(request, { params }) {
     }
 
     await deleteComment(id);
-    return NextResponse.json({ message: 'Comment deleted successfully' });
+    
+    // Return response with cache update instruction
+    return NextResponse.json({
+      message: 'Comment deleted successfully',
+      _cacheUpdate: {
+        action: 'removeComment',
+        data: { okrtId: existingComment.okrt_id, commentId: parseInt(id) }
+      }
+    });
   } catch (error) {
     console.error('Error deleting comment:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

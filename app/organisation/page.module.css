@@ -1,0 +1,457 @@
+/* Organisation Page Styles */
+.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon  {
+  left:-12px !important;
+}
+.container {
+  min-height: calc(100vh - 72px);
+  width: 100%;
+  background: var(--bg);
+  padding: 8px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.content {
+  width: 100%;
+  min-width: fit-content;
+  height: auto;
+}
+
+/* Header with toggle */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+  position: relative;
+}
+
+/* Add Button */
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  z-index: 100;
+}
+
+.addButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.addButton:active {
+  transform: translateY(0);
+}
+
+.addButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* View Toggle Styles */
+.viewToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toggleSwitch {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-1);
+  gap: var(--space-1);
+}
+
+.toggleOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 36px;
+}
+
+.toggleOption:hover {
+  background: rgba(124, 58, 237, 0.05);
+  color: var(--brand-primary);
+}
+
+.toggleOption.active {
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  color: white;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
+}
+
+.loading,
+.error,
+.empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.error {
+  color: var(--error-color);
+}
+
+.chartContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  min-width: fit-content;
+}
+
+.chartSection {
+  width: 100%;
+  min-width: fit-content;
+  display: flex;
+  justify-content: center;
+}
+
+/* Node wrapper for click handling */
+.nodeWrapper {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nodeWrapper:hover .nodeBox {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Node box styles */
+.nodeBox {
+  width: 200px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.nodeBox.expanded {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(111, 78, 55, 0.2);
+}
+
+.nodeTitle {
+  width: 100%;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nodeMeta {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 0 8px;
+  margin-top: 4px;
+}
+
+/* Expanded details card */
+.expandedCard {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 12px;
+  width: 280px;
+  max-width: 90vw;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.expandedDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Objectives section */
+.objectivesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.objectiveItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.objectiveIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.objectiveContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.objectiveTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.objectiveProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--brand-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* Members section */
+.membersSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memberItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.memberIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.memberName {
+  flex: 1;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adminLabel {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.emptyText {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Objectives Container */
+.objectivesContainer {
+  width: 100%;
+  padding: 16px;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* Modal Overlay */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+/* Confirmation Modal */
+.confirmModal {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.confirmHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.confirmHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.confirmBody {
+  padding: 24px;
+}
+
+.confirmBody p {
+  margin: 0 0 12px 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.confirmBody p:last-child {
+  margin-bottom: 0;
+}
+
+.confirmFooter {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelButton:hover {
+  background: var(--surface-elevated);
+  border-color: var(--brand-primary);
+}
+
+.deleteButton {
+  padding: 8px 16px;
+  border: none;
+  background: var(--error-color);
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deleteButton:hover {
+  background: var(--danger);
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(161, 77, 58, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .expandedCard {
+    width: 260px;
+    margin-top: 8px;
+  }
+  
+  .confirmModal {
+    max-width: 90%;
+  }
+}

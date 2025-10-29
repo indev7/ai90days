@@ -1,40 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useImperativeHandle } from 'react';
+import React, { useMemo } from 'react';
 import styles from './RewardsDisplay.module.css';
 
-const RewardsDisplay = React.forwardRef(({ okrtId }, ref) => {
-  const [rewards, setRewards] = useState({ medal: 0, star: 0, cookie: 0 });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchRewards();
-  }, [okrtId]);
-
-  const fetchRewards = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/comments/rewards?okrtId=${okrtId}`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        const rewardSummary = { medal: 0, star: 0, cookie: 0 };
-        data.rewards.forEach(reward => {
-          rewardSummary[reward.type] = reward.total_count;
-        });
-        setRewards(rewardSummary);
+const RewardsDisplay = ({ comments = [] }) => {
+  // Calculate rewards from comments
+  const rewards = useMemo(() => {
+    const rewardSummary = { medal: 0, star: 0, cookie: 0 };
+    
+    comments.forEach(comment => {
+      if (comment.type !== 'text' && comment.count) {
+        if (rewardSummary.hasOwnProperty(comment.type)) {
+          rewardSummary[comment.type] += comment.count;
+        }
       }
-    } catch (error) {
-      console.error('Error fetching rewards:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Expose refresh method to parent component
-  useImperativeHandle(ref, () => ({
-    refresh: fetchRewards
-  }));
+    });
+    
+    return rewardSummary;
+  }, [comments]);
 
   const getRewardEmojis = () => {
     const { medal, star, cookie } = rewards;
@@ -100,8 +83,6 @@ const RewardsDisplay = React.forwardRef(({ okrtId }, ref) => {
     }
   };
 
-  if (loading) return null;
-
   const rewardElements = getRewardEmojis();
   if (!rewardElements || rewardElements.length === 0) return null;
 
@@ -110,6 +91,6 @@ const RewardsDisplay = React.forwardRef(({ okrtId }, ref) => {
       {rewardElements}
     </div>
   );
-});
+};
 
 export default RewardsDisplay;

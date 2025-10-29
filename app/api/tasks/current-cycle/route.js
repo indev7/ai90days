@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTsByOwner } from '../../../../lib/db';
+import { getOKRTsByOwner } from '../../../../lib/pgdb';
 
 export async function GET() {
   try {

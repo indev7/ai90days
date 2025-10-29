@@ -1,36 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useUser } from '@/hooks/useUser';
 
 import styles from './page.module.css';
 
 export default function HomePage() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-          // Redirect authenticated users directly to dashboard
-          router.push('/dashboard');
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, [router]);
+    // Redirect authenticated users directly to dashboard
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   if (isLoading) {
     return (
