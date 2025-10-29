@@ -502,6 +502,28 @@
   background: var(--bg-solid);
 }
 
+.addTaskButtonInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--brand-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 0.5rem;
+}
+
+.addTaskButtonInline:hover {
+  background: var(--brand-100);
+  border-color: var(--brand-primary);
+  color: var(--brand-600);
+}
+
 /* Progress Components */
 .progressRing {
   display: flex;

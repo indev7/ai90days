@@ -98,6 +98,17 @@ export default function KeyResultCard({
                 <span className={styles.atRiskText}>at-risk</span>
               </>
             )}
+            {tasks.length === 0 && !readOnly && onAddTask && (
+              <button
+                className={styles.addTaskButtonInline}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddTask(kr);
+                }}
+              >
+                + Add task
+              </button>
+            )}
           </div>
         </div>
         {tasks.length > 0 && (

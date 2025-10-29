@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '../../../lib/pgdb';
+import { getDatabase, get, run } from '../../../lib/pgdb';
 import { getSession } from '../../../lib/auth';
 
 export async function POST(request) {
@@ -14,10 +14,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Objective ID is required' }, { status: 400 });
     }
 
-    const db = await getDatabase();
+    await getDatabase(); // Ensure database is initialized
     
     // Check if already following
-    const existingFollow = await db.get(`
+    const existingFollow = await get(`
       SELECT id FROM follows WHERE user_id = ? AND objective_id = ?
     `, [session.sub, objective_id]);
 
@@ -26,7 +26,7 @@ export async function POST(request) {
     }
 
     // Check if objective exists and is shared
-    const objective = await db.get(`
+    const objective = await get(`
       SELECT o.id, o.owner_id, s.group_or_user_id
       FROM okrt o
       JOIN share s ON o.id = s.okrt_id
@@ -43,7 +43,7 @@ export async function POST(request) {
     }
 
     // Check if user has access to this shared objective (either directly shared or through group membership)
-    const hasAccess = await db.get(`
+    const hasAccess = await get(`
       SELECT 1 FROM share s
       WHERE s.okrt_id = ? AND (
         (s.share_type = 'U' AND s.group_or_user_id = ?) OR
@@ -58,7 +58,7 @@ export async function POST(request) {
     }
 
     // Create follow relationship
-    const result = await db.run(`
+    const result = await run(`
       INSERT INTO follows (user_id, objective_id)
       VALUES (?, ?)
     `, [session.sub, objective_id]);
@@ -86,10 +86,10 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Objective ID is required' }, { status: 400 });
     }
 
-    const db = await getDatabase();
+    await getDatabase(); // Ensure database is initialized
     
     // Remove follow relationship
-    const result = await db.run(`
+    const result = await run(`
       DELETE FROM follows WHERE user_id = ? AND objective_id = ?
     `, [session.sub, objective_id]);
 
