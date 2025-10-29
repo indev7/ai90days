@@ -9,6 +9,7 @@ import CommentsSection from '../../components/CommentsSection';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 import {
   ObjectiveHeader,
   KeyResultCard,
@@ -69,7 +70,7 @@ export default function OKRTPage() {
   const searchParams = useSearchParams();
   const selectedObjectiveId = searchParams.get('objective');
   
-  const [user, setUser] = useState(null);
+  const { user } = useUser();
   const [objectives, setObjectives] = useState([]);
   const [keyResults, setKeyResults] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -96,23 +97,6 @@ export default function OKRTPage() {
   // Subscribe to mainTree from Zustand store
   const mainTree = useMainTreeStore((state) => state.mainTree);
   const lastUpdated = useMainTreeStore((state) => state.lastUpdated);
-
-  // Fetch user data
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      }
-    };
-
-    fetchUser();
-  }, []);
 
   // Process mainTree data whenever it changes (from cross-tab sync or initial load)
   useEffect(() => {
@@ -453,6 +437,7 @@ export default function OKRTPage() {
                   onShareObjective={handleShareObjective}
                   onFocusObjective={handleFocusObjective}
                   isFocused={focusedObjectiveId === objective.id}
+                  comments={objective.comments || []}
                 />
 
               {/* Key Results Grid for this objective - only show when expanded */}
@@ -483,6 +468,11 @@ export default function OKRTPage() {
                   currentUserId={user.id}
                   okrtOwnerId={objective.owner_id}
                     isExpanded={commentsExpanded[objective.id]}
+                    comments={objective.comments || []}
+                    onRewardUpdate={() => {
+                      // Trigger mainTree refresh when comments are added
+                      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+                    }}
                     />
                     </div>
                     )}

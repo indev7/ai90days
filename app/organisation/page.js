@@ -10,6 +10,9 @@ import "primereact/resources/themes/lara-light-blue/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 import AddGroupModal from '../../components/AddGroupModal';
+import { useUser } from '@/hooks/useUser';
+import { useMainTree } from '@/hooks/useMainTree';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
 
 /*************************
@@ -17,6 +20,12 @@ import styles from './page.module.css';
  *************************/
 /** Transform API group data to OrganizationChart format */
 function transformGroupToChartNode(group) {
+  // Count members from members array
+  const memberCount = Array.isArray(group.members) ? group.members.length : 0;
+  
+  // Count objectives from objectiveIds array
+  const objectiveCount = Array.isArray(group.objectiveIds) ? group.objectiveIds.length : 0;
+  
   const node = {
     label: group.name,
     expanded: true,
@@ -25,8 +34,8 @@ function transformGroupToChartNode(group) {
       name: group.name,
       type: group.type,
       thumbnail_url: group.thumbnail_url,
-      objectiveCount: group.objectiveCount || 0,
-      memberCount: group.memberCount || 0,
+      objectiveCount: objectiveCount,
+      memberCount: memberCount,
     },
   };
 
@@ -181,10 +190,8 @@ function NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentU
   // Title: plain name only (no icon, no type suffix)
   const title = d.name || node.label;
 
-  // Lower line: human-readable type (Group => Organisation), then counts
-  const typeLabel = d.type === "Group" ? "Organisation" : d.type || "";
+  // Lower line: just counts (no type label)
   const metaParts = [];
-  if (typeLabel) metaParts.push(typeLabel);
   if (d.memberCount !== undefined)
     metaParts.push(`${d.memberCount} member${d.memberCount === 1 ? "" : "s"}`);
   if (d.objectiveCount !== undefined)
@@ -359,7 +366,6 @@ function ObjectiveNodeTemplate(node, expandedObjectiveId, onNodeClick, objective
  *************************/
 export default function IntervestOrgChart() {
   const [orgValue, setOrgValue] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const [groupDetails, setGroupDetails] = useState({});
@@ -367,7 +373,6 @@ export default function IntervestOrgChart() {
   const [objectivesValue, setObjectivesValue] = useState([]);
   const [loadingObjectives, setLoadingObjectives] = useState(false);
   const [expandedObjectiveId, setExpandedObjectiveId] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [groups, setGroups] = useState([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
@@ -375,34 +380,15 @@ export default function IntervestOrgChart() {
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Use hooks for user and mainTree data
+  const { user: currentUser, isLoading: userLoading } = useUser();
+  const { isLoading: mainTreeLoading } = useMainTree();
+  const mainTree = useMainTreeStore((state) => state.mainTree);
+
+  // Process groups from mainTree
   useEffect(() => {
-    fetchCurrentUser();
-    fetchGroupHierarchy();
-  }, []);
-
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await fetch('/api/me');
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentUser(data.user);
-      }
-    } catch (err) {
-      console.error('Error fetching current user:', err);
-    }
-  };
-
-  const fetchGroupHierarchy = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/groups?hierarchy=true');
-      if (!response.ok) {
-        throw new Error('Failed to fetch group hierarchy');
-      }
-      
-      const data = await response.json();
+    if (mainTree && mainTree.groups) {
+      const groupsData = mainTree.groups;
       
       // Store flat groups list for modal
       const flatGroups = [];
@@ -414,82 +400,97 @@ export default function IntervestOrgChart() {
           }
         });
       };
-      flattenGroups(data.groups);
+      flattenGroups(groupsData);
       setGroups(flatGroups);
       
       // Transform the API data to OrganizationChart format
-      const chartData = data.groups.map(transformGroupToChartNode);
+      const chartData = groupsData.map(transformGroupToChartNode);
       setOrgValue(chartData);
-    } catch (err) {
-      console.error('Error fetching group hierarchy:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [mainTree]);
 
-  const fetchGroupDetails = async (groupId) => {
-    if (groupDetails[groupId]) return; // Already fetched
-
+  const refreshGroupData = async () => {
     try {
-      const response = await fetch(`/api/groups/${groupId}?include=members,objectives`);
-      if (response.ok) {
-        const data = await response.json();
-        setGroupDetails(prev => ({
-          ...prev,
-          [groupId]: {
-            members: data.members || [],
-            objectives: data.objectives || [],
-            count: data.objectiveCount || 0,
-            memberCount: data.members?.length || 0
-          }
-        }));
-      }
-    } catch (err) {
-      console.error('Error fetching group details:', err);
-    }
-  };
-
-  const fetchObjectivesHierarchy = async () => {
-    try {
-      setLoadingObjectives(true);
-      
-      const response = await fetch('/api/shared');
+      // Fetch fresh group hierarchy to update mainTree
+      const response = await fetch('/api/groups?hierarchy=true');
       if (!response.ok) {
-        throw new Error('Failed to fetch objectives');
+        throw new Error('Failed to fetch group hierarchy');
       }
       
       const data = await response.json();
-      const objectives = data.okrts || [];
       
-      // Build hierarchy: find root objectives (those without parent_id)
-      const rootObjectives = objectives.filter(obj => !obj.parent_id);
-      
-      // Function to recursively build children
-      const buildHierarchy = (parentId) => {
-        return objectives
-          .filter(obj => obj.parent_id === parentId)
-          .map(obj => ({
-            ...obj,
-            children: buildHierarchy(obj.id)
-          }));
-      };
-      
-      // Add children to root objectives
-      const hierarchicalObjectives = rootObjectives.map(obj => ({
-        ...obj,
-        children: buildHierarchy(obj.id)
-      }));
-      
-      // Transform to chart format
-      const chartData = hierarchicalObjectives.map(transformObjectiveToChartNode);
-      setObjectivesValue(chartData);
+      // Update mainTree store with new groups data
+      const setMainTree = useMainTreeStore.getState().setMainTree;
+      setMainTree({
+        ...mainTree,
+        groups: data.groups
+      });
     } catch (err) {
-      console.error('Error fetching objectives hierarchy:', err);
+      console.error('Error refreshing group hierarchy:', err);
       setError(err.message);
-    } finally {
-      setLoadingObjectives(false);
     }
+  };
+
+  const fetchGroupDetails = (groupId) => {
+    if (groupDetails[groupId]) return; // Already cached
+
+    // Find the group in mainTree
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    // Get objectives for this group from sharedOKRTs
+    const groupObjectives = (mainTree?.sharedOKRTs || [])
+      .filter(okrt => group.objectiveIds.includes(okrt.id))
+      .map(okrt => ({
+        id: okrt.id,
+        title: okrt.title,
+        description: okrt.description,
+        progress: okrt.progress || 0,
+        owner_name: okrt.owner_name
+      }));
+
+    // Set the details from mainTree data
+    setGroupDetails(prev => ({
+      ...prev,
+      [groupId]: {
+        members: group.members || [],
+        objectives: groupObjectives,
+        count: groupObjectives.length,
+        memberCount: group.members?.length || 0
+      }
+    }));
+  };
+
+  const buildObjectivesHierarchy = () => {
+    if (!mainTree || !mainTree.sharedOKRTs) {
+      setObjectivesValue([]);
+      return;
+    }
+
+    const objectives = mainTree.sharedOKRTs;
+    
+    // Build hierarchy: find root objectives (those without parent_id)
+    const rootObjectives = objectives.filter(obj => !obj.parent_id);
+    
+    // Function to recursively build children
+    const buildHierarchy = (parentId) => {
+      return objectives
+        .filter(obj => obj.parent_id === parentId)
+        .map(obj => ({
+          ...obj,
+          children: buildHierarchy(obj.id)
+        }));
+    };
+    
+    // Add children to root objectives
+    const hierarchicalObjectives = rootObjectives.map(obj => ({
+      ...obj,
+      children: buildHierarchy(obj.id)
+    }));
+    
+    // Transform to chart format
+    const chartData = hierarchicalObjectives.map(transformObjectiveToChartNode);
+    setObjectivesValue(chartData);
   };
 
   const handleNodeClick = (groupId) => {
@@ -533,7 +534,7 @@ export default function IntervestOrgChart() {
 
       if (response.ok) {
         // Refresh group hierarchy
-        await fetchGroupHierarchy();
+        await refreshGroupData();
         setShowAddModal(false);
       } else {
         const errorData = await response.json();
@@ -557,7 +558,7 @@ export default function IntervestOrgChart() {
 
       if (response.ok) {
         // Refresh group hierarchy
-        await fetchGroupHierarchy();
+        await refreshGroupData();
         setShowEditModal(false);
         setEditingGroup(null);
         // Refresh the expanded group details if it's still open
@@ -584,7 +585,7 @@ export default function IntervestOrgChart() {
 
       if (response.ok) {
         // Refresh group hierarchy
-        await fetchGroupHierarchy();
+        await refreshGroupData();
         setShowDeleteConfirm(false);
         setGroupToDelete(null);
         setShowEditModal(false);
@@ -696,7 +697,7 @@ export default function IntervestOrgChart() {
                 onClick={() => {
                   setViewType('objectives');
                   if (objectivesValue.length === 0) {
-                    fetchObjectivesHierarchy();
+                    buildObjectivesHierarchy();
                   }
                 }}
               >
@@ -716,7 +717,7 @@ export default function IntervestOrgChart() {
           )}
         </div>
         
-        {loading && (
+        {(mainTreeLoading || userLoading) && (
           <div className={styles.loading}>
             Loading group hierarchy...
           </div>
@@ -728,7 +729,7 @@ export default function IntervestOrgChart() {
           </div>
         )}
         
-        {!loading && !error && orgValue.length === 0 && (
+        {!mainTreeLoading && !userLoading && !error && orgValue.length === 0 && (
           <div className={styles.empty}>
             No groups found. Create a group to get started.
           </div>
@@ -736,19 +737,19 @@ export default function IntervestOrgChart() {
         
         {viewType === 'objectives' ? (
           <>
-            {loadingObjectives && (
+            {mainTreeLoading && (
               <div className={styles.loading}>
                 Loading objectives hierarchy...
               </div>
             )}
             
-            {!loadingObjectives && objectivesValue.length === 0 && (
+            {!mainTreeLoading && objectivesValue.length === 0 && (
               <div className={styles.empty}>
                 No shared objectives found.
               </div>
             )}
             
-            {!loadingObjectives && objectivesValue.length > 0 && (
+            {!mainTreeLoading && objectivesValue.length > 0 && (
               <div className={styles.chartContainer}>
                 {objectivesValue.map((rootObjective, index) => (
                   <div key={rootObjective.data?.id || index} className={styles.chartSection}>
@@ -764,7 +765,7 @@ export default function IntervestOrgChart() {
           </>
         ) : (
           <>
-            {!loading && !error && orgValue.length > 0 && (
+            {!mainTreeLoading && !userLoading && !error && orgValue.length > 0 && (
               <div className={styles.chartContainer}>
                 {orgValue.map((rootGroup, index) => (
                   <div key={rootGroup.data?.id || index} className={styles.chartSection}>

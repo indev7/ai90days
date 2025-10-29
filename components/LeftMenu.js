@@ -246,11 +246,11 @@ export default function LeftMenu({
   const handleAddGroupClick = (e) => {
     e.preventDefault();
     // Always dispatch the event to show modal
-    if (pathname === '/groups') {
+    if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('createGroup'));
     } else {
-      // Navigate to groups page and show modal after navigation
-      router.push('/groups?showAddModal=true');
+      // Navigate to organisation page and show modal after navigation
+      router.push('/organisation?showAddModal=true');
     }
     
     // Close mobile menu
@@ -261,11 +261,11 @@ export default function LeftMenu({
 
   const handleGroupEditClick = (groupId, e) => {
     e.preventDefault();
-    // Navigate to groups page with edit mode for specific group
-    if (pathname === '/groups') {
+    // Navigate to organisation page with edit mode for specific group
+    if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('editGroup', { detail: { groupId } }));
     } else {
-      router.push(`/groups?editGroup=${groupId}`);
+      router.push(`/organisation?editGroup=${groupId}`);
     }
     
     // Close mobile menu
@@ -470,8 +470,8 @@ export default function LeftMenu({
   };
 
   const isExpanded = (itemHref) => {
-    // Auto-expand Groups submenu when on groups page
-    if (itemHref === '/groups' && pathname === '/groups') {
+    // Auto-expand Organisation submenu when on organisation page
+    if (itemHref === '/organisation' && pathname === '/organisation') {
       return true;
     }
     // Auto-expand My Goals submenu when on OKRT page
@@ -595,7 +595,7 @@ export default function LeftMenu({
                         })}
                         
                         {/* Show admin groups first */}
-                        {item.href === '/groups' && adminGroups.map((group) => (
+                        {item.href === '/organisation' && adminGroups.map((group) => (
                           <li key={`group-${group.id}`} className={styles.childMenuItem}>
                             <button
                               onClick={(e) => handleGroupEditClick(group.id, e)}
@@ -611,7 +611,7 @@ export default function LeftMenu({
                         {/* Show original children */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
-                          const isAddGroup = child.href === '/groups/create';
+                          const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
                           return (
                             <li key={child.href} className={styles.childMenuItem}>

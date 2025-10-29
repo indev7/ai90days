@@ -6,6 +6,8 @@ import Link from 'next/link';
 import styles from '../../okrt/page.module.css';
 import CommentsSection from '../../../components/CommentsSection';
 import { ObjectiveHeader, KeyResultCard } from '@/components/OKRTCards';
+import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 
 /* =========================
    Main Shared Detail Page Component
@@ -14,7 +16,6 @@ import { ObjectiveHeader, KeyResultCard } from '@/components/OKRTCards';
 export default function SharedOKRTDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [user, setUser] = useState(null);
   const [objective, setObjective] = useState(null);
   const [keyResults, setKeyResults] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -25,28 +26,63 @@ export default function SharedOKRTDetailPage() {
   const [krExpansionState, setKrExpansionState] = useState({});
   const [commentsExpanded, setCommentsExpanded] = useState(false);
 
-  // Fetch user data
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error);
+  // Use mainTree and user from hooks
+  const { mainTree, isLoading: mainTreeLoading } = useMainTree();
+  const { user } = useUser();
+
+  // Handle reward/comment updates
+  const handleRewardUpdate = async () => {
+    // Fetch updated comments for this objective
+    try {
+      const response = await fetch(`/api/comments?okrtId=${params.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Update the objective with new comments
+        setObjective(prev => ({
+          ...prev,
+          comments: data.comments || []
+        }));
       }
-    };
+    } catch (error) {
+      console.error('Error fetching updated comments:', error);
+    }
+  };
 
-    fetchUser();
-  }, []);
-
-  // Fetch shared OKRT data
+  // Fetch shared OKRT data from mainTree or API fallback
   useEffect(() => {
     const fetchSharedOKRT = async () => {
       if (!params.id) return;
 
+      // First try to get from mainTree
+      if (!mainTreeLoading && mainTree.sharedOKRTs) {
+        const sharedObj = mainTree.sharedOKRTs.find(okrt => okrt.id === params.id && okrt.type === 'O');
+        
+        if (sharedObj) {
+          // Found in mainTree - use it with comments already loaded
+          setObjective(sharedObj);
+          setLoading(false);
+          
+          // Fetch KRs and Tasks from API since they're not in mainTree
+          try {
+            const response = await fetch(`/api/okrt/shared?id=${params.id}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+              const allItems = data.okrts || [];
+              const krs = allItems.filter(item => item.type === 'K' && item.parent_id === params.id);
+              const tsks = allItems.filter(item => item.type === 'T');
+              
+              setKeyResults(krs);
+              setTasks(tsks);
+            }
+          } catch (error) {
+            console.error('Error fetching KRs and tasks:', error);
+          }
+          return;
+        }
+      }
+
+      // Fallback: fetch from API if not in mainTree
       try {
         const response = await fetch(`/api/okrt/shared?id=${params.id}`);
         const data = await response.json();
@@ -76,7 +112,7 @@ export default function SharedOKRTDetailPage() {
     };
 
     fetchSharedOKRT();
-  }, [params.id]);
+  }, [params.id, mainTree, mainTreeLoading]);
 
   // Listen for left menu toggle events to collapse OKRTs when menu expands
   useEffect(() => {
@@ -191,6 +227,7 @@ export default function SharedOKRTDetailPage() {
             onFocusObjective={handleFocusObjective}
             isFocused={focusedObjectiveId === objective.id}
             readOnly={true}
+            comments={objective.comments || []}
           />
 
           {/* Key Results Grid - only show when expanded */}
@@ -216,6 +253,8 @@ export default function SharedOKRTDetailPage() {
                     currentUserId={user.id}
                     okrtOwnerId={objective.owner_id}
                     isExpanded={commentsExpanded}
+                    comments={objective.comments || []}
+                    onRewardUpdate={handleRewardUpdate}
                   />
                 </div>
               )}

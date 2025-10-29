@@ -7,10 +7,12 @@ import HeaderBar from '@/components/HeaderBar';
 import LeftMenu from '@/components/LeftMenu';
 import { CoachProvider } from '@/contexts/CoachContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useUser } from '@/hooks/useUser';
 import { initializeTheme } from '@/lib/themeManager';
 
 // Theme CSS imports
 import '@/styles/theme.css';
+import '@/styles/themes/base.css';
 import '@/styles/themes/coffee.css';
 import '@/styles/themes/microsoft.css';
 import '@/styles/themes/purple.css';
@@ -18,8 +20,7 @@ import '@/styles/themes/nature.css';
 import '@/styles/app.css';
 
 export default function RootLayout({ children }) {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading: userLoading } = useUser();
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(true);
   const [isDesktopMenuCollapsed, setIsDesktopMenuCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -35,55 +36,6 @@ export default function RootLayout({ children }) {
     initializeTheme();
   }, []);
 
-  // Fetch current user on mount and path changes
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, [pathname]);
-
-  // Listen for authentication events
-  useEffect(() => {
-    const handleAuthChange = () => {
-      // Refetch user when auth changes
-      const fetchUser = async () => {
-        try {
-          const response = await fetch('/api/me');
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          } else {
-            setUser(null);
-          }
-        } catch (error) {
-          setUser(null);
-        }
-      };
-      fetchUser();
-    };
-
-    // Listen for storage events (cross-tab login)
-    window.addEventListener('storage', handleAuthChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleAuthChange);
-    };
-  }, []);
 
   // Listen for focus mode events from OKRT pages
   useEffect(() => {
@@ -158,7 +110,7 @@ export default function RootLayout({ children }) {
   }
 
   // Don't show layout components for non-authenticated users
-  if (isLoading) {
+  if (userLoading) {
     return (
       <html lang="en">
         <body>

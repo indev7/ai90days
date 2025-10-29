@@ -9,6 +9,7 @@ import NotificationsWidget from '@/components/NotificationsWidget';
 import DailyInspirationCard from '@/components/DailyInspirationCard';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import {
   transformOKRTsToObjectives,
@@ -22,7 +23,7 @@ import styles from './page.module.css';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [session, setSession] = useState(null);
+  const { user: session, isLoading: userLoading } = useUser();
   const [objectives, setObjectives] = useState([]);
   const [dayIndex, setDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -75,15 +76,6 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Get session via API
-      const sessionResponse = await fetch('/api/me');
-      if (!sessionResponse.ok) {
-        router.push('/login');
-        return;
-      }
-      const sessionData = await sessionResponse.json();
-      setSession(sessionData.user);
-      
       // Calculate day index based on current quarter
       setDayIndex(calculateDayIndex());
       
@@ -92,7 +84,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       setError(error.message);
-      router.push('/login');
     } finally {
       setLoading(false);
     }
@@ -168,6 +159,13 @@ export default function Dashboard() {
     extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocks);
   };
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!userLoading && !session) {
+      router.push('/login');
+    }
+  }, [session, userLoading, router]);
+
   // Process mainTree data whenever it changes (from cross-tab sync or initial load)
   // Only process if we have a session and mainTree is loaded
   useEffect(() => {
@@ -179,8 +177,10 @@ export default function Dashboard() {
 
   // Initial data fetch on mount only
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (session) {
+      fetchData();
+    }
+  }, [session]);
 
   // Add window focus listener to refresh data when user comes back to the page
   // But only if the data is stale (older than 5 minutes)
@@ -402,7 +402,7 @@ export default function Dashboard() {
 
 
 
-  if (loading || mainTreeLoading) {
+  if (loading || mainTreeLoading || userLoading) {
     return (
       <div className={styles.container}>
         <div className={styles.content}>

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCoach } from '@/contexts/CoachContext';
+import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
 import styles from './page.module.css';
@@ -527,9 +528,11 @@ export default function CoachPage() {
   const router = useRouter();
   const { messages, addMessage, updateMessage, isLoading, setLoading } = useCoach();
   const [input, setInput] = useState('');
-  const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  
+  // Use cached user data
+  const { user, isLoading: userLoading } = useUser();
   
   // Subscribe to mainTreeStore to get all OKRTs and store actions
   const { mainTree } = useMainTree();
@@ -555,19 +558,12 @@ export default function CoachPage() {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => { scrollToBottom(); }, [messages]);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) setUser((await response.json()).user);
-        else router.push('/login');
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        router.push('/login');
-      }
-    };
-    checkAuth();
-  }, [router]);
+    if (!userLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, userLoading, router]);
 
   const sendMessage = async (messageContent = input) => {
     if (!messageContent.trim() || isLoading) return;

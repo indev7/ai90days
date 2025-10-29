@@ -117,7 +117,13 @@ const handler = NextAuth({
     
     async redirect({ url, baseUrl }) {
       console.log('Redirect callback:', { url, baseUrl });
-      // Always redirect to dashboard after Microsoft login
+      
+      // If redirecting to login page, allow it (for logout)
+      if (url.includes('/login')) {
+        return url;
+      }
+      
+      // Otherwise redirect to dashboard after Microsoft login
       return baseUrl + '/dashboard';
     },
   },

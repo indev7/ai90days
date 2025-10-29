@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { formatNotificationTime } from '@/lib/dateUtils';
 import styles from './CommentsSection.module.css';
 
-const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, isExpanded: externalExpanded }) => {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
+const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, isExpanded: externalExpanded, comments: initialComments = [] }) => {
+  const [comments, setComments] = useState(initialComments);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [rewardType, setRewardType] = useState('text');
@@ -14,6 +14,11 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
   const [submitting, setSubmitting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Update comments when prop changes
+  useEffect(() => {
+    setComments(initialComments);
+  }, [initialComments]);
+
   // Update internal expanded state when external prop changes
   useEffect(() => {
     if (externalExpanded !== undefined) {
@@ -21,34 +26,12 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
     }
   }, [externalExpanded]);
 
-  useEffect(() => {
-    fetchComments();
-  }, [okrtId]);
-
   // Reset reward type to 'text' if user is viewing their own objective
   useEffect(() => {
     if (currentUserId === okrtOwnerId && rewardType !== 'text') {
       setRewardType('text');
     }
   }, [currentUserId, okrtOwnerId, rewardType]);
-
-  const fetchComments = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/comments?okrtId=${okrtId}`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setComments(data.comments || []);
-      } else {
-        console.error('Error fetching comments:', data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmitComment = async (e) => {
     e.preventDefault();
@@ -95,11 +78,8 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
         setReplyingTo(null);
         setShowCommentForm(false);
         
-        // Refresh comments
-        await fetchComments();
-        
-        // Trigger reward update if this was a reward
-        if (rewardType !== 'text' && onRewardUpdate) {
+        // Trigger reward update callback to refresh mainTree
+        if (onRewardUpdate) {
           onRewardUpdate();
         }
       } else {
@@ -119,19 +99,6 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
     setRewardType('text');
   };
 
-  const formatDate = (dateStr) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
   const getRewardIcon = (type, count) => {
     const icons = {
@@ -150,21 +117,21 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
     const topLevel = comments.filter(c => !c.parent_comment_id);
     const replies = comments.filter(c => c.parent_comment_id);
     
-    return topLevel.map(comment => ({
+    // Sort top-level comments by created_at DESC (most recent first)
+    const sortedTopLevel = topLevel.sort((a, b) =>
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+    
+    return sortedTopLevel.map(comment => ({
       ...comment,
-      replies: replies.filter(r => r.parent_comment_id === comment.id)
+      // Sort replies by created_at DESC (most recent first)
+      replies: replies
+        .filter(r => r.parent_comment_id === comment.id)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     }));
   };
 
   const organizedComments = organizeComments(comments);
-
-  if (loading) {
-    return (
-      <div className={styles.commentsSection}>
-        <div className={styles.loading}>Loading comments...</div>
-      </div>
-    );
-  }
 
   const handleToggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -317,7 +284,7 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
                         />
                       )}
                       <span className={styles.authorName}>{comment.sender_name}</span>
-                      <span className={styles.commentDate}>{formatDate(comment.created_at)}</span>
+                      <span className={styles.commentDate}>{formatNotificationTime(comment.created_at)}</span>
                     </div>
                     {comment.type !== 'text' && (
                       <div className={styles.rewardBadge}>
@@ -352,7 +319,7 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
                               />
                             )}
                             <span className={styles.authorName}>{reply.sender_name}</span>
-                            <span className={styles.commentDate}>{formatDate(reply.created_at)}</span>
+                            <span className={styles.commentDate}>{formatNotificationTime(reply.created_at)}</span>
                           </div>
                           {reply.type !== 'text' && (
                             <div className={styles.rewardBadge}>
