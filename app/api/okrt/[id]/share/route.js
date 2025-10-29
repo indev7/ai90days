@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'OKRT not found' }, { status: 404 });
     }
     
-    if (okrt.owner_id !== session.sub) {
+    if (okrt.owner_id.toString() !== session.sub.toString()) {
       return NextResponse.json({ error: 'Forbidden: You can only view sharing settings for your own OKRTs' }, { status: 403 });
     }
 
@@ -53,7 +53,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'OKRT not found' }, { status: 404 });
     }
     
-    if (okrt.owner_id !== session.sub) {
+    if (okrt.owner_id.toString() !== session.sub.toString()) {
       return NextResponse.json({ error: 'Forbidden: You can only share your own OKRTs' }, { status: 403 });
     }
 
@@ -120,7 +120,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'OKRT not found' }, { status: 404 });
     }
     
-    if (okrt.owner_id !== session.sub) {
+    if (okrt.owner_id.toString() !== session.sub.toString()) {
       return NextResponse.json({ error: 'Forbidden: You can only unshare your own OKRTs' }, { status: 403 });
     }
 

@@ -38,7 +38,7 @@ export async function POST(request) {
     }
 
     // Don't allow users to follow their own objectives
-    if (objective.owner_id === session.sub) {
+    if (objective.owner_id.toString() === session.sub.toString()) {
       return NextResponse.json({ error: 'Cannot follow your own objective' }, { status: 400 });
     }
 
