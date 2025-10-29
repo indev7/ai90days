@@ -265,6 +265,10 @@ export default function OKRTModal({
         delete saveData.objective_kind;
         delete saveData.task_status;
         delete saveData.parent_objective_id; // Not used for KRs
+        // Convert empty strings to null for numeric fields
+        if (saveData.kr_baseline_number === '' || saveData.kr_baseline_number === 0) {
+          saveData.kr_baseline_number = null;
+        }
         // Keep the due_date for Key Results
       } else if (formData.type === 'T') {
         delete saveData.objective_kind;
@@ -575,7 +579,7 @@ export default function OKRTModal({
                     type="number"
                     className={styles.input}
                     value={formData.kr_baseline_number}
-                    onChange={e => handleInputChange('kr_baseline_number', Number(e.target.value))}
+                    onChange={e => handleInputChange('kr_baseline_number', e.target.value === '' ? '' : Number(e.target.value))}
                     min={0}
                   />
                 </div>

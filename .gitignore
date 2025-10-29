@@ -39,6 +39,5 @@ next-env.d.ts
 # Database
 Phase1/DB/app.db
 
-
 # Prisma
 /lib/generated/
