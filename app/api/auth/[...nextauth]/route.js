@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
-import { getDatabase, getUserByEmail, createUser } from '@/lib/db';
+import { getUserByEmail, createUser, run } from '@/lib/pgdb';
 import { createSession } from '@/lib/auth';
 
 const handler = NextAuth({
@@ -23,19 +23,17 @@ const handler = NextAuth({
       
       if (account.provider === 'azure-ad') {
         try {
-          const database = await getDatabase();
-          
           // Check if user exists by email
           let existingUser = await getUserByEmail(user.email);
           
           if (existingUser) {
             // Link Microsoft account to existing user
             console.log('Linking Microsoft account to existing user:', existingUser.id);
-            await database.run(
-              `UPDATE users SET 
-                microsoft_id = ?, 
-                first_name = ?, 
-                last_name = ?, 
+            await run(
+              `UPDATE users SET
+                microsoft_id = ?,
+                first_name = ?,
+                last_name = ?,
                 profile_picture_url = ?,
                 auth_provider = ?,
                 updated_at = ?
@@ -62,11 +60,11 @@ const handler = NextAuth({
             });
             
             // Add Microsoft-specific data
-            await database.run(
-              `UPDATE users SET 
-                microsoft_id = ?, 
-                first_name = ?, 
-                last_name = ?, 
+            await run(
+              `UPDATE users SET
+                microsoft_id = ?,
+                first_name = ?,
+                last_name = ?,
                 profile_picture_url = ?,
                 auth_provider = ?
               WHERE id = ?`,

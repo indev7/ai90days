@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { 
+import {
   getTimeBlockById,
   updateTimeBlock,
   deleteTimeBlock
-} from '../../../../lib/db';
+} from '../../../../lib/pgdb';
 
 // GET /api/time-blocks/[id] - Get specific time block
 export async function GET(request, { params }) {

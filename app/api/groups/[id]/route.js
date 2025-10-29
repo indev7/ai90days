@@ -10,7 +10,7 @@ import {
   getGroupSharedOKRTCount,
   isUserGroupAdmin,
   addUserToGroup
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function GET(request, { params }) {
   try {

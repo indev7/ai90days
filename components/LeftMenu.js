@@ -17,9 +17,11 @@ import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
 import TaskUpdateModal from './TaskUpdateModal';
+import OKRTModal from './OKRTModal';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
 import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
@@ -104,6 +106,12 @@ export default function LeftMenu({
   const [taskUpdateModalState, setTaskUpdateModalState] = useState({
     isOpen: false,
     task: null
+  });
+  const [okrtModalState, setOkrtModalState] = useState({
+    isOpen: false,
+    mode: 'create',
+    okrt: null,
+    parentOkrt: null
   });
 
   // Load mainTree data (will use cached data if available)
@@ -221,10 +229,13 @@ export default function LeftMenu({
   const handleNewClick = () => {
     // Close all expanded items when clicking New
     setExpandedItems(new Set());
-    // Dispatch a custom event that the My Goals page can listen to
-    if (pathname === '/okrt') {
-      window.dispatchEvent(new CustomEvent('createObjective'));
-    }
+    // Open the OKRT modal directly
+    setOkrtModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
     
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
@@ -351,6 +362,83 @@ export default function LeftMenu({
 
     } catch (error) {
       console.error('Error updating task:', error);
+      throw error;
+    }
+  };
+
+  // OKRT Modal handlers
+  const handleCloseOkrtModal = () => {
+    setOkrtModalState({
+      isOpen: false,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleSaveOkrt = async (okrtData) => {
+    try {
+      const url = okrtModalState.mode === 'edit'
+        ? `/api/okrt/${okrtModalState.okrt.id}`
+        : '/api/okrt';
+      
+      const method = okrtModalState.mode === 'edit' ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(okrtData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save OKRT');
+      }
+
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Close modal
+      handleCloseOkrtModal();
+
+      // Trigger a refresh of the mainTree data
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+
+    } catch (error) {
+      console.error('Error saving OKRT:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteOkrt = async () => {
+    try {
+      const url = `/api/okrt/${okrtModalState.okrt.id}`;
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete OKRT');
+      }
+
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Close modal
+      handleCloseOkrtModal();
+
+      // Trigger a refresh of the mainTree data
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+
+    } catch (error) {
+      console.error('Error deleting OKRT:', error);
       throw error;
     }
   };
@@ -648,6 +736,17 @@ export default function LeftMenu({
         onClose={handleCloseTaskUpdateModal}
         task={taskUpdateModalState.task}
         onSave={handleSaveTaskUpdate}
+      />
+
+      {/* OKRT Modal */}
+      <OKRTModal
+        isOpen={okrtModalState.isOpen}
+        onClose={handleCloseOkrtModal}
+        onSave={handleSaveOkrt}
+        onDelete={okrtModalState.mode === 'edit' ? handleDeleteOkrt : null}
+        okrt={okrtModalState.okrt}
+        parentOkrt={okrtModalState.parentOkrt}
+        mode={okrtModalState.mode}
       />
     </>
   );

@@ -6,7 +6,7 @@ import {
   removeUserFromGroup,
   isUserGroupAdmin,
   getUserByEmail
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function GET(request, { params }) {
   try {

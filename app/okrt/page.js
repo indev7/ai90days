@@ -137,7 +137,7 @@ export default function OKRTPage() {
     }
   }, [mainTreeLoading, mainTree]);
 
-  // Listen for create objective events from LeftMenu
+  // Listen for create objective events from LeftMenu (kept for backward compatibility)
   useEffect(() => {
     const handleCreateObjectiveEvent = () => {
       handleCreateObjective();

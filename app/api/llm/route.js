@@ -1,7 +1,7 @@
 // app/api/llm/route.js
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase } from '@/lib/db';
+import { getDatabase } from '@/lib/pgdb';
 
 /* =========================
    Utility functions

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getSharedOKRTsForUser, getUserById, getOKRTShares, getGroupById } from '@/lib/db';
+import { getSharedOKRTsForUser, getUserById, getOKRTShares, getGroupById } from '@/lib/pgdb';
 
 export async function GET(request) {
   try {

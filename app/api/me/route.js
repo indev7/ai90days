@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase, getUserByEmail } from '@/lib/db';
+import { getUserById, getUserByEmail } from '@/lib/pgdb';
 import { getServerSession } from 'next-auth';
 import NextAuth from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
@@ -29,14 +29,13 @@ export async function GET(request) {
     // Try custom session first (for email/password login)
     let session = await getSession();
     let user = null;
-    const database = await getDatabase();
     
     console.log('Custom session result:', session ? 'Found' : 'Not found');
     
     if (session) {
       console.log('Custom session sub:', session.sub);
       // Custom JWT session
-      user = await database.get('SELECT * FROM users WHERE id = ?', [session.sub]);
+      user = await getUserById(session.sub);
       console.log('User from custom session:', user ? `Found: ${user.email}` : 'Not found');
     } else {
       // Try NextAuth session (for Microsoft login)

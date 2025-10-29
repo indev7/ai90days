@@ -1,5 +1,5 @@
 import { verifyToken } from '@/lib/auth';
-import { getUnreadNotificationCount } from '@/lib/db';
+import { getUnreadNotificationCount } from '@/lib/pgdb';
 
 // Store active connections
 const connections = new Map();

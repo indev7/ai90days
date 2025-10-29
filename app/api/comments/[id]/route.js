@@ -7,9 +7,9 @@ import {
   updateComment,
   deleteComment,
   getReplies,
-  getDatabase,
+  getUserById,
   getUserByEmail
-} from '../../../../lib/db';
+} from '@/lib/pgdb';
 
 const nextAuthOptions = {
   providers: [
@@ -28,11 +28,10 @@ async function getCurrentUser() {
   // Try custom session first (for email/password login)
   let session = await getSession();
   let user = null;
-  const database = await getDatabase();
   
   if (session) {
     // Custom JWT session
-    user = await database.get('SELECT * FROM users WHERE id = ?', [session.sub]);
+    user = await getUserById(session.sub);
   } else {
     // Try NextAuth session (for Microsoft login)
     const nextAuthSession = await getServerSession(nextAuthOptions);

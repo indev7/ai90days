@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createUser, getUserByEmail } from '@/lib/db';
+import { createUser, getUserByEmail } from '@/lib/pgdb';
 import { hashPassword, validatePassword, validateEmail, createSession } from '@/lib/auth';
 
 export async function POST(request) {

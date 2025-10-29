@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../lib/auth';
-import { createOKRT, getOKRTHierarchy, getOKRTsByParent, getUserById, getOKRTShares, getGroupById } from '../../../lib/db';
+import { createOKRT, getOKRTHierarchy, getOKRTsByParent, getUserById, getOKRTShares, getGroupById } from '../../../lib/pgdb';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET /api/okrt - Get all OKRTs for the current user in hierarchical order, or by parent_id

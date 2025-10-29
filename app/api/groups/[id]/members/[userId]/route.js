@@ -5,7 +5,7 @@ import {
   addUserToGroup,
   isUserGroupAdmin,
   getGroupMembers
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function PUT(request, { params }) {
   try {

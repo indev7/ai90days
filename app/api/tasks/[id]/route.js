@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTById } from '../../../../lib/db';
+import { getOKRTById } from '../../../../lib/pgdb';
 import { updateTaskWithPropagation } from '../../../../lib/progressPropagation';
 
 // PUT /api/tasks/[id] - Update a task with progress propagation

@@ -4,7 +4,7 @@ import {
   createTimeBlock, 
   getTimeBlocksByUserAndDate, 
   getTimeBlocksByUser
-} from '../../../lib/db';
+} from '../../../lib/pgdb';
 
 // GET /api/time-blocks - Get time blocks for current user by date or all
 export async function GET(request) {

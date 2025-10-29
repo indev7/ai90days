@@ -6,7 +6,7 @@ import {
   getRootGroups,
   getUserGroups,
   addUserToGroup
-} from '@/lib/db';
+} from '@/lib/pgdb';
 import { nanoid } from 'nanoid';
 import { generateAvatarSVG } from '@/lib/avatarGenerator';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
@@ -48,11 +48,10 @@ export async function GET(request) {
 
 // Helper function to build group hierarchy with counts
 async function buildGroupHierarchy() {
-  const database = await import('@/lib/db').then(m => m.getDatabase());
-  const db = await database;
+  const { all } = await import('@/lib/pgdb');
   
   // Get all groups with member and objective counts
-  const groupsWithCounts = await db.all(`
+  const groupsWithCounts = await all(`
     SELECT
       g.id,
       g.name,
