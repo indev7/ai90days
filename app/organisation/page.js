@@ -391,20 +391,37 @@ export default function IntervestOrgChart() {
       const groupsData = mainTree.groups;
       
       // Store flat groups list for modal
-      const flatGroups = [];
-      const flattenGroups = (groupList) => {
-        groupList.forEach(group => {
-          flatGroups.push(group);
-          if (group.children && group.children.length > 0) {
-            flattenGroups(group.children);
-          }
-        });
-      };
-      flattenGroups(groupsData);
-      setGroups(flatGroups);
+      setGroups(groupsData);
       
-      // Transform the API data to OrganizationChart format
-      const chartData = groupsData.map(transformGroupToChartNode);
+      // Build hierarchy from flat array
+      // Create a map for quick lookup
+      const groupMap = new Map();
+      groupsData.forEach(group => {
+        groupMap.set(group.id, {
+          ...group,
+          children: []
+        });
+      });
+      
+      // Build the tree structure
+      const rootGroups = [];
+      groupsData.forEach(group => {
+        const groupNode = groupMap.get(group.id);
+        if (group.parent_group_id) {
+          const parent = groupMap.get(group.parent_group_id);
+          if (parent) {
+            parent.children.push(groupNode);
+          } else {
+            // Parent not found, treat as root
+            rootGroups.push(groupNode);
+          }
+        } else {
+          rootGroups.push(groupNode);
+        }
+      });
+      
+      // Transform the hierarchical data to OrganizationChart format
+      const chartData = rootGroups.map(transformGroupToChartNode);
       setOrgValue(chartData);
     }
   }, [mainTree]);
@@ -419,11 +436,28 @@ export default function IntervestOrgChart() {
       
       const data = await response.json();
       
-      // Update mainTree store with new groups data
+      // Flatten the hierarchical groups data to match mainTree format
+      const flattenGroups = (groupList, result = []) => {
+        groupList.forEach(group => {
+          // Extract children before adding to result
+          const { children, ...groupWithoutChildren } = group;
+          result.push(groupWithoutChildren);
+          
+          // Recursively flatten children
+          if (children && children.length > 0) {
+            flattenGroups(children, result);
+          }
+        });
+        return result;
+      };
+      
+      const flatGroups = flattenGroups(data.groups);
+      
+      // Update mainTree store with flattened groups data
       const setMainTree = useMainTreeStore.getState().setMainTree;
       setMainTree({
         ...mainTree,
-        groups: data.groups
+        groups: flatGroups
       });
     } catch (err) {
       console.error('Error refreshing group hierarchy:', err);
