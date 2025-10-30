@@ -110,9 +110,48 @@ export function useMainTree() {
     loadMainTree();
   }, []); // Only run once on mount
 
+  /**
+   * Force refresh mainTree data from server
+   * Useful after group create/update/delete operations
+   */
+  const refreshMainTree = async () => {
+    try {
+      setLoading(true);
+      console.log('Manually refreshing mainTree data...');
+
+      const response = await fetch('/api/main-tree');
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('Unauthorized, redirecting to login');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Failed to refresh mainTree');
+      }
+
+      const data = await response.json();
+      if (data) {
+        setMainTree(data.mainTree);
+        console.log('MainTree refreshed successfully:', {
+          myOKRTs: data.mainTree.myOKRTs.length,
+          sharedOKRTs: data.mainTree.sharedOKRTs.length,
+          notifications: data.mainTree.notifications.length,
+          timeBlocks: data.mainTree.timeBlocks.length,
+          groups: data.mainTree.groups.length
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing mainTree:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     mainTree,
     isLoading,
-    lastUpdated
+    lastUpdated,
+    refreshMainTree
   };
 }

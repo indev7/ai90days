@@ -113,17 +113,7 @@ function ExpandedGroupContent({ group, objectives = [], members = [], currentUse
   const isAdmin = members.some(member => member.id === currentUserId && member.is_admin);
   
   return (
-    <div
-      className={styles.expandedDetails}
-      onClick={(e) => {
-        // Only trigger edit if user is admin and clicking on the card itself
-        if (isAdmin && e.target === e.currentTarget) {
-          onEditClick();
-        }
-      }}
-      style={{ cursor: isAdmin ? 'pointer' : 'default' }}
-      title={isAdmin ? 'Click to edit group' : ''}
-    >
+    <div className={styles.expandedDetails}>
       {/* Objectives */}
       <div className={styles.objectivesSection}>
         {objectives.map((objective) => (
@@ -161,6 +151,21 @@ function ExpandedGroupContent({ group, objectives = [], members = [], currentUse
           </div>
         ))}
       </div>
+
+      {/* Edit Button - Only visible to admins */}
+      {isAdmin && (
+        <button
+          className={styles.editButton}
+          onClick={onEditClick}
+          title="Edit group"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Edit
+        </button>
+      )}
     </div>
   );
 }
@@ -465,16 +470,19 @@ export default function IntervestOrgChart() {
     }
   };
 
-  const fetchGroupDetails = (groupId) => {
-    if (groupDetails[groupId]) return; // Already cached
+  const fetchGroupDetails = (groupId, forceRefresh = false) => {
+    if (groupDetails[groupId] && !forceRefresh) return; // Already cached
 
-    // Find the group in mainTree
-    const group = groups.find(g => g.id === groupId);
-    if (!group) return;
+    // Find the group in mainTree.groups (the flat array)
+    const group = mainTree?.groups?.find(g => g.id === groupId);
+    if (!group) {
+      console.warn('Group not found in mainTree:', groupId);
+      return;
+    }
 
     // Get objectives for this group from sharedOKRTs
     const groupObjectives = (mainTree?.sharedOKRTs || [])
-      .filter(okrt => group.objectiveIds.includes(okrt.id))
+      .filter(okrt => group.objectiveIds?.includes(okrt.id))
       .map(okrt => ({
         id: okrt.id,
         title: okrt.title,
@@ -552,7 +560,24 @@ export default function IntervestOrgChart() {
   };
 
   const handleEditGroup = (groupData) => {
-    setEditingGroup(groupData);
+    // Find the group in mainTree to get complete data including parent_group_id
+    const group = mainTree?.groups?.find(g => g.id === groupData.id);
+    if (group) {
+      setEditingGroup({
+        id: group.id,
+        name: group.name,
+        type: group.type,
+        parent_group_id: group.parent_group_id,
+        thumbnail_url: group.thumbnail_url,
+        members: group.members || []
+      });
+    } else {
+      // Fallback if group not found in mainTree
+      setEditingGroup({
+        ...groupData,
+        members: []
+      });
+    }
     setShowEditModal(true);
   };
 
@@ -591,14 +616,21 @@ export default function IntervestOrgChart() {
       });
 
       if (response.ok) {
-        // Refresh group hierarchy
+        const groupId = editingGroup.id;
+        
+        // Refresh group hierarchy and wait for it to complete
         await refreshGroupData();
+        
+        // Close modal
         setShowEditModal(false);
         setEditingGroup(null);
-        // Refresh the expanded group details if it's still open
-        if (expandedGroupId) {
-          await fetchGroupDetails(expandedGroupId);
-        }
+        
+        // Clear cache for the group
+        setGroupDetails(prev => {
+          const newDetails = { ...prev };
+          delete newDetails[groupId];
+          return newDetails;
+        });
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to update group');
@@ -607,6 +639,18 @@ export default function IntervestOrgChart() {
       console.error('Error updating group:', error);
       throw error; // Re-throw to let modal handle the error
     }
+  };
+
+  const handleMemberRemoved = async (groupId) => {
+    // Refresh group hierarchy to get updated member counts
+    await refreshGroupData();
+    
+    // Clear cache for the group
+    setGroupDetails(prev => {
+      const newDetails = { ...prev };
+      delete newDetails[groupId];
+      return newDetails;
+    });
   };
 
   const handleDeleteGroup = async () => {
@@ -835,6 +879,8 @@ export default function IntervestOrgChart() {
         groups={groups}
         editingGroup={editingGroup}
         onDelete={handleDeleteClick}
+        onMemberRemoved={handleMemberRemoved}
+        existingMembersFromMainTree={editingGroup?.members || []}
       />
 
       {/* Delete Confirmation Modal */}
@@ -845,7 +891,9 @@ export default function IntervestOrgChart() {
               <h3>Delete Group</h3>
             </div>
             <div className={styles.confirmBody}>
-              <p>Are you sure you want to delete the group "{groupToDelete?.name}"?</p>
+              <p>Are you sure you want to delete the
+
+ group "{groupToDelete?.name}"?</p>
               <p>This action cannot be undone.</p>
             </div>
             <div className={styles.confirmFooter}>
