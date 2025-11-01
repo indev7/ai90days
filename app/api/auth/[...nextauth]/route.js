@@ -11,7 +11,7 @@ const handler = NextAuth({
       tenantId: process.env.MICROSOFT_TENANT_ID,
       authorization: {
         params: {
-          scope: "openid profile email User.Read"
+          scope: "openid profile email User.Read Calendars.Read offline_access"
         }
       }
     }),
@@ -29,6 +29,12 @@ const handler = NextAuth({
           if (existingUser) {
             // Link Microsoft account to existing user
             console.log('Linking Microsoft account to existing user:', existingUser.id);
+            
+            // Calculate token expiration time
+            const expiresAt = account.expires_at
+              ? new Date(account.expires_at * 1000).toISOString()
+              : new Date(Date.now() + 3600 * 1000).toISOString();
+            
             await run(
               `UPDATE users SET
                 microsoft_id = ?,
@@ -36,6 +42,9 @@ const handler = NextAuth({
                 last_name = ?,
                 profile_picture_url = ?,
                 auth_provider = ?,
+                microsoft_access_token = ?,
+                microsoft_refresh_token = ?,
+                microsoft_token_expires_at = ?,
                 updated_at = ?
               WHERE id = ?`,
               [
@@ -44,6 +53,9 @@ const handler = NextAuth({
                 profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '',
                 user.image || '',
                 'microsoft',
+                account.access_token,
+                account.refresh_token,
+                expiresAt,
                 new Date().toISOString(),
                 existingUser.id
               ]
@@ -59,14 +71,21 @@ const handler = NextAuth({
               display_name: displayName,
             });
             
-            // Add Microsoft-specific data
+            // Add Microsoft-specific data including tokens
+            const expiresAt = account.expires_at
+              ? new Date(account.expires_at * 1000).toISOString()
+              : new Date(Date.now() + 3600 * 1000).toISOString();
+            
             await run(
               `UPDATE users SET
                 microsoft_id = ?,
                 first_name = ?,
                 last_name = ?,
                 profile_picture_url = ?,
-                auth_provider = ?
+                auth_provider = ?,
+                microsoft_access_token = ?,
+                microsoft_refresh_token = ?,
+                microsoft_token_expires_at = ?
               WHERE id = ?`,
               [
                 user.id,
@@ -74,6 +93,9 @@ const handler = NextAuth({
                 profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '',
                 user.image || '',
                 'microsoft',
+                account.access_token,
+                account.refresh_token,
+                expiresAt,
                 existingUser.id
               ]
             );

@@ -1,0 +1,247 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Courier New', monospace;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--primary-color);
+}
+
+.headerInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.lastUpdated {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-family: 'Courier New', monospace;
+}
+
+.refreshButton,
+.retryButton {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: opacity 0.2s;
+}
+
+.refreshButton:hover,
+.retryButton:hover {
+  opacity: 0.8;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+}
+
+.error {
+  color: #ff4444;
+}
+
+.error h2 {
+  margin-bottom: 1rem;
+}
+
+.error p {
+  margin-bottom: 1.5rem;
+}
+
+.content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.summary {
+  background: var(--card-background);
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+}
+
+.summary h2 {
+  margin: 0 0 1rem 0;
+  color: var(--primary-color);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--background);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.statLabel {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.statValue {
+  font-weight: bold;
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+
+.section {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: var(--background);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.sectionHeader:hover {
+  background: var(--hover-background);
+}
+
+.toggle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.sectionHeader h3 {
+  margin: 0;
+  flex: 1;
+  color: var(--primary-color);
+}
+
+.count {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.sectionContent {
+  padding: 1.5rem;
+  background: var(--background);
+  border-top: 1px solid var(--border-color);
+  max-height: 600px;
+  overflow: auto;
+}
+
+.indent {
+  margin-left: 1.5rem;
+  border-left: 1px solid var(--border-color);
+  padding-left: 0.5rem;
+}
+
+.string {
+  color: #22c55e;
+}
+
+.number {
+  color: #3b82f6;
+}
+
+.boolean {
+  color: #f59e0b;
+}
+
+.null,
+.undefined {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.key {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+
+.array,
+.object {
+  display: block;
+}
+
+.arrayItem,
+.objectItem {
+  margin: 0.25rem 0;
+}
+
+.rawJson {
+  margin-top: 2rem;
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.rawJson h3 {
+  margin: 0 0 1rem 0;
+  color: var(--primary-color);
+}
+
+.rawJson pre {
+  background: var(--background);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 600px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border: 1px solid var(--border-color);
+}
+
+/* Scrollbar styling */
+.sectionContent::-webkit-scrollbar,
+.rawJson pre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sectionContent::-webkit-scrollbar-track,
+.rawJson pre::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+.sectionContent::-webkit-scrollbar-thumb,
+.rawJson pre::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.sectionContent::-webkit-scrollbar-thumb:hover,
+.rawJson pre::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
