@@ -1,0 +1,132 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+.indicators {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.indicatorWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.ledGlow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+/* Idle state - gray/off */
+.led.idle {
+  background: linear-gradient(135deg, #4a4a4a 0%, #2a2a2a 100%);
+  border: 1px solid #3a3a3a;
+}
+
+.led.idle .ledGlow {
+  box-shadow: none;
+}
+
+/* Loading state - pulsing yellow/orange */
+.led.loading {
+  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+  border: 1px solid #ff7700;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.led.loading .ledGlow {
+  box-shadow: 
+    0 0 8px rgba(255, 165, 0, 0.6),
+    0 0 12px rgba(255, 140, 0, 0.4);
+}
+
+/* Loaded state - solid green */
+.led.loaded {
+  background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+  border: 1px solid #00aa00;
+}
+
+.led.loaded .ledGlow {
+  box-shadow: 
+    0 0 8px rgba(0, 255, 0, 0.5),
+    0 0 12px rgba(0, 204, 0, 0.3);
+}
+
+/* Label styling */
+.label {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  opacity: 0;
+  animation: fadeIn 0.2s ease-in forwards;
+  user-select: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+  .indicators {
+    gap: 0.5rem;
+  }
+  
+  .led {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .label {
+    font-size: 0.6rem;
+  }
+}
+
+/* Dark mode support */
+html[data-theme="dark"] .led.idle {
+  background: linear-gradient(135deg, #3a3a3a 0%, #1a1a1a 100%);
+  border: 1px solid #2a2a2a;
+}
+
+html[data-theme="dark"] .label {
+  color: var(--text-secondary);
+}
