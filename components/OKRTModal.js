@@ -26,6 +26,15 @@ const generateQuarterOptions = () => {
   return quarters;
 };
 
+// Get current quarter in format YYYY-Q#
+const getCurrentQuarter = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-11
+  const quarter = Math.floor(month / 3) + 1; // 1-4
+  return `${year}-Q${quarter}`;
+};
+
 export default function OKRTModal({
   isOpen,
   onClose,
@@ -98,7 +107,7 @@ export default function OKRTModal({
           title: '',
           description: '',
           area: parentOkrt?.area || '',
-          cycle_qtr: parentOkrt?.cycle_qtr || '',
+          cycle_qtr: parentOkrt?.cycle_qtr || getCurrentQuarter(),
           visibility: 'private',
           objective_kind: 'committed',
           kr_target_number: '',

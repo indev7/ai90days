@@ -53,7 +53,21 @@ const useMainTreeStore = create(
     sharedOKRTs: [],
     notifications: [],
     timeBlocks: [],
-    groups: []
+    groups: [],
+    calendar: {
+      events: [],
+      quarter: null
+    }
+  },
+  
+  // Section loading states for LED indicators
+  sectionStates: {
+    myOKRTs: { loading: false, loaded: false, lastUpdated: null },
+    sharedOKRTs: { loading: false, loaded: false, lastUpdated: null },
+    notifications: { loading: false, loaded: false, lastUpdated: null },
+    timeBlocks: { loading: false, loaded: false, lastUpdated: null },
+    groups: { loading: false, loaded: false, lastUpdated: null },
+    calendar: { loading: false, loaded: false, lastUpdated: null }
   },
   
   // Loading states
@@ -62,50 +76,138 @@ const useMainTreeStore = create(
   lastUpdated: null,
   
   // Actions
-  setMainTree: (tree) => set({ 
-    mainTree: tree,
-    lastUpdated: new Date().toISOString()
+  setMainTree: (tree) => set((state) => {
+    const now = new Date().toISOString();
+    // Mark all sections as loaded when full tree is set
+    const newSectionStates = {
+      myOKRTs: { loading: false, loaded: true, lastUpdated: now },
+      sharedOKRTs: { loading: false, loaded: true, lastUpdated: now },
+      notifications: { loading: false, loaded: true, lastUpdated: now },
+      timeBlocks: { loading: false, loaded: true, lastUpdated: now },
+      groups: { loading: false, loaded: true, lastUpdated: now },
+      calendar: { loading: false, loaded: true, lastUpdated: now }
+    };
+    return {
+      mainTree: tree,
+      lastUpdated: now,
+      sectionStates: newSectionStates
+    };
   }),
   
-  setMyOKRTs: (okrts) => set((state) => ({
-    mainTree: {
-      ...state.mainTree,
-      myOKRTs: okrts
-    },
-    lastUpdated: new Date().toISOString()
+  // Update section loading state
+  setSectionLoading: (section, isLoading) => set((state) => ({
+    sectionStates: {
+      ...state.sectionStates,
+      [section]: {
+        ...state.sectionStates[section],
+        loading: isLoading,
+        loaded: isLoading ? false : state.sectionStates[section].loaded
+      }
+    }
   })),
   
-  setSharedOKRTs: (okrts) => set((state) => ({
-    mainTree: {
-      ...state.mainTree,
-      sharedOKRTs: okrts
-    },
-    lastUpdated: new Date().toISOString()
+  // Mark section as loaded
+  setSectionLoaded: (section) => set((state) => ({
+    sectionStates: {
+      ...state.sectionStates,
+      [section]: {
+        loading: false,
+        loaded: true,
+        lastUpdated: new Date().toISOString()
+      }
+    }
   })),
   
-  setNotifications: (notifications) => set((state) => ({
-    mainTree: {
-      ...state.mainTree,
-      notifications: notifications
-    },
-    lastUpdated: new Date().toISOString()
-  })),
+  setMyOKRTs: (okrts) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        myOKRTs: okrts
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        myOKRTs: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
   
-  setTimeBlocks: (timeBlocks) => set((state) => ({
-    mainTree: {
-      ...state.mainTree,
-      timeBlocks: timeBlocks
-    },
-    lastUpdated: new Date().toISOString()
-  })),
+  setSharedOKRTs: (okrts) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        sharedOKRTs: okrts
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        sharedOKRTs: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
   
-  setGroups: (groups) => set((state) => ({
-    mainTree: {
-      ...state.mainTree,
-      groups: groups
-    },
-    lastUpdated: new Date().toISOString()
-  })),
+  setNotifications: (notifications) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        notifications: notifications
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        notifications: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
+  
+  setTimeBlocks: (timeBlocks) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        timeBlocks: timeBlocks
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        timeBlocks: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
+  
+  setGroups: (groups) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        groups: groups
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        groups: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
+  
+  // Set calendar events
+  setCalendar: (calendar) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        calendar: calendar
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        calendar: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
   
   // Add a single OKRT to myOKRTs
   addMyOKRT: (okrt) => set((state) => ({
@@ -218,7 +320,19 @@ const useMainTreeStore = create(
       sharedOKRTs: [],
       notifications: [],
       timeBlocks: [],
-      groups: []
+      groups: [],
+      calendar: {
+        events: [],
+        quarter: null
+      }
+    },
+    sectionStates: {
+      myOKRTs: { loading: false, loaded: false, lastUpdated: null },
+      sharedOKRTs: { loading: false, loaded: false, lastUpdated: null },
+      notifications: { loading: false, loaded: false, lastUpdated: null },
+      timeBlocks: { loading: false, loaded: false, lastUpdated: null },
+      groups: { loading: false, loaded: false, lastUpdated: null },
+      calendar: { loading: false, loaded: false, lastUpdated: null }
     },
     lastUpdated: null,
     error: null
@@ -245,7 +359,8 @@ const useMainTreeStore = create(
         // Only persist the mainTree data, not loading/error states
         partialize: (state) => ({
           mainTree: state.mainTree,
-          lastUpdated: state.lastUpdated
+          lastUpdated: state.lastUpdated,
+          sectionStates: state.sectionStates
         })
       }
     )

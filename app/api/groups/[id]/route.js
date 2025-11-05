@@ -102,12 +102,29 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // Fetch updated member details and objectives for cache
+    const memberDetails = await getGroupMembers(id);
+    const objectiveIds = await getGroupSharedOKRTs(id);
+    
+    // Check if current user is a member
+    const isMember = memberDetails.some(m => m.id === session.sub);
+    const isAdminUser = memberDetails.find(m => m.id === session.sub)?.is_admin || false;
+
     // Return response with cache update instruction
     return NextResponse.json({
       group,
       _cacheUpdate: {
         action: 'updateGroup',
-        data: { id, updates: group }
+        data: {
+          id,
+          updates: {
+            ...group,
+            is_member: isMember,
+            is_admin: isAdminUser,
+            members: memberDetails,
+            objectiveIds: isMember ? objectiveIds.map(o => o.id) : []
+          }
+        }
       }
     });
   } catch (error) {

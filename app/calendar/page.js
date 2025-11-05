@@ -63,6 +63,7 @@ export default function CalendarPage() {
     const { mainTree } = useMainTreeStore();
     const allTimeBlocks = mainTree.timeBlocks || [];
     const myOKRTs = mainTree.myOKRTs || [];
+    const calendarEvents = mainTree.calendar?.events || [];
 
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -356,6 +357,18 @@ export default function CalendarPage() {
         });
     };
 
+    const getCalendarEventsForSlot = (dayIndex, hour) => {
+        const selectedDay = daysOfWeek[dayIndex];
+        const dateStr = selectedDay.date.toISOString().split('T')[0];
+
+        return calendarEvents.filter(event => {
+            const eventStart = new Date(event.startTime);
+            const eventDateStr = eventStart.toISOString().split('T')[0];
+            const eventHour = eventStart.getHours();
+            return eventDateStr === dateStr && eventHour === hour;
+        });
+    };
+
     const formatDuration = (minutes) => {
         if (minutes >= 60) {
             const hours = Math.floor(minutes / 60);
@@ -537,6 +550,7 @@ export default function CalendarPage() {
                                 const slotId = formatTimeSlotId(dayIndex, slot.hour);
                                 const isSelected = selectedTimeSlot === slotId;
                                 const blocksInSlot = getTimeBlocksForSlot(dayIndex, slot.hour);
+                                const calendarEventsInSlot = getCalendarEventsForSlot(dayIndex, slot.hour);
 
                                 return (
                                     <div
@@ -558,6 +572,34 @@ export default function CalendarPage() {
                                                 Schedule
                                             </button>
                                         )}
+
+                                       {calendarEventsInSlot.map((event, idx) => {
+                                           // Calculate height and position for calendar events
+                                           const eventStart = new Date(event.startTime);
+                                           const eventEnd = new Date(event.endTime);
+                                           const durationMinutes = (eventEnd - eventStart) / (1000 * 60);
+                                           const heightPercentage = (durationMinutes / 60) * 100;
+                                           const blockHeight = `${heightPercentage}%`;
+                                           
+                                           const minutes = eventStart.getMinutes();
+                                           const topOffset = `${(minutes / 60) * 100}%`;
+                                           
+                                           return (
+                                               <div
+                                                   key={`calendar-${idx}`}
+                                                   className={styles.calendarEvent}
+                                                   style={{
+                                                       height: blockHeight,
+                                                       top: topOffset,
+                                                   }}
+                                                   title={event.title}
+                                               >
+                                                   <div className={styles.calendarEventTitle}>
+                                                       {event.title}
+                                                   </div>
+                                               </div>
+                                           );
+                                       })}
 
                                        {blocksInSlot.map((block) => {
                                            // Calculate height based on duration (60px per hour)
@@ -641,6 +683,7 @@ export default function CalendarPage() {
                                 const slotId = formatTimeSlotId(mobileCurrentDay, slot.hour);
                                 const isSelected = selectedTimeSlot === slotId;
                                 const blocksInSlot = getTimeBlocksForSlot(mobileCurrentDay, slot.hour);
+                                const calendarEventsInSlot = getCalendarEventsForSlot(mobileCurrentDay, slot.hour);
 
                                 return (
                                     <div key={slot.hour} className={styles.mobileTimeSlot}>
@@ -665,6 +708,34 @@ export default function CalendarPage() {
                                                     Schedule
                                                 </button>
                                             )}
+
+                                            {calendarEventsInSlot.map((event, idx) => {
+                                                // Calculate height and position for calendar events
+                                                const eventStart = new Date(event.startTime);
+                                                const eventEnd = new Date(event.endTime);
+                                                const durationMinutes = (eventEnd - eventStart) / (1000 * 60);
+                                                const heightPercentage = (durationMinutes / 60) * 100;
+                                                const blockHeight = `${heightPercentage}%`;
+                                                
+                                                const minutes = eventStart.getMinutes();
+                                                const topOffset = `${(minutes / 60) * 100}%`;
+                                                
+                                                return (
+                                                    <div
+                                                        key={`calendar-${idx}`}
+                                                        className={styles.calendarEvent}
+                                                        style={{
+                                                            height: blockHeight,
+                                                            top: topOffset,
+                                                        }}
+                                                        title={event.title}
+                                                    >
+                                                        <div className={styles.calendarEventTitle}>
+                                                            {event.title}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
 
                                             {blocksInSlot.map((block) => {
                                                 // Calculate height based on duration (60px per hour)

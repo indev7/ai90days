@@ -22,10 +22,14 @@ export function useMainTree() {
     isLoading,
     setMainTree,
     setLoading,
-    setError
+    setError,
+    setSectionLoading,
+    setSectionLoaded,
+    setCalendar
   } = useMainTreeStore();
   
   const hasFetchedRef = useRef(false);
+  const hasLoadedCalendarRef = useRef(false);
 
   useEffect(() => {
     // Skip if this component instance has already triggered a fetch
@@ -44,6 +48,11 @@ export function useMainTree() {
         if (now - lastUpdateTime < fiveMinutes) {
           console.log('MainTree data is fresh, skipping reload');
           hasFetchedRef.current = true;
+          
+          // Load calendar in background if not already loaded
+          if (!hasLoadedCalendarRef.current) {
+            loadCalendarInBackground();
+          }
           return;
         }
       }
@@ -66,33 +75,86 @@ export function useMainTree() {
       try {
         globalFetchInProgress = true;
         setLoading(true);
-        console.log('Loading mainTree data...');
+        
+        // Mark all sections as loading
+        setSectionLoading('myOKRTs', true);
+        setSectionLoading('timeBlocks', true);
+        setSectionLoading('notifications', true);
+        setSectionLoading('sharedOKRTs', true);
+        setSectionLoading('groups', true);
+        
+        console.log('Loading mainTree data progressively...');
 
-        const fetchPromise = fetch('/api/main-tree')
-          .then(async (response) => {
-            if (!response.ok) {
-              if (response.status === 401) {
-                // Unauthorized - redirect to login
-                console.log('Unauthorized, redirecting to login');
-                router.push('/login');
-                return null;
+        const fetchPromise = (async () => {
+          const response = await fetch('/api/main-tree/progressive');
+          
+          if (!response.ok) {
+            if (response.status === 401) {
+              console.log('Unauthorized, redirecting to login');
+              router.push('/login');
+              return;
+            }
+            throw new Error('Failed to load mainTree');
+          }
+
+          // Process streaming response
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+            
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              
+              try {
+                const message = JSON.parse(line);
+                
+                if (message.complete) {
+                  console.log('Progressive loading complete');
+                  continue;
+                }
+                
+                if (message.section && message.data) {
+                  const { section, data } = message;
+                  console.log(`✅ Received ${section}:`, Array.isArray(data) ? data.length : 'object');
+                  
+                  // Update store for each section as it arrives
+                  const store = useMainTreeStore.getState();
+                  switch (section) {
+                    case 'myOKRTs':
+                      store.setMyOKRTs(data);
+                      break;
+                    case 'timeBlocks':
+                      store.setTimeBlocks(data);
+                      break;
+                    case 'notifications':
+                      store.setNotifications(data);
+                      break;
+                    case 'sharedOKRTs':
+                      store.setSharedOKRTs(data);
+                      break;
+                    case 'groups':
+                      store.setGroups(data);
+                      break;
+                  }
+                }
+              } catch (e) {
+                console.error('Error parsing progressive response:', e);
               }
-              throw new Error('Failed to load mainTree');
             }
-            return response.json();
-          })
-          .then((data) => {
-            if (data) {
-              setMainTree(data.mainTree);
-              console.log('MainTree loaded successfully:', {
-                myOKRTs: data.mainTree.myOKRTs.length,
-                sharedOKRTs: data.mainTree.sharedOKRTs.length,
-                notifications: data.mainTree.notifications.length,
-                timeBlocks: data.mainTree.timeBlocks.length,
-                groups: data.mainTree.groups.length
-              });
-            }
-          });
+          }
+          
+          // Load calendar in background after main sections are loaded
+          loadCalendarInBackground();
+        })();
 
         globalFetchPromise = fetchPromise;
         await fetchPromise;
@@ -107,12 +169,84 @@ export function useMainTree() {
       }
     };
 
+    // Load calendar events in background (separate from main tree)
+    const loadCalendarInBackground = async () => {
+      if (hasLoadedCalendarRef.current) {
+        return;
+      }
+      
+      try {
+        setSectionLoading('calendar', true);
+        console.log('Loading calendar events in background...');
+        
+        const response = await fetch('/api/main-tree/calendar');
+        if (!response.ok) {
+          console.error('Failed to load calendar events');
+          return;
+        }
+        
+        const data = await response.json();
+        if (data && data.calendar) {
+          setCalendar(data.calendar);
+          setSectionLoaded('calendar');
+          console.log('Calendar loaded successfully:', {
+            events: data.calendar.events?.length || 0
+          });
+        }
+        
+        hasLoadedCalendarRef.current = true;
+      } catch (error) {
+        console.error('Error loading calendar:', error);
+        // Don't fail the whole app if calendar fails
+        setSectionLoading('calendar', false);
+      }
+    };
+
     loadMainTree();
   }, []); // Only run once on mount
+
+  /**
+   * Force refresh mainTree data from server
+   * Useful after group create/update/delete operations
+   */
+  const refreshMainTree = async () => {
+    try {
+      setLoading(true);
+      console.log('Manually refreshing mainTree data...');
+
+      const response = await fetch('/api/main-tree');
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('Unauthorized, redirecting to login');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Failed to refresh mainTree');
+      }
+
+      const data = await response.json();
+      if (data) {
+        setMainTree(data.mainTree);
+        console.log('MainTree refreshed successfully:', {
+          myOKRTs: data.mainTree.myOKRTs.length,
+          sharedOKRTs: data.mainTree.sharedOKRTs.length,
+          notifications: data.mainTree.notifications.length,
+          timeBlocks: data.mainTree.timeBlocks.length,
+          groups: data.mainTree.groups.length
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing mainTree:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return {
     mainTree,
     isLoading,
-    lastUpdated
+    lastUpdated,
+    refreshMainTree
   };
 }

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import HamburgerButton from './HamburgerButton';
 import MobileMenu from './MobileMenu';
 import AvatarDropdown from './AvatarDropdown';
+import LoadingIndicators from './LoadingIndicators';
 import styles from './HeaderBar.module.css';
 
 /**
@@ -99,6 +100,7 @@ export default function HeaderBar({
         </div>
 
         <div className={styles.center}>
+          {user && <LoadingIndicators />}
         </div>
 
         <div className={styles.right}>
