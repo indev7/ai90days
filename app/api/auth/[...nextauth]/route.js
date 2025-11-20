@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
-import { getDatabase, getUserByEmail, createUser } from '@/lib/db';
+import { getUserByEmail, createUser, run } from '@/lib/pgdb';
 import { createSession } from '@/lib/auth';
 
 const handler = NextAuth({
@@ -11,7 +11,7 @@ const handler = NextAuth({
       tenantId: process.env.MICROSOFT_TENANT_ID,
       authorization: {
         params: {
-          scope: "openid profile email User.Read"
+          scope: "openid profile email User.Read Calendars.Read offline_access"
         }
       }
     }),
@@ -23,21 +23,28 @@ const handler = NextAuth({
       
       if (account.provider === 'azure-ad') {
         try {
-          const database = await getDatabase();
-          
           // Check if user exists by email
           let existingUser = await getUserByEmail(user.email);
           
           if (existingUser) {
             // Link Microsoft account to existing user
             console.log('Linking Microsoft account to existing user:', existingUser.id);
-            await database.run(
-              `UPDATE users SET 
-                microsoft_id = ?, 
-                first_name = ?, 
-                last_name = ?, 
+            
+            // Calculate token expiration time
+            const expiresAt = account.expires_at
+              ? new Date(account.expires_at * 1000).toISOString()
+              : new Date(Date.now() + 3600 * 1000).toISOString();
+            
+            await run(
+              `UPDATE users SET
+                microsoft_id = ?,
+                first_name = ?,
+                last_name = ?,
                 profile_picture_url = ?,
                 auth_provider = ?,
+                microsoft_access_token = ?,
+                microsoft_refresh_token = ?,
+                microsoft_token_expires_at = ?,
                 updated_at = ?
               WHERE id = ?`,
               [
@@ -46,6 +53,9 @@ const handler = NextAuth({
                 profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '',
                 user.image || '',
                 'microsoft',
+                account.access_token,
+                account.refresh_token,
+                expiresAt,
                 new Date().toISOString(),
                 existingUser.id
               ]
@@ -61,14 +71,21 @@ const handler = NextAuth({
               display_name: displayName,
             });
             
-            // Add Microsoft-specific data
-            await database.run(
-              `UPDATE users SET 
-                microsoft_id = ?, 
-                first_name = ?, 
-                last_name = ?, 
+            // Add Microsoft-specific data including tokens
+            const expiresAt = account.expires_at
+              ? new Date(account.expires_at * 1000).toISOString()
+              : new Date(Date.now() + 3600 * 1000).toISOString();
+            
+            await run(
+              `UPDATE users SET
+                microsoft_id = ?,
+                first_name = ?,
+                last_name = ?,
                 profile_picture_url = ?,
-                auth_provider = ?
+                auth_provider = ?,
+                microsoft_access_token = ?,
+                microsoft_refresh_token = ?,
+                microsoft_token_expires_at = ?
               WHERE id = ?`,
               [
                 user.id,
@@ -76,6 +93,9 @@ const handler = NextAuth({
                 profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '',
                 user.image || '',
                 'microsoft',
+                account.access_token,
+                account.refresh_token,
+                expiresAt,
                 existingUser.id
               ]
             );
@@ -119,7 +139,13 @@ const handler = NextAuth({
     
     async redirect({ url, baseUrl }) {
       console.log('Redirect callback:', { url, baseUrl });
-      // Always redirect to dashboard after Microsoft login
+      
+      // If redirecting to login page, allow it (for logout)
+      if (url.includes('/login')) {
+        return url;
+      }
+      
+      // Otherwise redirect to dashboard after Microsoft login
       return baseUrl + '/dashboard';
     },
   },

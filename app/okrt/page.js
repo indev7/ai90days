@@ -9,6 +9,7 @@ import CommentsSection from '../../components/CommentsSection';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 import {
   ObjectiveHeader,
   KeyResultCard,
@@ -68,8 +69,9 @@ const demoData = {
 export default function OKRTPage() {
   const searchParams = useSearchParams();
   const selectedObjectiveId = searchParams.get('objective');
+  const showAddModal = searchParams.get('showAddModal');
   
-  const [user, setUser] = useState(null);
+  const { user } = useUser();
   const [objectives, setObjectives] = useState([]);
   const [keyResults, setKeyResults] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -85,6 +87,11 @@ export default function OKRTPage() {
     okrt: null,
     parentOkrt: null
   });
+
+  // Debug: Log modal state changes
+  useEffect(() => {
+    console.log('Modal state changed:', modalState);
+  }, [modalState]);
   const [shareModalState, setShareModalState] = useState({
     isOpen: false,
     objective: null
@@ -96,23 +103,6 @@ export default function OKRTPage() {
   // Subscribe to mainTree from Zustand store
   const mainTree = useMainTreeStore((state) => state.mainTree);
   const lastUpdated = useMainTreeStore((state) => state.lastUpdated);
-
-  // Fetch user data
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      }
-    };
-
-    fetchUser();
-  }, []);
 
   // Process mainTree data whenever it changes (from cross-tab sync or initial load)
   useEffect(() => {
@@ -137,18 +127,42 @@ export default function OKRTPage() {
     }
   }, [mainTreeLoading, mainTree]);
 
-  // Listen for create objective events from LeftMenu
+  // Listen for create objective events from LeftMenu (kept for backward compatibility)
   useEffect(() => {
     const handleCreateObjectiveEvent = () => {
-      handleCreateObjective();
+      console.log('createObjective event received!');
+      setModalState({
+        isOpen: true,
+        mode: 'create',
+        okrt: null,
+        parentOkrt: null
+      });
     };
 
+    console.log('Setting up createObjective event listener');
     window.addEventListener('createObjective', handleCreateObjectiveEvent);
     
     return () => {
+      console.log('Removing createObjective event listener');
       window.removeEventListener('createObjective', handleCreateObjectiveEvent);
     };
   }, []);
+
+  // Handle showAddModal query parameter
+  useEffect(() => {
+    console.log('showAddModal effect:', showAddModal, 'loading:', loading);
+    if (showAddModal === 'true' && !loading) {
+      console.log('Opening modal from query parameter');
+      setModalState({
+        isOpen: true,
+        mode: 'create',
+        okrt: null,
+        parentOkrt: null
+      });
+      // Clear the query parameter after opening modal
+      window.history.replaceState({}, '', '/okrt');
+    }
+  }, [showAddModal, loading]);
 
   // Listen for left menu toggle events to collapse OKRTs when menu expands
   useEffect(() => {
@@ -413,16 +427,8 @@ export default function OKRTPage() {
     );
   }
 
-  if (objectives.length === 0) {
-    return (
-      <div className={styles.empty}>
-        <div>
-          <div className={styles.emptyTitle}>No objectives found</div>
-          <div className={styles.emptyText}>Create your first objective to get started.</div>
-        </div>
-      </div>
-    );
-  }
+  // Don't return early - render empty state with modal support
+  const hasNoObjectives = objectives.length === 0;
 
   // Filter objectives based on URL parameter or focus mode
   const filteredObjectives = objectives.filter(objective => {
@@ -439,8 +445,17 @@ export default function OKRTPage() {
     <div className={styles.container}>
       {/* Main Content */}
       <main className={styles.main}>
-        {/* Stack all objectives vertically - show filtered objectives */}
-        {filteredObjectives.map((objective) => {
+        {/* Show empty state if no objectives */}
+        {hasNoObjectives ? (
+          <div className={styles.empty}>
+            <div>
+              <div className={styles.emptyTitle}>No objectives found</div>
+              <div className={styles.emptyText}>Create your first objective to get started.</div>
+            </div>
+          </div>
+        ) : (
+          /* Stack all objectives vertically - show filtered objectives */
+          filteredObjectives.map((objective) => {
             const objectiveKRs = getKeyResultsForObjective(objective.id);
             
             return (
@@ -453,6 +468,7 @@ export default function OKRTPage() {
                   onShareObjective={handleShareObjective}
                   onFocusObjective={handleFocusObjective}
                   isFocused={focusedObjectiveId === objective.id}
+                  comments={objective.comments || []}
                 />
 
               {/* Key Results Grid for this objective - only show when expanded */}
@@ -483,14 +499,20 @@ export default function OKRTPage() {
                   currentUserId={user.id}
                   okrtOwnerId={objective.owner_id}
                     isExpanded={commentsExpanded[objective.id]}
+                    comments={objective.comments || []}
+                    onRewardUpdate={() => {
+                      // Trigger mainTree refresh when comments are added
+                      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+                    }}
                     />
                     </div>
                     )}
                 </>
-              )}
-            </div>
-          );
-        })}
+             )}
+           </div>
+         );
+       })
+       )}
       </main>
 
       {/* OKRT Modal */}

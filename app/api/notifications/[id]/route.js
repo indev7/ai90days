@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { markNotificationAsRead, deleteNotification } from '@/lib/db';
+import { markNotificationAsRead, deleteNotification } from '@/lib/pgdb';
 
 export async function PUT(request, { params }) {
   try {

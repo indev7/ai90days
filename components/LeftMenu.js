@@ -17,9 +17,11 @@ import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
 import TaskUpdateModal from './TaskUpdateModal';
+import OKRTModal from './OKRTModal';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
 import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './LeftMenu.module.css';
 
 const topMenuItems = [
@@ -104,6 +106,12 @@ export default function LeftMenu({
   const [taskUpdateModalState, setTaskUpdateModalState] = useState({
     isOpen: false,
     task: null
+  });
+  const [okrtModalState, setOkrtModalState] = useState({
+    isOpen: false,
+    mode: 'create',
+    okrt: null,
+    parentOkrt: null
   });
 
   // Load mainTree data (will use cached data if available)
@@ -218,13 +226,21 @@ export default function LeftMenu({
     };
   }, []);
 
-  const handleNewClick = () => {
+  const handleNewClick = (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    console.log('Add OKR clicked! pathname:', pathname);
+    
     // Close all expanded items when clicking New
     setExpandedItems(new Set());
-    // Dispatch a custom event that the My Goals page can listen to
-    if (pathname === '/okrt') {
-      window.dispatchEvent(new CustomEvent('createObjective'));
-    }
+    // Open the OKRT modal directly
+    setOkrtModalState({
+      isOpen: true,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+
     
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
@@ -235,11 +251,11 @@ export default function LeftMenu({
   const handleAddGroupClick = (e) => {
     e.preventDefault();
     // Always dispatch the event to show modal
-    if (pathname === '/groups') {
+    if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('createGroup'));
     } else {
-      // Navigate to groups page and show modal after navigation
-      router.push('/groups?showAddModal=true');
+      // Navigate to organisation page and show modal after navigation
+      router.push('/organisation?showAddModal=true');
     }
     
     // Close mobile menu
@@ -250,11 +266,11 @@ export default function LeftMenu({
 
   const handleGroupEditClick = (groupId, e) => {
     e.preventDefault();
-    // Navigate to groups page with edit mode for specific group
-    if (pathname === '/groups') {
+    // Navigate to organisation page with edit mode for specific group
+    if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('editGroup', { detail: { groupId } }));
     } else {
-      router.push(`/groups?editGroup=${groupId}`);
+      router.push(`/organisation?editGroup=${groupId}`);
     }
     
     // Close mobile menu
@@ -355,6 +371,83 @@ export default function LeftMenu({
     }
   };
 
+  // OKRT Modal handlers
+  const handleCloseOkrtModal = () => {
+    setOkrtModalState({
+      isOpen: false,
+      mode: 'create',
+      okrt: null,
+      parentOkrt: null
+    });
+  };
+
+  const handleSaveOkrt = async (okrtData) => {
+    try {
+      const url = okrtModalState.mode === 'edit'
+        ? `/api/okrt/${okrtModalState.okrt.id}`
+        : '/api/okrt';
+      
+      const method = okrtModalState.mode === 'edit' ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(okrtData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save OKRT');
+      }
+
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Close modal
+      handleCloseOkrtModal();
+
+      // Trigger a refresh of the mainTree data
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+
+    } catch (error) {
+      console.error('Error saving OKRT:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteOkrt = async () => {
+    try {
+      const url = `/api/okrt/${okrtModalState.okrt.id}`;
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete OKRT');
+      }
+
+      // Process cache update from response
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
+      // Close modal
+      handleCloseOkrtModal();
+
+      // Trigger a refresh of the mainTree data
+      window.dispatchEvent(new CustomEvent('refreshMainTree'));
+
+    } catch (error) {
+      console.error('Error deleting OKRT:', error);
+      throw error;
+    }
+  };
+
   const isChildActive = (item) => {
     if (!item.children) return false;
     return item.children.some(child => pathname === child.href);
@@ -382,8 +475,8 @@ export default function LeftMenu({
   };
 
   const isExpanded = (itemHref) => {
-    // Auto-expand Groups submenu when on groups page
-    if (itemHref === '/groups' && pathname === '/groups') {
+    // Auto-expand Organisation submenu when on organisation page
+    if (itemHref === '/organisation' && pathname === '/organisation') {
       return true;
     }
     // Auto-expand My Goals submenu when on OKRT page
@@ -434,7 +527,6 @@ export default function LeftMenu({
                     className={styles.menuLink}
                     onClick={handleNewClick}
                     title="Create New Objective"
-                    disabled={pathname !== '/okrt'}
                   >
                     <span className={styles.icon}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
@@ -468,7 +560,7 @@ export default function LeftMenu({
                         <span className={styles.label}>{item.label}</span>
                       </Link>
                     )}
-                    {item.children && !isDesktopCollapsed && !isCollapsed && isExpanded(item.href) && (
+                    {item.children && (isMobileSlideIn || (!isDesktopCollapsed && !isCollapsed)) && isExpanded(item.href) && (
                       <ul className={styles.childMenuList}>
                         {/* Show objectives for My Goals menu */}
                         {item.href === '/okrt' && objectives.map((objective) => (
@@ -507,7 +599,7 @@ export default function LeftMenu({
                         })}
                         
                         {/* Show admin groups first */}
-                        {item.href === '/groups' && adminGroups.map((group) => (
+                        {item.href === '/organisation' && adminGroups.map((group) => (
                           <li key={`group-${group.id}`} className={styles.childMenuItem}>
                             <button
                               onClick={(e) => handleGroupEditClick(group.id, e)}
@@ -520,10 +612,10 @@ export default function LeftMenu({
                           </li>
                         ))}
                         
-                        {/* Show original children */}
+                        {/* Show original children (action buttons) */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
-                          const isAddGroup = child.href === '/groups/create';
+                          const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
                           return (
                             <li key={child.href} className={styles.childMenuItem}>
@@ -539,10 +631,10 @@ export default function LeftMenu({
                                 </button>
                               ) : isAddOKR ? (
                                 <button
+                                  type="button"
                                   onClick={handleNewClick}
                                   className={styles.childMenuLink}
                                   title="Create New Objective"
-                                  disabled={pathname !== '/okrt'}
                                 >
                                   <span className={styles.icon}>
                                     {getIcon(child.icon, false)}
@@ -648,6 +740,17 @@ export default function LeftMenu({
         onClose={handleCloseTaskUpdateModal}
         task={taskUpdateModalState.task}
         onSave={handleSaveTaskUpdate}
+      />
+
+      {/* OKRT Modal */}
+      <OKRTModal
+        isOpen={okrtModalState.isOpen}
+        onClose={handleCloseOkrtModal}
+        onSave={handleSaveOkrt}
+        onDelete={okrtModalState.mode === 'edit' ? handleDeleteOkrt : null}
+        okrt={okrtModalState.okrt}
+        parentOkrt={okrtModalState.parentOkrt}
+        mode={okrtModalState.mode}
       />
     </>
   );

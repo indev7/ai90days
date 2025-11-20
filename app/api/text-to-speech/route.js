@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getSession } from '@/lib/auth';
-import { getDatabase } from '@/lib/db';
+import { getUserById } from '@/lib/pgdb';
 
 const openai = new OpenAI({
   apiKey: process.env.OPEN_AI_API_KEY
@@ -18,8 +18,7 @@ export async function POST(request) {
       try {
         const session = await getSession();
         if (session) {
-          const database = await getDatabase();
-          const user = await database.get('SELECT preferences FROM users WHERE id = ?', [session.sub]);
+          const user = await getUserById(session.sub);
           
           if (user?.preferences) {
             const preferences = JSON.parse(user.preferences);

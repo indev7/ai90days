@@ -26,6 +26,15 @@ const generateQuarterOptions = () => {
   return quarters;
 };
 
+// Get current quarter in format YYYY-Q#
+const getCurrentQuarter = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-11
+  const quarter = Math.floor(month / 3) + 1; // 1-4
+  return `${year}-Q${quarter}`;
+};
+
 export default function OKRTModal({
   isOpen,
   onClose,
@@ -98,7 +107,7 @@ export default function OKRTModal({
           title: '',
           description: '',
           area: parentOkrt?.area || '',
-          cycle_qtr: parentOkrt?.cycle_qtr || '',
+          cycle_qtr: parentOkrt?.cycle_qtr || getCurrentQuarter(),
           visibility: 'private',
           objective_kind: 'committed',
           kr_target_number: '',
@@ -265,6 +274,10 @@ export default function OKRTModal({
         delete saveData.objective_kind;
         delete saveData.task_status;
         delete saveData.parent_objective_id; // Not used for KRs
+        // Convert empty strings to null for numeric fields
+        if (saveData.kr_baseline_number === '' || saveData.kr_baseline_number === 0) {
+          saveData.kr_baseline_number = null;
+        }
         // Keep the due_date for Key Results
       } else if (formData.type === 'T') {
         delete saveData.objective_kind;
@@ -575,7 +588,7 @@ export default function OKRTModal({
                     type="number"
                     className={styles.input}
                     value={formData.kr_baseline_number}
-                    onChange={e => handleInputChange('kr_baseline_number', Number(e.target.value))}
+                    onChange={e => handleInputChange('kr_baseline_number', e.target.value === '' ? '' : Number(e.target.value))}
                     min={0}
                   />
                 </div>

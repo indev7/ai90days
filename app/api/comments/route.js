@@ -6,9 +6,10 @@ import {
   createComment,
   getCommentsByOKRT,
   getCommentsByUser,
-  getDatabase,
-  getUserByEmail
-} from '../../../lib/db';
+  getUserById,
+  getUserByEmail,
+  getOKRTById
+} from '@/lib/pgdb';
 
 const nextAuthOptions = {
   providers: [
@@ -27,11 +28,10 @@ async function getCurrentUser() {
   // Try custom session first (for email/password login)
   let session = await getSession();
   let user = null;
-  const database = await getDatabase();
   
   if (session) {
     // Custom JWT session
-    user = await database.get('SELECT * FROM users WHERE id = ?', [session.sub]);
+    user = await getUserById(session.sub);
   } else {
     // Try NextAuth session (for Microsoft login)
     const nextAuthSession = await getServerSession(nextAuthOptions);
@@ -124,8 +124,7 @@ export async function POST(request) {
 
     // Prevent users from giving rewards to their own objectives
     if (validRewardTypes.includes(type)) {
-      const database = await getDatabase();
-      const okrt = await database.get('SELECT owner_id FROM okrt WHERE id = ?', [okrt_id]);
+      const okrt = await getOKRTById(okrt_id);
       
       if (!okrt) {
         return NextResponse.json({

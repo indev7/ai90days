@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { generateAvatarSVG } from '@/lib/avatarGenerator';
 import styles from './OKRTModal.module.css'; // Reuse OKRT modal styles
 
 const GROUP_TYPES = [
@@ -20,18 +19,18 @@ export default function AddGroupModal({
   onSave,
   groups = [], // Available groups for parent selection
   editingGroup = null, // Group being edited
-  onDelete = null // Delete handler
+  onDelete = null, // Delete handler
+  onMemberRemoved = null, // Callback when member is removed
+  existingMembersFromMainTree = [] // Members from mainTree (for edit mode)
 }) {
   const [formData, setFormData] = useState({
     name: '',
     type: 'Group',
     parent_group_id: '',
-    thumbnail_file: null,
     members: [] // Array of selected users with admin status
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  const [previewUrl, setPreviewUrl] = useState('');
   
   // User search states
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
@@ -42,7 +41,6 @@ export default function AddGroupModal({
   
   // Existing members state (for edit mode)
   const [existingMembers, setExistingMembers] = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -53,23 +51,18 @@ export default function AddGroupModal({
           name: editingGroup.name || '',
           type: editingGroup.type || 'Group',
           parent_group_id: editingGroup.parent_group_id || '',
-          thumbnail_file: null,
           members: [] // Start with empty members for edit mode
         });
-        // Set preview URL for existing thumbnail
-        setPreviewUrl(editingGroup.thumbnail_url || '');
-        // Fetch existing members
-        fetchExistingMembers(editingGroup.id);
+        // Set existing members from mainTree
+        setExistingMembers(existingMembersFromMainTree);
       } else {
         // Create mode - reset form
         setFormData({
           name: '',
           type: 'Group',
           parent_group_id: '',
-          thumbnail_file: null,
           members: []
         });
-        setPreviewUrl('');
         setMemberSearchQuery('');
         setMemberSearchResults([]);
         setShowMemberDropdown(false);
@@ -77,23 +70,7 @@ export default function AddGroupModal({
       }
       setErrors({});
     }
-  }, [isOpen, editingGroup]);
-
-  // Fetch existing members for edit mode
-  const fetchExistingMembers = async (groupId) => {
-    setLoadingMembers(true);
-    try {
-      const response = await fetch(`/api/groups/${groupId}/members`);
-      if (response.ok) {
-        const data = await response.json();
-        setExistingMembers(data.members || []);
-      }
-    } catch (error) {
-      console.error('Error fetching existing members:', error);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
+  }, [isOpen, editingGroup, existingMembersFromMainTree]);
 
   // Handle clicks outside member search dropdown
   useEffect(() => {
@@ -187,6 +164,11 @@ export default function AddGroupModal({
       if (response.ok) {
         // Remove from existing members list
         setExistingMembers(prev => prev.filter(member => member.id !== userId));
+        
+        // Notify parent component to refresh group details
+        if (onMemberRemoved) {
+          onMemberRemoved(editingGroup.id);
+        }
       } else {
         console.error('Failed to remove member');
       }
@@ -208,37 +190,6 @@ export default function AddGroupModal({
         [field]: undefined
       }));
     }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) {
-      setFormData(prev => ({ ...prev, thumbnail_file: null }));
-      setPreviewUrl('');
-      return;
-    }
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setErrors(prev => ({ ...prev, thumbnail_file: 'Please select a valid image file (JPEG, PNG, GIF, or WebP)' }));
-      return;
-    }
-
-    // Validate file size (1MB = 1024 * 1024 bytes)
-    const maxSize = 1024 * 1024;
-    if (file.size > maxSize) {
-      setErrors(prev => ({ ...prev, thumbnail_file: 'File size must be less than 1MB' }));
-      return;
-    }
-
-    // Clear any previous errors
-    setErrors(prev => ({ ...prev, thumbnail_file: undefined }));
-    
-    // Set file and create preview URL
-    setFormData(prev => ({ ...prev, thumbnail_file: file }));
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
   };
 
   const validateForm = () => {
@@ -267,18 +218,6 @@ export default function AddGroupModal({
       // Convert empty parent_group_id to null
       if (!saveData.parent_group_id) {
         saveData.parent_group_id = null;
-      }
-      
-      // Handle file upload - convert to base64 for API
-      if (saveData.thumbnail_file) {
-        const reader = new FileReader();
-        const fileData = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(saveData.thumbnail_file);
-        });
-        saveData.thumbnail_data = fileData;
-        delete saveData.thumbnail_file;
       }
       
       await onSave(saveData);
@@ -349,84 +288,27 @@ export default function AddGroupModal({
               <label className={styles.label}>Parent Group</label>
               <select
                 className={styles.select}
-                value={formData.parent_group_id}
+                value={formData.parent_group_id || ''}
                 onChange={e => handleInputChange('parent_group_id', e.target.value)}
               >
                 <option value="">No parent (Root group)</option>
-                {groups.map(group => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} ({group.type})
-                  </option>
-                ))}
+                {groups
+                  .filter(group => !editingGroup || group.id !== editingGroup.id)
+                  .map(group => (
+                    <option key={group.id} value={group.id}>
+                      {group.name} ({group.type})
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
 
-          {/* Thumbnail File Upload */}
-          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-            <label className={styles.label}>Group Thumbnail Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              className={`${styles.input} ${errors.thumbnail_file ? styles.inputError : ''}`}
-              onChange={handleFileChange}
-            />
-            {errors.thumbnail_file && <span className={styles.errorText}>{errors.thumbnail_file}</span>}
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>
-              Upload an image file (JPEG, PNG, GIF, WebP) under 1MB. Leave empty to auto-generate a unique avatar.
-            </div>
-          </div>
-
-          {/* Preview thumbnail */}
-          {(previewUrl || formData.name) && (
-            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-              <label className={styles.label}>Preview</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Thumbnail preview"
-                    style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '12px',
-                      objectFit: 'cover',
-                      border: '1px solid var(--border)'
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                ) : formData.name ? (
-                  <div
-                    style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '12px',
-                      border: '1px solid var(--border)'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: generateAvatarSVG(formData.name, 60) }}
-                  />
-                ) : null}
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  {previewUrl
-                    ? 'This is how your uploaded thumbnail will appear'
-                    : 'Auto-generated avatar based on group name'
-                  }
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* Existing Members Section (Edit Mode Only) */}
           {editingGroup && (
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>Current Members</label>
-              {loadingMembers ? (
-                <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  Loading members...
-                </div>
-              ) : existingMembers.length > 0 ? (
+              {existingMembers.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                   {existingMembers.map(member => (
                     <div

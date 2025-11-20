@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RiUserSharedLine } from 'react-icons/ri';
 import { GrTrophy } from 'react-icons/gr';
@@ -8,32 +8,19 @@ import { FaUser } from 'react-icons/fa';
 import styles from './page.module.css';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 
 export default function SharedGoalsPage() {
   const [followingLoading, setFollowingLoading] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
   const router = useRouter();
   
   // Subscribe to mainTreeStore
   const { mainTree, isLoading } = useMainTree();
   const { setSharedOKRTs } = useMainTreeStore();
   const sharedOKRTs = mainTree.sharedOKRTs || [];
-
-  useEffect(() => {
-    fetchCurrentUser();
-  }, []);
-
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await fetch('/api/me');
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData.user);
-      }
-    } catch (err) {
-      console.error('Failed to fetch current user:', err);
-    }
-  };
+  
+  // Use cached user data
+  const { user: currentUser } = useUser();
 
   const getTypeIcon = (type) => {
     switch (type) {

@@ -6,7 +6,7 @@ import {
   removeUserFromGroup,
   isUserGroupAdmin,
   getUserByEmail
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function GET(request, { params }) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const members = await getGroupMembers(id);
 
     return NextResponse.json({ members });
@@ -32,7 +32,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     
     // Check if user is admin of this group
     const isAdmin = await isUserGroupAdmin(session.sub, id);

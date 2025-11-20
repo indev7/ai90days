@@ -5,15 +5,16 @@ import ProgressRing from './ProgressRing';
 import RewardsDisplay from '../RewardsDisplay';
 import styles from '../../app/okrt/page.module.css';
 
-export default function ObjectiveHeader({ 
-  objective, 
-  onEditObjective, 
-  isExpanded, 
-  onToggleExpanded, 
-  onShareObjective, 
-  onFocusObjective, 
+export default function ObjectiveHeader({
+  objective,
+  onEditObjective,
+  isExpanded,
+  onToggleExpanded,
+  onShareObjective,
+  onFocusObjective,
   isFocused,
-  readOnly = false 
+  readOnly = false,
+  comments = []
 }) {
   const getStatusVariant = (status) => {
     switch (status) {
@@ -130,7 +131,7 @@ export default function ObjectiveHeader({
               </button>
             </div>
             <div className={styles.objectiveRewards}>
-              <RewardsDisplay okrtId={objective.id} />
+              <RewardsDisplay comments={comments} />
             </div>
           </div>
         </div>

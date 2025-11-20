@@ -5,7 +5,7 @@ import {
   getUnreadNotificationCount,
   markAllNotificationsAsRead,
   createNotification 
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function GET(request) {
   try {

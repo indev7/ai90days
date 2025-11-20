@@ -9,6 +9,7 @@ import NotificationsWidget from '@/components/NotificationsWidget';
 import DailyInspirationCard from '@/components/DailyInspirationCard';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import {
   transformOKRTsToObjectives,
@@ -22,7 +23,7 @@ import styles from './page.module.css';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [session, setSession] = useState(null);
+  const { user: session, isLoading: userLoading } = useUser();
   const [objectives, setObjectives] = useState([]);
   const [dayIndex, setDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -32,11 +33,15 @@ export default function Dashboard() {
   // Load mainTree data (will use cached data if available)
   const { isLoading: mainTreeLoading } = useMainTree();
   
-  // Zustand store - subscribe to specific parts that should trigger re-renders
-  const mainTree = useMainTreeStore((state) => state.mainTree);
+  // Zustand store - subscribe to specific sections for progressive rendering
+  const myOKRTs = useMainTreeStore((state) => state.mainTree.myOKRTs);
+  const timeBlocks = useMainTreeStore((state) => state.mainTree.timeBlocks);
+  const notifications = useMainTreeStore((state) => state.mainTree.notifications);
+  const sharedOKRTs = useMainTreeStore((state) => state.mainTree.sharedOKRTs);
+  const groups = useMainTreeStore((state) => state.mainTree.groups);
+  const calendar = useMainTreeStore((state) => state.mainTree.calendar);
+  const sectionStates = useMainTreeStore((state) => state.sectionStates);
   const lastUpdated = useMainTreeStore((state) => state.lastUpdated);
-  const setMainTree = useMainTreeStore((state) => state.setMainTree);
-  const setStoreLoading = useMainTreeStore((state) => state.setLoading);
   const setError = useMainTreeStore((state) => state.setError);
   
   // OKRT Modal state
@@ -75,15 +80,6 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Get session via API
-      const sessionResponse = await fetch('/api/me');
-      if (!sessionResponse.ok) {
-        router.push('/login');
-        return;
-      }
-      const sessionData = await sessionResponse.json();
-      setSession(sessionData.user);
-      
       // Calculate day index based on current quarter
       setDayIndex(calculateDayIndex());
       
@@ -92,17 +88,15 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       setError(error.message);
-      router.push('/login');
     } finally {
       setLoading(false);
     }
   };
 
   // Process mainTree data for dashboard display
-  const processMainTreeForDashboard = (loadedMainTree) => {
-    // Use myOKRTs from mainTree for dashboard display
-    const okrts = loadedMainTree.myOKRTs || [];
-    const timeBlocks = loadedMainTree.timeBlocks || [];
+  const processMainTreeForDashboard = (okrts, timeBlocksData) => {
+    // Use provided OKRTs and timeBlocks
+    const timeBlocksToUse = timeBlocksData || [];
     
     // Get current quarter info for filtering
     const currentDate = new Date();
@@ -165,22 +159,30 @@ export default function Dashboard() {
     setFilteredOKRTs(okrtsWithColors);
     
     // Extract tasks from filtered OKRTs for todo list (used by TodayWidget)
-    extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocks);
+    extractTodoTasks(filteredOKRTs, transformedObjectives, colorPalette, timeBlocksToUse);
   };
 
-  // Process mainTree data whenever it changes (from cross-tab sync or initial load)
-  // Only process if we have a session and mainTree is loaded
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (session && mainTree && mainTree.myOKRTs) {
-      console.log('Processing mainTree for dashboard with', mainTree.myOKRTs.length, 'OKRTs');
-      processMainTreeForDashboard(mainTree);
+    if (!userLoading && !session) {
+      router.push('/login');
     }
-  }, [mainTree, session]);
+  }, [session, userLoading, router]);
+
+  // Process myOKRTs and timeBlocks whenever they change (progressive rendering)
+  useEffect(() => {
+    if (session && myOKRTs && myOKRTs.length >= 0) {
+      console.log('Processing myOKRTs for dashboard:', myOKRTs.length, 'OKRTs');
+      processMainTreeForDashboard(myOKRTs, timeBlocks);
+    }
+  }, [myOKRTs, timeBlocks, session]);
 
   // Initial data fetch on mount only
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (session) {
+      fetchData();
+    }
+  }, [session]);
 
   // Add window focus listener to refresh data when user comes back to the page
   // But only if the data is stale (older than 5 minutes)
@@ -402,7 +404,7 @@ export default function Dashboard() {
 
 
 
-  if (loading || mainTreeLoading) {
+  if (userLoading) {
     return (
       <div className={styles.container}>
         <div className={styles.content}>
@@ -416,60 +418,81 @@ export default function Dashboard() {
     return null; // Will redirect
   }
   
-  // Don't render until we have both session and mainTree data
-  if (!mainTree || !mainTree.myOKRTs) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.content}>
-          <div className={styles.loading}>Loading data...</div>
-        </div>
-      </div>
-    );
-  }
+  // Check which sections are available for progressive rendering
+  const hasMyOKRTs = sectionStates.myOKRTs.loaded;
+  const hasTimeBlocks = sectionStates.timeBlocks.loaded;
+  const hasNotifications = sectionStates.notifications.loaded;
+  const hasSharedOKRTs = sectionStates.sharedOKRTs.loaded;
+  const hasGroups = sectionStates.groups.loaded;
+  const hasCalendar = sectionStates.calendar.loaded;
 
   const currentDate = formatCurrentDate();
 
-  // Render layout based on screen size
+  // Render layout based on screen size with progressive rendering
   const renderMobileLayout = () => (
     <>
-      {/* 1. 12 Week Clock */}
-      <div className={styles.column}>
-        <div className={styles.clockCard}>
-          <TwelveWeekClock
-            size={getClockSize()}
-            dayIndex={dayIndex}
-            objectives={objectives}
-            colors={clockColors}
-            dateLabel={currentDate}
-            titlePrefix="Day"
-            onCreateObjective={handleCreateObjective}
-            okrts={filteredOKRTs}
-            {...getTrackProps()}
-          />
+      {/* 1. 12 Week Clock - depends on myOKRTs and timeBlocks */}
+      {hasMyOKRTs && hasTimeBlocks ? (
+        <div className={styles.column}>
+          <div className={styles.clockCard}>
+            <TwelveWeekClock
+              size={getClockSize()}
+              dayIndex={dayIndex}
+              objectives={objectives}
+              colors={clockColors}
+              dateLabel={currentDate}
+              titlePrefix="Day"
+              onCreateObjective={handleCreateObjective}
+              okrts={filteredOKRTs}
+              {...getTrackProps()}
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className={styles.column}>
+          <div className={styles.clockCard}>
+            <div className={styles.loading}>Loading clock...</div>
+          </div>
+        </div>
+      )}
 
-      {/* 2. Daily Inspiration */}
+      {/* 2. Daily Inspiration - always render */}
       <div className={styles.column}>
         <DailyInspirationCard />
       </div>
 
-      {/* 3. Today Widget */}
-      <div className={styles.column}>
-        <TodayWidget objectives={objectives} todoTasks={todoTasks} />
-      </div>
-
-      {/* 4. Notifications */}
-      <div className={styles.column}>
-        <div className={styles.componentCard}>
-          <div className={styles.componentHeader}>
-            <h3 className={styles.componentTitle}>Notifications</h3>
-          </div>
-          <div className={styles.componentContent}>
-            <NotificationsWidget />
+      {/* 3. Today Widget - depends on myOKRTs and timeBlocks */}
+      {hasMyOKRTs && hasTimeBlocks ? (
+        <div className={styles.column}>
+          <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+        </div>
+      ) : (
+        <div className={styles.column}>
+          <div className={styles.componentCard}>
+            <div className={styles.loading}>Loading tasks...</div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* 4. Notifications - depends on notifications */}
+      {hasNotifications ? (
+        <div className={styles.column}>
+          <div className={styles.componentCard}>
+            <div className={styles.componentHeader}>
+              <h3 className={styles.componentTitle}>Notifications</h3>
+            </div>
+            <div className={styles.componentContent}>
+              <NotificationsWidget />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.column}>
+          <div className={styles.componentCard}>
+            <div className={styles.loading}>Loading notifications...</div>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -478,32 +501,50 @@ export default function Dashboard() {
       {/* Column 1: Daily Inspiration + Today Clock (40%) */}
       <div className={styles.column}>
         <DailyInspirationCard />
-        <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+        {hasMyOKRTs && hasTimeBlocks ? (
+          <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+        ) : (
+          <div className={styles.componentCard}>
+            <div className={styles.loading}>Loading tasks...</div>
+          </div>
+        )}
       </div>
 
       {/* Column 2: 12 Week Clock + Notifications (60%) */}
       <div className={styles.column}>
-        <div className={styles.clockCard}>
-          <TwelveWeekClock
-            size={getClockSize()}
-            dayIndex={dayIndex}
-            objectives={objectives}
-            colors={clockColors}
-            dateLabel={currentDate}
-            titlePrefix="Day"
-            onCreateObjective={handleCreateObjective}
-            okrts={filteredOKRTs}
-            {...getTrackProps()}
-          />
-        </div>
-        <div className={styles.componentCard}>
-          <div className={styles.componentHeader}>
-            <h3 className={styles.componentTitle}>Notifications</h3>
+        {hasMyOKRTs && hasTimeBlocks ? (
+          <div className={styles.clockCard}>
+            <TwelveWeekClock
+              size={getClockSize()}
+              dayIndex={dayIndex}
+              objectives={objectives}
+              colors={clockColors}
+              dateLabel={currentDate}
+              titlePrefix="Day"
+              onCreateObjective={handleCreateObjective}
+              okrts={filteredOKRTs}
+              {...getTrackProps()}
+            />
           </div>
-          <div className={styles.componentContent}>
-            <NotificationsWidget />
+        ) : (
+          <div className={styles.clockCard}>
+            <div className={styles.loading}>Loading clock...</div>
           </div>
-        </div>
+        )}
+        {hasNotifications ? (
+          <div className={styles.componentCard}>
+            <div className={styles.componentHeader}>
+              <h3 className={styles.componentTitle}>Notifications</h3>
+            </div>
+            <div className={styles.componentContent}>
+              <NotificationsWidget />
+            </div>
+          </div>
+        ) : (
+          <div className={styles.componentCard}>
+            <div className={styles.loading}>Loading notifications...</div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -513,36 +554,54 @@ export default function Dashboard() {
       {/* Column 1: Daily Inspiration + Notifications (33%) */}
       <div className={styles.column}>
         <DailyInspirationCard />
-        <div className={styles.componentCard}>
-          <div className={styles.componentHeader}>
-            <h3 className={styles.componentTitle}>Notifications</h3>
+        {hasNotifications ? (
+          <div className={styles.componentCard}>
+            <div className={styles.componentHeader}>
+              <h3 className={styles.componentTitle}>Notifications</h3>
+            </div>
+            <div className={styles.componentContent}>
+              <NotificationsWidget />
+            </div>
           </div>
-          <div className={styles.componentContent}>
-            <NotificationsWidget />
+        ) : (
+          <div className={styles.componentCard}>
+            <div className={styles.loading}>Loading notifications...</div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Column 2: 12 Week Clock (33%) */}
       <div className={styles.column}>
-        <div className={styles.clockCard}>
-          <TwelveWeekClock
-            size={getClockSize()}
-            dayIndex={dayIndex}
-            objectives={objectives}
-            colors={clockColors}
-            dateLabel={currentDate}
-            titlePrefix="Day"
-            onCreateObjective={handleCreateObjective}
-            okrts={filteredOKRTs}
-            {...getTrackProps()}
-          />
-        </div>
+        {hasMyOKRTs && hasTimeBlocks ? (
+          <div className={styles.clockCard}>
+            <TwelveWeekClock
+              size={getClockSize()}
+              dayIndex={dayIndex}
+              objectives={objectives}
+              colors={clockColors}
+              dateLabel={currentDate}
+              titlePrefix="Day"
+              onCreateObjective={handleCreateObjective}
+              okrts={filteredOKRTs}
+              {...getTrackProps()}
+            />
+          </div>
+        ) : (
+          <div className={styles.clockCard}>
+            <div className={styles.loading}>Loading clock...</div>
+          </div>
+        )}
       </div>
 
       {/* Column 3: Today Widget (33%) */}
       <div className={styles.column}>
-        <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+        {hasMyOKRTs && hasTimeBlocks ? (
+          <TodayWidget objectives={objectives} todoTasks={todoTasks} />
+        ) : (
+          <div className={styles.componentCard}>
+            <div className={styles.loading}>Loading tasks...</div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../lib/auth';
-import { createOKRT, getOKRTHierarchy, getOKRTsByParent, getUserById, getOKRTShares, getGroupById } from '../../../lib/db';
+import { createOKRT, getOKRTHierarchy, getOKRTsByParent, getUserById, getOKRTShares, getGroupById } from '../../../lib/pgdb';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET /api/okrt - Get all OKRTs for the current user in hierarchical order, or by parent_id
@@ -105,10 +105,10 @@ export async function POST(request) {
       cycle_qtr,
       visibility,
       objective_kind: type === 'O' ? objective_kind : null,
-      kr_target_number: type === 'K' ? kr_target_number : null,
+      kr_target_number: type === 'K' ? (kr_target_number !== '' && kr_target_number != null ? parseFloat(kr_target_number) : null) : null,
       kr_unit: type === 'K' ? kr_unit : null,
-      kr_baseline_number: type === 'K' ? kr_baseline_number : null,
-      weight: ['K', 'T'].includes(type) ? weight : null,
+      kr_baseline_number: type === 'K' ? (kr_baseline_number !== '' && kr_baseline_number != null ? parseFloat(kr_baseline_number) : null) : null,
+      weight: ['K', 'T'].includes(type) ? (weight !== '' && weight != null ? parseFloat(weight) : 1.0) : null,
       task_status: type === 'T' ? (task_status || 'todo') : null,
       due_date: (type === 'T' || type === 'K') && due_date ? due_date : null,
       recurrence_json: type === 'T' ? recurrence_json : null,

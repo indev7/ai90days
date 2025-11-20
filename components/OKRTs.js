@@ -7,6 +7,7 @@ import { styled } from '@mui/material/styles';
 import { GrTrophy } from 'react-icons/gr';
 import { GiGolfFlag } from 'react-icons/gi';
 import { LiaGolfBallSolid } from 'react-icons/lia';
+import { FaPlus } from 'react-icons/fa';
 import { getThemeColorPalette } from '@/lib/clockUtils';
 import styles from './OKRTs.module.css';
 
@@ -58,7 +59,7 @@ const StyledTreeItem = styled(TreeItem)(({ theme, objectiveColor, objectiveIndex
   },
 }));
 
-export default function OKRTs({ okrts = [] }) {
+export default function OKRTs({ okrts = [], onAddTask }) {
   const [expanded, setExpanded] = useState([]);
 
   const organizeHierarchy = () => {
@@ -164,6 +165,19 @@ export default function OKRTs({ okrts = [] }) {
                           <span className={styles.progress}>
                             {formatProgress(kr.progress)}
                           </span>
+                        )}
+                        {onAddTask && (!kr.tasks || kr.tasks.length === 0) && (
+                          <button
+                            className={styles.addTaskButton}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAddTask(kr.id);
+                            }}
+                            title="Add Task"
+                          >
+                            <FaPlus size={12} />
+                            <span>Add Task</span>
+                          </button>
                         )}
                       </div>
                     </div>

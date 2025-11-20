@@ -1,7 +1,7 @@
 // app/api/llm/route.js
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase } from '@/lib/db';
+import { getDatabase, get, all } from '@/lib/pgdb';
 
 /* =========================
    Utility functions
@@ -97,16 +97,16 @@ function cleanObject(obj) {
 
 async function getOKRTContext(userId) {
   try {
-    const db = await getDatabase();
+    await getDatabase(); // Ensure database is initialized
     const currentQuarter = getCurrentQuarter();
 
-    const user = await db.get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
+    const user = await get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
     const displayName = user?.display_name || 'User';
 
-    const objectives = await db.all(
+    const objectives = await all(
       `SELECT * FROM okrt
        WHERE owner_id = ? AND type = 'O'
-       ORDER BY 
+       ORDER BY
          CASE WHEN cycle_qtr = ? THEN 0 ELSE 1 END,
          status = 'A' DESC,
          created_at DESC
@@ -118,7 +118,7 @@ async function getOKRTContext(userId) {
 
     for (const obj of objectives) {
       const objData = { ...obj, krs: [] };
-      const krs = await db.all(
+      const krs = await all(
         `SELECT * FROM okrt
          WHERE owner_id = ? AND parent_id = ? AND type = 'K'
          ORDER BY created_at DESC
@@ -127,7 +127,7 @@ async function getOKRTContext(userId) {
       );
       for (const kr of krs) {
         const krData = { ...kr, tasks: [] };
-        const tasks = await db.all(
+        const tasks = await all(
           `SELECT * FROM okrt
            WHERE owner_id = ? AND parent_id = ? AND type = 'T'
            ORDER BY task_status = 'in_progress' DESC, created_at DESC
@@ -342,8 +342,8 @@ export async function POST(request) {
     
     // Add user display name if not present in client context
     if (clientOkrtContext && !clientOkrtContext.user) {
-      const db = await getDatabase();
-      const user = await db.get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
+      await getDatabase(); // Ensure database is initialized
+      const user = await get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
       okrtContext.user = { displayName: user?.display_name || 'User' };
     }
     

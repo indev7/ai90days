@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getUserAdminGroups } from '@/lib/db';
+import { getUserAdminGroups } from '@/lib/pgdb';
 
 export async function GET(request) {
   try {

@@ -346,8 +346,19 @@ function TwelveWeekClock({
           {/* Center pivot */}
           <circle cx={cx} cy={cy} r={Math.max(4, Math.round(6 * scaleFactor))} fill={handColor} />
 
-          {/* Day label under pivot */}
-          <text x={cx} y={cy + Math.round(28 * scaleFactor)} textAnchor="middle" fontSize={centerLabelFontSize} fill={ticksAndText} opacity={0.8} fontWeight={600}>
+          {/* Day label - positioned above pivot for days 28-63, below for all others */}
+          <text
+            x={cx}
+            y={displayDayNumber >= 28 && displayDayNumber <= 63
+              ? cy - Math.round(28 * scaleFactor)
+              : cy + Math.round(28 * scaleFactor)
+            }
+            textAnchor="middle"
+            fontSize={centerLabelFontSize}
+            fill={ticksAndText}
+            opacity={0.8}
+            fontWeight={600}
+          >
             {dayLabel}
           </text>
           {/* Circumference border */}

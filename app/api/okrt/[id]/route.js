@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getOKRTById, updateOKRT, deleteOKRTCascade, getOKRTFollowers, getUserById } from '../../../../lib/db';
+import { getOKRTById, updateOKRT, deleteOKRTCascade, getOKRTFollowers, getUserById } from '../../../../lib/pgdb';
 import { notifyProgressUpdate } from '../../../../lib/notifications';
 
 // GET /api/okrt/[id] - Get a specific OKRT by ID

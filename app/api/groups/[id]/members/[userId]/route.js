@@ -5,7 +5,7 @@ import {
   addUserToGroup,
   isUserGroupAdmin,
   getGroupMembers
-} from '@/lib/db';
+} from '@/lib/pgdb';
 
 export async function PUT(request, { params }) {
   try {
@@ -14,7 +14,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: groupId, userId } = params;
+    const { id: groupId, userId } = await params;
     
     // Check if user is admin of this group
     const isAdmin = await isUserGroupAdmin(session.sub, groupId);
@@ -48,7 +48,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: groupId, userId } = params;
+    const { id: groupId, userId } = await params;
     
     // Check if user is admin of this group or removing themselves
     const isAdmin = await isUserGroupAdmin(session.sub, groupId);

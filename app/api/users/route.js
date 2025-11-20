@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { searchUsers } from '@/lib/db';
+import { searchUsers } from '@/lib/pgdb';
 
 export async function GET(request) {
   try {
