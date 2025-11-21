@@ -54,7 +54,7 @@ export default function AddGroupModal({
           members: [] // Start with empty members for edit mode
         });
         // Set existing members from mainTree
-        setExistingMembers(existingMembersFromMainTree);
+        setExistingMembers(existingMembersFromMainTree || []);
       } else {
         // Create mode - reset form
         setFormData({
@@ -70,7 +70,7 @@ export default function AddGroupModal({
       }
       setErrors({});
     }
-  }, [isOpen, editingGroup, existingMembersFromMainTree]);
+  }, [isOpen, editingGroup]);
 
   // Handle clicks outside member search dropdown
   useEffect(() => {

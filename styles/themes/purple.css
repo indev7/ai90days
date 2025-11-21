@@ -16,14 +16,22 @@ html[data-theme="purple"] {
   --brand-700: #4338ca;  /* Dark purple (active) */
   --brand-900: #312e81;  /* Darkest purple */
 
+  /* Strategy House Shades - Purple tints from spec */
+  --strategy-shade: #f8f7ff;  /* Light purple shade for strategy cards */
+  --strategy-column-bg: #faf9ff;  /* Very light purple for columns (almost white) */
+  --strategy-band-bg: #f3f2ff;  /* Light purple for mission band */
+  
+  /* Toggle Switch Background - from spec */
+  --toggle-bg: #f0edff;  /* Light purple background for toggle pill */
+
   /* Surfaces (Clean modern feel from screenshot) */
   --bg:        linear-gradient(135deg, #fefbff 0%, #f8fafc 100%);
   --bg-solid:  #ffffff;
   --surface:   #ffffff;
   --surface-elevated: #ffffff;
   --card:      #ffffff;
-  --border:    #dbdcde;   /* Light gray border */
-  --border-light: #d7dbde;
+  --border:    #dedaf7;   /* Light purple border from spec */
+  --border-light: #e0def5; /* Lighter purple border from spec */
 
   /* Text (Clean neutrals from screenshot) */
   --text: #1e293b;              /* Dark slate text */
@@ -62,6 +70,14 @@ html[data-theme="purple"] {
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
   --border-subtle: var(--border);
+
+  /* Strategy Temple Colors */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-band-bg);
+  --strategy-temple-column: var(--strategy-column-bg);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: #e3e0f5;
+  --strategy-temple-text: var(--brand-500);
 }
 
 /* Purple Theme - Clean and modern like the screenshot */

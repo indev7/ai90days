@@ -17,6 +17,12 @@ html[data-theme="coffee"] {
   --brand-700: #6f4e37;  /* Dark (active) */
   --brand-900: #3e2c23;  /* Darker (pressed/depth) */
 
+  /* Strategy House Shade - Coffee tint for backgrounds */
+  --strategy-shade: #f9f6f2;  /* Light coffee shade for strategy house elements */
+  
+  /* Toggle Switch Background */
+  --toggle-bg: #f2e8dc;  /* Light coffee background for toggle pill */
+
   /* Surfaces (light, airy sections like the Forms page) */
   --bg:        linear-gradient(135deg, #fdfbf9 0%, #f5f0eb 100%);
   --bg-solid:  #ffffff;
@@ -63,6 +69,14 @@ html[data-theme="coffee"] {
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
   --border-subtle: var(--border);
+
+  /* Strategy Temple Colors */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-shade);
+  --strategy-temple-column: var(--strategy-shade);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: var(--border-light);
+  --strategy-temple-text: var(--brand-500);
 }
 
 /* Coffee Brown Light Theme - Only light mode supported */
