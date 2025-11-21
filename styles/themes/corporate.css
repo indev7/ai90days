@@ -16,6 +16,12 @@
   --brand-700: #6b46c1;  /* Deep purple */
   --brand-900: #4c1d95;  /* Darkest purple */
 
+  /* Strategy House Shade - Corporate purple tint for backgrounds */
+  --strategy-shade: #faf5ff;  /* Light purple shade for strategy house elements */
+  
+  /* Toggle Switch Background */
+  --toggle-bg: #f3e8ff;  /* Light purple background for toggle pill */
+
   /* Surfaces (Corporate, professional feel) */
   --bg:        linear-gradient(135deg, #fdfcff 0%, #f8f6ff 100%);
   --bg-solid:  #ffffff;
@@ -62,6 +68,14 @@
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
   --border-subtle: var(--border);
+
+  /* Strategy Temple Colors */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-shade);
+  --strategy-temple-column: var(--strategy-shade);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: var(--border-light);
+  --strategy-temple-text: var(--brand-500);
 }
 
 /* Dark Mode – Corporate Dark Theme */
@@ -86,6 +100,12 @@ html[data-theme="corporate-dark"] {
   --brand-secondary: #8b5cf6; /* Medium purple */
   --brand-accent: #c4b5fd; /* Light purple accent */
 
+  /* Strategy House Shade - Dark mode variant */
+  --strategy-shade: #2a2438;  /* Dark purple shade for strategy house elements */
+  
+  /* Toggle Switch Background - Dark mode */
+  --toggle-bg: #2a2438;  /* Dark purple background for toggle pill */
+
   /* Status (Corporate Dark) */
   --success: #34d399;
   --success-light: #1f2937;
@@ -102,4 +122,12 @@ html[data-theme="corporate-dark"] {
   --highlight: var(--brand-accent);
   --text-primary: var(--text);
   --text-secondary: #e5e7eb;
+
+  /* Strategy Temple Colors (Dark Mode) */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-shade);
+  --strategy-temple-column: var(--strategy-shade);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: var(--border-light);
+  --strategy-temple-text: var(--brand-secondary);
 }

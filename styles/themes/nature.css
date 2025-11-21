@@ -16,6 +16,12 @@ html[data-theme="nature"] {
   --brand-700: #2d5016;  /* Dark forest green */
   --brand-900: #1a3009;  /* Darkest green */
 
+  /* Strategy House Shade - Nature green tint for backgrounds */
+  --strategy-shade: #f6f9f4;  /* Light green shade for strategy house elements */
+  
+  /* Toggle Switch Background */
+  --toggle-bg: #e8f5e8;  /* Light green background for toggle pill */
+
   /* Surfaces (Natural, earthy feel) */
   --bg:        linear-gradient(135deg, #f8fdf6 0%, #f0f8f0 100%);
   --bg-solid:  #ffffff;
@@ -62,6 +68,14 @@ html[data-theme="nature"] {
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
   --border-subtle: var(--border);
+
+  /* Strategy Temple Colors */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-shade);
+  --strategy-temple-column: var(--strategy-shade);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: var(--border-light);
+  --strategy-temple-text: var(--brand-500);
 }
 
 /* Nature Green Light Theme - Only light mode supported */

@@ -65,7 +65,7 @@
   height: 14px;
 }
 
-/* View Toggle Styles */
+/* View Toggle Styles - Updated to match spec design */
 .viewToggle {
   display: flex;
   align-items: center;
@@ -74,41 +74,40 @@
 
 .toggleSwitch {
   display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--space-1);
-  gap: var(--space-1);
+  background: var(--toggle-bg, var(--brand-100)); /* Light tinted background */
+  border: none; /* Remove border for cleaner look */
+  border-radius: 999px; /* Full pill shape */
+  padding: 4px; /* Match spec exactly */
+  gap: 4px; /* Match spec exactly */
 }
 
 .toggleOption {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: 6px 14px; /* Match spec exactly */
   border: none;
-  background: none;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
+  background: transparent; /* Transparent by default */
+  color: var(--text-secondary); /* Theme-aware muted color */
+  font-size: 13px; /* Match spec */
   font-weight: 500;
-  border-radius: var(--radius-md);
+  border-radius: 999px; /* Full pill shape */
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 36px;
+  min-width: 100px; /* Match spec */
+  white-space: nowrap;
 }
 
 .toggleOption:hover {
-  background: rgba(124, 58, 237, 0.05);
+  background: rgba(0, 0, 0, 0.03); /* Subtle hover */
   color: var(--brand-primary);
 }
 
 .toggleOption.active {
-  background: linear-gradient(135deg,
-    var(--brand-primary) 0%,
-    var(--brand-secondary) 100%
-  );
+  background: var(--brand-primary); /* Solid brand color */
   color: white;
-  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
+  box-shadow: var(--shadow-brand); /* Theme-specific prominent shadow */
 }
 
 .loading,
@@ -493,5 +492,204 @@
   
   .confirmModal {
     max-width: 90%;
+  }
+}
+
+/* Strategy House Styles */
+.strategyContainer {
+  width: 100%;
+  height: calc(100vh - 72px - 80px); /* Full viewport minus header and toggle */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.strategyPantheon {
+  position: relative;
+  background: transparent;
+  border-radius: 18px;
+  padding: 24px 24px 32px;
+  box-shadow: none;
+  border: none;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.templeSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.contentOverlay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.visionMission {
+  position: absolute;
+  /* Anchored to invisible SVG anchor point via CSS variables */
+  top: var(--anchor-y, 21%);
+  left: var(--anchor-x, 50%);
+  transform: translate(-50%, -50%);
+  max-width: 620px;
+  text-align: center;
+  padding: 10px 16px;
+  background-color: white;
+  border-radius: 10px;
+  
+
+  z-index: 10;
+}
+
+.visionTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+}
+
+.visionText {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+.missionText {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.strategiesGrid {
+  position: absolute;
+  /* Positioned at anchor point y-coordinate (20/60 = 33.33%) */
+  top: 38%;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  display: grid;
+  /* Grid columns set dynamically via inline style based on number of strategies */
+  gap: 16px;
+  align-content: start;
+  padding: 0 24px;
+}
+
+.strategyColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Each column positioned relative to its anchor point */
+  position: relative;
+}
+
+.strategyCard {
+  border-radius: 14px;
+  background: var(--strategy-shade);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.strategyNameRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+}
+
+.strategyName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strategyProgress {
+  font-size: 11px;
+  color: var(--brand-primary);
+  font-weight: 500;
+}
+
+.initiativeCard {
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.initiativeName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.initiativeProgress {
+  color: var(--text-secondary);
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .strategiesGrid {
+    /* Grid columns handled dynamically, responsive wrapping */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .strategyContainer {
+    padding: 12px;
+    height: auto;
+    min-height: calc(100vh - 72px - 100px);
+  }
+  
+  .strategyPantheon {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+  }
+  
+  .templeSvg {
+    display: none;
+  }
+  
+  .contentOverlay {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .visionMission {
+    position: static;
+    transform: none;
+    background: var(--surface);
+    width: 100%;
+    max-width: none;
+  }
+  
+  .strategiesGrid {
+    /* Single column layout on mobile */
+    grid-template-columns: minmax(0, 1fr) !important;
+    position: static;
+    padding: 0;
+    padding-bottom: 40px;
   }
 }
