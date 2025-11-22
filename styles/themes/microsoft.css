@@ -16,6 +16,12 @@ html[data-theme="microsoft"] {
   --brand-700: #005a9e;  /* Dark blue */
   --brand-900: #004578;  /* Darkest blue */
 
+  /* Strategy House Shade - Microsoft blue tint for backgrounds */
+  --strategy-shade: #f3f9fd;  /* Light blue shade for strategy house elements */
+  
+  /* Toggle Switch Background */
+  --toggle-bg: #e1effa;  /* Light blue background for toggle pill */
+
   /* Surfaces (Microsoft Fluent Design) */
   --bg:        linear-gradient(135deg, #faf9f8 0%, #f3f2f1 100%);
   --bg-solid:  #ffffff;
@@ -62,6 +68,14 @@ html[data-theme="microsoft"] {
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
   --border-subtle: var(--border);
+
+  /* Strategy Temple Colors */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-shade);
+  --strategy-temple-column: var(--strategy-shade);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: var(--border-light);
+  --strategy-temple-text: var(--brand-500);
 }
 
 /* Microsoft Light Theme - Only light mode supported */

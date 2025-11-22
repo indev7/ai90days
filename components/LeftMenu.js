@@ -10,6 +10,7 @@ import { GoClock } from "react-icons/go";
 import { MdOutlineSelfImprovement } from "react-icons/md";
 import { SiSlideshare } from "react-icons/si";
 import { RiOrganizationChart } from "react-icons/ri";
+import { TbBriefcase } from "react-icons/tb";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
@@ -58,7 +59,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     calendar: <RiCalendarScheduleLine size={iconSize} />,
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
-    organisation: <RiOrganizationChart size={iconSize} />,
+    organisation: <TbBriefcase size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
