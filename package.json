@@ -34,6 +34,7 @@
     "remark-gfm": "^4.0.1",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
+  "sanitize-html": "^2.9.0",
     "uuid": "^11.1.0",
     "zustand": "^5.0.8"
 

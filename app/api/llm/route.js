@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getDatabase, get, all } from '@/lib/pgdb';
+import { sanitizeString, sanitizeObject } from '@/lib/sanitizeLayer';
 
 /* =========================
    Utility functions
@@ -389,7 +390,8 @@ export async function POST(request) {
                 try {
                   const data = JSON.parse(line);
                   if (data.message?.content) {
-                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: data.message.content }) + '\n'));
+                    const safe = sanitizeString(String(data.message.content));
+                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: safe }) + '\n'));
                   }
                   if (data.done) {
                     controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
@@ -505,7 +507,7 @@ export async function POST(request) {
           const handleEvent = (eventName, payloadStr) => {
             if (payloadStr === '[DONE]') {
               flushAllTools();
-              if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+              if (actionsPayloads.length) { prep(); send({ type: 'actions', data: sanitizeObject(actionsPayloads) }); }
               send({ type: 'done' });
               return 'CLOSE';
             }
@@ -519,8 +521,9 @@ export async function POST(request) {
                   try { const inner = JSON.parse(data); return inner?.delta ?? data; } catch { return data; }
                 })() : (data?.delta ?? '');
                 if (textDelta) {
-                  fullTextResponse += textDelta;
-                  send({ type: 'content', data: textDelta });
+                  const safeDelta = sanitizeString(String(textDelta));
+                  fullTextResponse += safeDelta;
+                  send({ type: 'content', data: safeDelta });
                 }
                 break;
               }
@@ -563,7 +566,7 @@ export async function POST(request) {
                   console.log(JSON.stringify(actionsPayloads, null, 2));
                   console.log('=== END OPENAI TOOL RESPONSE ===');
                   prep();
-                  send({ type: 'actions', data: actionsPayloads });
+                  send({ type: 'actions', data: sanitizeObject(actionsPayloads) });
                 }
                 break;
               }
@@ -588,7 +591,7 @@ export async function POST(request) {
                   console.log(JSON.stringify(actionsPayloads, null, 2));
                   console.log('=== END OPENAI TOOL RESPONSE ===');
                   prep();
-                  send({ type: 'actions', data: actionsPayloads });
+                  send({ type: 'actions', data: sanitizeObject(actionsPayloads) });
                 }
                 break;
               }
@@ -602,7 +605,7 @@ export async function POST(request) {
                   console.log(JSON.stringify(dedupe(actionsPayloads), null, 2));
                   console.log('=== END OPENAI TOOL RESPONSE ===');
                   prep();
-                  send({ type: 'actions', data: dedupe(actionsPayloads) });
+                  send({ type: 'actions', data: sanitizeObject(dedupe(actionsPayloads)) });
                 }
                 break;
               }
@@ -617,7 +620,7 @@ export async function POST(request) {
                   console.log(JSON.stringify(dedupe(actionsPayloads), null, 2));
                   console.log('=== END OPENAI TOOL RESPONSE ===');
                   prep();
-                  send({ type: 'actions', data: dedupe(actionsPayloads) });
+                  send({ type: 'actions', data: sanitizeObject(dedupe(actionsPayloads)) });
                 }
                 // Log complete text response if not already logged
                 if (fullTextResponse.trim() && !hasLoggedTextResponse) {
@@ -632,7 +635,7 @@ export async function POST(request) {
               case 'response.error': {
                 console.error('Responses stream error:', data);
                 flushAllTools();
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: sanitizeObject(actionsPayloads) }); }
                 send({ type: 'done' });
                 return 'CLOSE';
               }
