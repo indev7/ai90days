@@ -354,6 +354,36 @@ export default function IntervestOrgChart() {
     setShowDeleteConfirm(true);
   };
 
+  const toggleControls = (
+    <div className={styles.viewToggle}>
+      <div className={styles.toggleSwitch}>
+        <button
+          className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
+          onClick={() => setViewType('strategy')}
+        >
+          Strategy
+        </button>
+        <button
+          className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
+          onClick={() => setViewType('groups')}
+        >
+          Groups
+        </button>
+        <button
+          className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
+          onClick={() => {
+            setViewType('objectives');
+            if (objectivesValue.length === 0) {
+              buildObjectivesHierarchy();
+            }
+          }}
+        >
+          Objectives
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className={styles.container}>
       {/* PrimeReact overrides & connector tuning */}
@@ -374,100 +404,51 @@ export default function IntervestOrgChart() {
       `}</style>
 
       <div className={styles.content}>
-        {/* Toggle Switch */}
-        {viewType !== 'strategy' && (
-          <div className={styles.header}>
-            <div className={styles.viewToggle}>
-              <div className={styles.toggleSwitch}>
-                <button
-                  className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
-                  onClick={() => setViewType('strategy')}
-                >
-                  Strategy
-                </button>
-                <button
-                  className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
-                  onClick={() => setViewType('groups')}
-                >
-                  Groups
-                </button>
-                <button
-                  className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
-                  onClick={() => {
-                    setViewType('objectives');
-                    if (objectivesValue.length === 0) {
-                      buildObjectivesHierarchy();
-                    }
-                  }}
-                >
-                  Objectives
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
+        {/* Toggle Switch inside each view for consistent placement */}
         {/* Render appropriate view based on viewType */}
         {viewType === 'strategy' && (
-          <div className={styles.strategyContainer}>
-            <StrategyHouse
-              toggleSlot={(
-                <div className={styles.viewToggle}>
-                  <div className={styles.toggleSwitch}>
-                    <button
-                      className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
-                      onClick={() => setViewType('strategy')}
-                    >
-                      Strategy
-                    </button>
-                    <button
-                      className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
-                      onClick={() => setViewType('groups')}
-                    >
-                      Groups
-                    </button>
-                    <button
-                      className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
-                      onClick={() => {
-                        setViewType('objectives');
-                        if (objectivesValue.length === 0) {
-                          buildObjectivesHierarchy();
-                        }
-                      }}
-                    >
-                      Objectives
-                    </button>
-                  </div>
-                </div>
-              )}
-            />
+          <div className={`${styles.strategyContainer} ${styles.strategySurface}`}>
+            <div className={styles.strategyNavSlot}>{toggleControls}</div>
+            <div className={styles.strategySurfaceContent}>
+              <StrategyHouse />
+            </div>
           </div>
         )}
 
         {viewType === 'groups' && (
-          <GroupsView
-            orgValue={orgValue}
-            groupDetails={groupDetails}
-            currentUserId={currentUser?.id}
-            currentUserRole={currentUser?.role}
-            onNodeClick={handleNodeClick}
-            expandedGroupId={expandedGroupId}
-            onEditGroup={handleEditGroup}
-            onAddGroup={handleAddGroup}
-            groups={groups}
-            mainTreeLoading={mainTreeLoading}
-            userLoading={userLoading}
-            error={error}
-          />
+          <div className={styles.strategySurface}>
+            <div className={styles.strategyNavSlot}>{toggleControls}</div>
+            <div className={styles.strategySurfaceContent}>
+              <GroupsView
+                orgValue={orgValue}
+                groupDetails={groupDetails}
+                currentUserId={currentUser?.id}
+                currentUserRole={currentUser?.role}
+                onNodeClick={handleNodeClick}
+                expandedGroupId={expandedGroupId}
+                onEditGroup={handleEditGroup}
+                onAddGroup={handleAddGroup}
+                groups={groups}
+                mainTreeLoading={mainTreeLoading}
+                userLoading={userLoading}
+                error={error}
+              />
+            </div>
+          </div>
         )}
 
         {viewType === 'objectives' && (
-          <ObjectivesView
-            objectivesValue={objectivesValue}
-            expandedObjectiveId={expandedObjectiveId}
-            onNodeClick={handleObjectiveNodeClick}
-            mainTreeLoading={mainTreeLoading}
-          />
+          <div className={`${styles.strategySurface} ${styles.objectiveSurface}`}>
+            <div className={styles.strategyNavSlot}>{toggleControls}</div>
+            <div className={styles.strategySurfaceContent}>
+              <ObjectivesView
+                objectivesValue={objectivesValue}
+                expandedObjectiveId={expandedObjectiveId}
+                onNodeClick={handleObjectiveNodeClick}
+                mainTreeLoading={mainTreeLoading}
+              />
+            </div>
+          </div>
         )}
       </div>
 
