@@ -7,13 +7,10 @@ import styles from './page.module.css';
 /**
  * StrategyHouse Component
  * Displays the strategy pantheon with vision/mission and strategic initiatives
- *
- * ANCHOR SYSTEM:
- * - Invisible anchor points in the SVG define where text boxes should attach
- * - Vision/Mission box anchors to top center (x=50%, y=15% from viewBox)
- * - Strategy pillar boxes anchor to positions above each column (y=33.33%)
- * - Positions calculated dynamically based on number of strategies
- * - HTML components positioned using CSS variables passed from anchor calculations
+ * Based on Strategy_Dashboard.js template with enhanced features:
+ * - Calculates overall progress as average of strategic objectives
+ * - Displays owner avatars for each strategic objective
+ * - Modern pantheon-style visualization
  */
 export default function StrategyHouse() {
   const mainTree = useMainTreeStore((state) => state.mainTree);
@@ -72,37 +69,57 @@ export default function StrategyHouse() {
         return null;
       }
 
-      // Find KRs for this objective from both myOKRTs and sharedOKRTs
-      // Type is 'K' (KeyResult) - only Key Results are loaded for shared objectives
-      const keyResults = allOKRTs
-        .filter(okrt => {
-          const isChild = okrt.parent_id === objId;
-          const isKR = okrt.type === 'K' || okrt.type === 'KeyResult';
-          return isChild && isKR;
-        })
-        .map(kr => ({
-          id: kr.id,
-          name: kr.description || kr.title,
-          progress: Math.round(kr.progress || 0)
+      // Get KRs from the objective's keyResults property (for sharedOKRTs)
+      // or find them in myOKRTs (for user's own objectives)
+      let keyResults = [];
+      
+      if (objective.keyResults && Array.isArray(objective.keyResults)) {
+        // KRs are embedded in the objective (sharedOKRTs)
+        keyResults = objective.keyResults.map(kr => ({
+          id: `${objId}-kr-${kr.description}`, // Generate a unique ID
+          name: kr.description,
+          progress: kr.progress
         }));
+      } else {
+        // Find KRs as separate records (myOKRTs)
+        keyResults = allOKRTs
+          .filter(okrt => {
+            const isChild = okrt.parent_id === objId;
+            const isKR = okrt.type === 'K' || okrt.type === 'KeyResult';
+            return isChild && isKR;
+          })
+          .map(kr => ({
+            id: kr.id,
+            name: kr.description || kr.title,
+            progress: Math.round(kr.progress || 0)
+          }));
+      }
 
       return {
         id: objective.id,
         name: objective.title,
         progress: Math.round(objective.progress || 0),
+        owner_name: objective.owner_name,
+        owner_avatar: objective.owner_avatar,
         initiatives: keyResults
       };
     }).filter(Boolean); // Remove null entries
+
+    // Calculate overall progress as average of strategic objectives
+    const overallProgress = strategies.length > 0
+      ? Math.round(strategies.reduce((sum, s) => sum + s.progress, 0) / strategies.length)
+      : 0;
 
     return {
       groupName: orgGroup.name || '',
       vision: orgGroup.vision || 'Define your organisation vision',
       mission: orgGroup.mission || 'Define your organisation mission',
-      strategies
+      strategies,
+      overallProgress
     };
   }, [mainTree]);
 
-  const { groupName, vision, mission, strategies } = strategyData;
+  const { groupName, vision, mission, strategies, overallProgress } = strategyData;
 
   // Calculate anchor points (invisible markers for positioning)
   const visionAnchor = { x: 50, y: 11 }; // SVG coordinates: center top
@@ -193,7 +210,7 @@ export default function StrategyHouse() {
       </svg>
 
       <div className={styles.contentOverlay}>
-        {/* Vision/Mission box anchored to invisible anchor point */}
+        {/* Vision/Mission box with Overall Progress */}
         <div
           className={styles.visionMission}
           style={{
@@ -201,7 +218,12 @@ export default function StrategyHouse() {
             '--anchor-y': `${(visionAnchor.y / 60) * 100}%`
           }}
         >
-          <div className={styles.visionTitle}>{groupName ? `${groupName} Vision & Mission` : 'Vision & Mission'}</div>
+          <div className={styles.visionTitle}>
+            {groupName ? `${groupName} Vision & Mission` : 'Vision & Mission'}
+            {strategies.length > 0 && (
+              <span className={styles.overallProgress}> • Overall Progress: {overallProgress}%</span>
+            )}
+          </div>
           <div className={styles.visionText}>
             {vision}
           </div>
@@ -236,6 +258,23 @@ export default function StrategyHouse() {
                     <div className={styles.strategyName}>{s.name}</div>
                     <div className={styles.strategyProgress}>{s.progress}%</div>
                   </div>
+                  {s.owner_name && (
+                    <div className={styles.strategyOwner}>
+                      {s.owner_avatar ? (
+                        <img
+                          src={s.owner_avatar}
+                          alt={s.owner_name}
+                          className={styles.ownerAvatar}
+                          title={s.owner_name}
+                        />
+                      ) : (
+                        <div className={styles.ownerInitials} title={s.owner_name}>
+                          {s.owner_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                      )}
+                      <span className={styles.ownerName}>{s.owner_name}</span>
+                    </div>
+                  )}
                 </div>
                 {s.initiatives.map((i) => (
                   <div
