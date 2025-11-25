@@ -9,7 +9,8 @@ import {
   getGroupSharedOKRTs,
   getGroupSharedOKRTCount,
   isUserGroupAdmin,
-  addUserToGroup
+  addUserToGroup,
+  getAllGroups
 } from '@/lib/pgdb';
 
 export async function GET(request, { params }) {
@@ -64,29 +65,79 @@ export async function PUT(request, { params }) {
 
     const { id } = await params;
     
-    // Check if user is admin of this group
-    const isAdmin = await isUserGroupAdmin(session.sub, id);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Forbidden: Only group admins can update groups' }, { status: 403 });
+    // Get the group to check its type
+    const group = await getGroupById(id);
+    if (!group) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+    
+    // Get current user to check role
+    const { getUserById } = await import('@/lib/pgdb');
+    const currentUser = await getUserById(parseInt(session.sub));
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    // Check permissions based on user role and group type
+    const userRole = currentUser.role;
+    const allowedRoles = ['Admin', 'Owner', 'Leader'];
+    
+    // For Organisation type groups, only Admin can edit
+    if (group.type === 'Organisation') {
+      if (userRole !== 'Admin') {
+        return NextResponse.json({
+          error: 'Forbidden: Only Admin users can update Organisation groups'
+        }, { status: 403 });
+      }
+    } else {
+      // For other group types, Admin, Owner, or Leader can edit
+      if (!allowedRoles.includes(userRole)) {
+        // If not one of the allowed roles, check if user is group admin
+        const isGroupAdmin = await isUserGroupAdmin(session.sub, id);
+        if (!isGroupAdmin) {
+          return NextResponse.json({
+            error: 'Forbidden: Only Admin, Owner, Leader, or group admins can update groups'
+          }, { status: 403 });
+        }
+      }
     }
 
     const body = await request.json();
-    const { name, type, parent_group_id, thumbnail_url, members } = body;
+    const { name, type, parent_group_id, thumbnail_url, members, strategic_objectives, vision, mission } = body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
+    if (vision !== undefined) updateData.vision = vision;
+    if (mission !== undefined) updateData.mission = mission;
     if (type !== undefined) {
       const validTypes = ['Organisation', 'Department', 'Team', 'Chapter', 'Squad', 'Tribe', 'Group'];
       if (!validTypes.includes(type)) {
         return NextResponse.json({ error: 'Invalid group type' }, { status: 400 });
       }
+      
+      // Check if user is Admin when changing to Organisation type
+      if (type === 'Organisation' && currentUser.role !== 'Admin') {
+        return NextResponse.json({ error: 'Only Admin users can create Organisation groups' }, { status: 403 });
+      }
+      
+      // Check for existing Organisation group when changing type to Organisation
+      if (type === 'Organisation') {
+        const allGroups = await getAllGroups();
+        const existingOrgGroup = allGroups.find(g => g.type === 'Organisation' && g.id !== id);
+        if (existingOrgGroup) {
+          return NextResponse.json({
+            error: 'An Organisation already exists. There can be only one group of type Organisation'
+          }, { status: 409 });
+        }
+      }
+      
       updateData.type = type;
     }
     if (parent_group_id !== undefined) updateData.parent_group_id = parent_group_id;
     if (thumbnail_url !== undefined) updateData.thumbnail_url = thumbnail_url;
 
-    const group = await updateGroup(id, updateData);
-    if (!group) {
+    const updatedGroup = await updateGroup(id, updateData);
+    if (!updatedGroup) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
 
@@ -102,9 +153,37 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // Update strategic objectives if provided
+    const { all, run } = await import('@/lib/pgdb');
+    if (strategic_objectives !== undefined && Array.isArray(strategic_objectives)) {
+      // Remove all existing strategic objectives for this group
+      await run(`DELETE FROM strategic_objectives WHERE group_id = $1`, [id]);
+      
+      // Add new strategic objectives (max 5)
+      const objectivesToAdd = strategic_objectives.slice(0, 5);
+      for (const objectiveId of objectivesToAdd) {
+        try {
+          await run(`
+            INSERT INTO strategic_objectives (group_id, okrt_id)
+            VALUES ($1, $2)
+            ON CONFLICT (group_id, okrt_id) DO NOTHING
+          `, [id, objectiveId]);
+        } catch (error) {
+          console.error(`Error adding strategic objective ${objectiveId} to group:`, error);
+        }
+      }
+    }
+
     // Fetch updated member details and objectives for cache
     const memberDetails = await getGroupMembers(id);
     const objectiveIds = await getGroupSharedOKRTs(id);
+    
+    // Fetch strategic objectives for cache
+    const strategicObjectives = await all(`
+      SELECT okrt_id
+      FROM strategic_objectives
+      WHERE group_id = $1
+    `, [id]);
     
     // Check if current user is a member
     const isMember = memberDetails.some(m => m.id === session.sub);
@@ -112,17 +191,18 @@ export async function PUT(request, { params }) {
 
     // Return response with cache update instruction
     return NextResponse.json({
-      group,
+      group: updatedGroup,
       _cacheUpdate: {
         action: 'updateGroup',
         data: {
           id,
           updates: {
-            ...group,
+            ...updatedGroup,
             is_member: isMember,
             is_admin: isAdminUser,
             members: memberDetails,
-            objectiveIds: isMember ? objectiveIds.map(o => o.id) : []
+            objectiveIds: isMember ? objectiveIds.map(o => o.id) : [],
+            strategicObjectiveIds: strategicObjectives.map(so => so.okrt_id)
           }
         }
       }

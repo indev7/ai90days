@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { OrganizationChart } from "primereact/organizationchart";
 import { GrTrophy } from 'react-icons/gr';
+import { FaFlagCheckered } from 'react-icons/fa';
 import { RiAdminLine } from 'react-icons/ri';
 import { FaRegUser } from 'react-icons/fa';
 import { FaPlus } from 'react-icons/fa';
@@ -36,6 +37,11 @@ function ExpandedGroupContent({ group, objectives = [], members = [], currentUse
     }
   };
   
+  // Separate strategic objectives from other shared objectives
+  const strategicObjectiveIds = group.strategicObjectiveIds || [];
+  const strategicObjectives = objectives.filter(obj => strategicObjectiveIds.includes(obj.id));
+  const otherObjectives = objectives.filter(obj => !strategicObjectiveIds.includes(obj.id));
+  
   return (
     <div
       className={styles.expandedDetails}
@@ -43,23 +49,53 @@ function ExpandedGroupContent({ group, objectives = [], members = [], currentUse
       style={isAdmin ? { cursor: 'pointer' } : undefined}
       title={isAdmin ? "Click to edit group" : undefined}
     >
-      <div className={styles.objectivesSection}>
-        {objectives.map((objective) => (
-          <div key={objective.id} className={styles.objectiveItem}>
-            <GrTrophy className={styles.objectiveIcon} />
-            <div className={styles.objectiveContent}>
-              <div className={styles.objectiveTitle}>{objective.title}</div>
-              <div className={styles.objectiveProgress}>
-                <ProgressBar value={objective.progress} />
-                <div className={styles.progressText}>{Math.round(objective.progress)}%</div>
+      {/* Strategic Objectives Section */}
+      {strategicObjectives.length > 0 && (
+        <>
+          <div className={styles.objectivesSection}>
+            <div className={styles.sectionLabel}>Strategic Objectives</div>
+            {strategicObjectives.map((objective) => (
+              <div key={objective.id} className={styles.objectiveItem}>
+                <FaFlagCheckered className={styles.objectiveIcon} />
+                <div className={styles.objectiveContent}>
+                  <div className={styles.objectiveTitle}>{objective.title}</div>
+                  <div className={styles.objectiveProgress}>
+                    <ProgressBar value={objective.progress} />
+                    <div className={styles.progressText}>{Math.round(objective.progress)}%</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {otherObjectives.length > 0 && <div className={styles.divider} />}
+        </>
+      )}
+
+      {/* Other Shared Objectives Section */}
+      {otherObjectives.length > 0 && (
+        <div className={styles.objectivesSection}>
+          <div className={styles.sectionLabel}>Shared Objectives</div>
+          {otherObjectives.map((objective) => (
+            <div key={objective.id} className={styles.objectiveItem}>
+              <GrTrophy className={styles.objectiveIcon} />
+              <div className={styles.objectiveContent}>
+                <div className={styles.objectiveTitle}>{objective.title}</div>
+                <div className={styles.objectiveProgress}>
+                  <ProgressBar value={objective.progress} />
+                  <div className={styles.progressText}>{Math.round(objective.progress)}%</div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        {objectives.length === 0 && (
+          ))}
+        </div>
+      )}
+      
+      {objectives.length === 0 && (
+        <div className={styles.objectivesSection}>
           <div className={styles.emptyText}>No objectives shared yet.</div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className={styles.divider} />
 
@@ -125,7 +161,7 @@ function NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentU
       {isExpanded && details && (
         <div className={styles.expandedCard}>
           <ExpandedGroupContent
-            group={d}
+            group={{ ...d, strategicObjectiveIds: details.strategicObjectiveIds || [] }}
             objectives={details.objectives || []}
             members={details.members || []}
             currentUserId={currentUserId}
@@ -140,37 +176,22 @@ function NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentU
 /**
  * GroupsView Component
  */
-export default function GroupsView({ 
-  orgValue, 
-  groupDetails, 
-  currentUserId, 
-  onNodeClick, 
+export default function GroupsView({
+  orgValue,
+  groupDetails,
+  currentUserId,
+  onNodeClick,
   expandedGroupId,
   onEditGroup,
   onAddGroup,
   groups,
   mainTreeLoading,
   userLoading,
-  error
+  error,
+  currentUserRole
 }) {
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  const handleAddGroup = async (groupData) => {
-    await onAddGroup(groupData);
-    setShowAddModal(false);
-  };
-
   return (
     <>
-      <button
-        className={styles.addButton}
-        onClick={() => setShowAddModal(true)}
-        title="Add new group"
-      >
-        <FaPlus />
-        Add
-      </button>
-
       {(mainTreeLoading || userLoading) && (
         <div className={styles.loading}>
           Loading group hierarchy...
@@ -202,13 +223,6 @@ export default function GroupsView({
           ))}
         </div>
       )}
-
-      <AddGroupModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSave={handleAddGroup}
-        groups={groups}
-      />
     </>
   );
 }

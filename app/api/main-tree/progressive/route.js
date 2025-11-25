@@ -118,11 +118,23 @@ export async function GET(request) {
           sendSection('notifications', notifications);
           console.log('[Progressive] ✅ notifications sent');
 
-          // 4. Load SharedOKRTs
+          // 4. Load SharedOKRTs (including child Key Results)
           console.log('[Progressive] Loading sharedOKRTs...');
           const sharedOKRTsRaw = await all(`
+            WITH shared_objectives AS (
+              SELECT DISTINCT o.id
+              FROM okrt o
+              JOIN share s ON o.id = s.okrt_id
+              WHERE ((s.share_type = 'U' AND s.group_or_user_id = ?)
+                     OR (s.share_type = 'G' AND s.group_or_user_id IN (
+                       SELECT group_id FROM user_group WHERE user_id = ?
+                     )))
+                AND o.visibility = 'shared'
+            )
             SELECT DISTINCT ON (o.id)
-              o.id, o.type, o.parent_id, o.title, o.description, o.progress,
+              o.id, o.type, o.parent_id, o.title,
+              CASE WHEN o.type = 'K' THEN o.description ELSE NULL END as description,
+              CASE WHEN o.type = 'K' THEN o.progress ELSE o.progress END as progress,
               o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
               o.objective_kind, o.kr_target_number, o.kr_unit, o.kr_baseline_number,
               o.weight, o.task_status, o.due_date, o.created_at, o.updated_at,
@@ -131,13 +143,9 @@ export async function GET(request) {
               CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following
             FROM okrt o
             JOIN users u ON o.owner_id = u.id
-            JOIN share s ON o.id = s.okrt_id
             LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ?
-            WHERE ((s.share_type = 'U' AND s.group_or_user_id = ?)
-                   OR (s.share_type = 'G' AND s.group_or_user_id IN (
-                     SELECT group_id FROM user_group WHERE user_id = ?
-                   )))
-              AND o.visibility = 'shared'
+            WHERE (o.id IN (SELECT id FROM shared_objectives))
+               OR (o.parent_id IN (SELECT id FROM shared_objectives) AND o.type = 'K')
             ORDER BY o.id, CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC
           `, [userId, userId, userId]);
 
@@ -171,7 +179,7 @@ export async function GET(request) {
           console.log('[Progressive] Loading groups...');
           const allGroups = await all(`
             SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url,
-                   g.created_at, g.updated_at
+                   g.vision, g.mission, g.created_at, g.updated_at
             FROM groups g
             ORDER BY g.name ASC
           `);
@@ -204,6 +212,8 @@ export async function GET(request) {
               `, [group.id]);
 
               let objectiveIds = [];
+              let strategicObjectiveIds = [];
+              
               if (membership.is_member) {
                 const objectiveIdsResult = await all(`
                   SELECT DISTINCT s.okrt_id, o.updated_at
@@ -213,6 +223,15 @@ export async function GET(request) {
                   ORDER BY o.updated_at DESC
                 `, [group.id]);
                 objectiveIds = objectiveIdsResult.map(obj => obj.okrt_id);
+                
+                // Fetch strategic objectives for this group
+                const strategicObjectivesResult = await all(`
+                  SELECT so.okrt_id
+                  FROM strategic_objectives so
+                  WHERE so.group_id = ?
+                  ORDER BY so.created_at ASC
+                `, [group.id]);
+                strategicObjectiveIds = strategicObjectivesResult.map(obj => obj.okrt_id);
               }
 
               return {
@@ -220,7 +239,8 @@ export async function GET(request) {
                 is_member: membership.is_member,
                 is_admin: membership.is_admin,
                 members,
-                objectiveIds
+                objectiveIds,
+                strategicObjectiveIds
               };
             })
           );

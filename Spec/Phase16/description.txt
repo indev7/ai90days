@@ -1,0 +1,17 @@
+I would like to update the User table to include new column "Role"
+With this new addition, I would like to introduce user roles: system will customize the UI and functionality accoring to role previlege.
+These are the roles in the order of decending privilge:
+1. Admin
+2. Owner
+3. Leader
+4. User
+
+"User" is the default previlege level. WHen creating new users by sign up or when Microsoft sign-in based user creation, set the Role to "User"
+
+The Add group button must only be available to Leader, Owner, Admin
+
+There is a user by the username "indev" set his Roe to Admin
+
+Create new page to show user list and API to fecth User List (API must only be accessible by a user with Admin role)
+When a user record is cliecked, it must open a modal popup to edit user details and set role froma drop down.
+When an Admin user signs in, his left menu must show the following link: "Members" which will open Members page
