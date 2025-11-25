@@ -21,7 +21,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
       mission: 'Please create an Organisation type group to define your strategy',
       objectives: [],
       overallProgress: 0,
-      totalKeyResults: 0,
+      totalInitiatives: 0,
     };
 
     if (!mainTree?.groups?.length) {
@@ -78,7 +78,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
         ? Math.round(objectives.reduce((sum, o) => sum + o.progress, 0) / objectives.length)
         : 0;
 
-    const totalKeyResults = objectives.reduce((sum, o) => sum + o.keyResults.length, 0);
+    const totalInitiatives = objectives.reduce((sum, o) => sum + o.keyResults.length, 0);
 
     return {
       groupName: orgGroup.name || '',
@@ -86,11 +86,11 @@ export default function StrategyHouse({ toggleSlot = null }) {
       mission: orgGroup.mission || 'Define your organisation mission',
       objectives,
       overallProgress,
-      totalKeyResults,
+      totalInitiatives,
     };
   }, [mainTree]);
 
-  const { groupName, vision, mission, objectives, overallProgress, totalKeyResults } = strategyData;
+  const { groupName, vision, mission, objectives, overallProgress, totalInitiatives } = strategyData;
   const objectiveCount = objectives.length;
 
   const getInitials = (name) =>
@@ -112,7 +112,6 @@ export default function StrategyHouse({ toggleSlot = null }) {
 
   return (
     <div className={styles.strategyRoot}>
-      {toggleSlot && <div className={styles.strategyNavSlot}>{toggleSlot}</div>}
       <section className={styles.strategyHero}>
         <div className={styles.strategyHeroPane}>
           <div className={styles.strategyPillTag}>{groupName ? `${groupName} Vision` : 'Vision'}</div>
@@ -142,8 +141,8 @@ export default function StrategyHouse({ toggleSlot = null }) {
             <span className={styles.strategyMetricChipValue}>{objectiveCount}</span>
           </div>
           <div className={styles.strategyMetricChip}>
-            <span className={styles.strategyMetricChipLabel}>Key Results</span>
-            <span className={styles.strategyMetricChipValue}>{totalKeyResults}</span>
+            <span className={styles.strategyMetricChipLabel}>Initiatives</span>
+            <span className={styles.strategyMetricChipValue}>{totalInitiatives}</span>
           </div>
         </div>
       </div>
@@ -201,7 +200,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
 
       <section className={styles.strategySection}>
         <div className={styles.strategySectionHeader}>
-          <h2>Key results by strategy</h2>
+          <h2>Initiatives</h2>
           <span className={styles.strategySectionCaption}>
             Each column tracks measurable outcomes under its strategic objective.
           </span>

@@ -156,7 +156,11 @@ function NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentU
         onClick={() => onNodeClick(d.id)}
       >
         <div className={styles.nodeTitle}>{title}</div>
-        <div className={styles.nodeMeta}>{meta}</div>
+        <div className={styles.nodeMeta}>
+          {metaParts.map((item, idx) => (
+            <span key={idx} className={styles.nodeMetaChip}>{item}</span>
+          ))}
+        </div>
       </div>
       {isExpanded && details && (
         <div className={styles.expandedCard}>
