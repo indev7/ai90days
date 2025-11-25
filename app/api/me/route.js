@@ -71,6 +71,7 @@ export async function GET(request) {
         authProvider: user.auth_provider,
         microsoftId: user.microsoft_id,
         preferences: user.preferences,
+        role: user.role || 'User',
       }
     });
 

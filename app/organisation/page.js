@@ -80,6 +80,7 @@ export default function IntervestOrgChart() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Use hooks for user and mainTree data
   const { user: currentUser, isLoading: userLoading } = useUser();
@@ -117,6 +118,18 @@ export default function IntervestOrgChart() {
       setOrgValue(chartData);
     }
   }, [mainTree]);
+
+  // Listen for createGroup event from LeftMenu
+  useEffect(() => {
+    const handleCreateGroup = () => {
+      setShowAddModal(true);
+    };
+
+    window.addEventListener('createGroup', handleCreateGroup);
+    return () => {
+      window.removeEventListener('createGroup', handleCreateGroup);
+    };
+  }, []);
 
   const refreshGroupData = async () => {
     try {
@@ -156,7 +169,23 @@ export default function IntervestOrgChart() {
       return;
     }
 
-    const groupObjectives = (mainTree?.sharedOKRTs || [])
+    // Combine myOKRTs and sharedOKRTs to search for objectives
+    const allOKRTs = [...(mainTree?.myOKRTs || []), ...(mainTree?.sharedOKRTs || [])];
+    
+    // Get strategic objectives based on strategicObjectiveIds from group
+    const strategicObjectiveIds = group.strategicObjectiveIds || [];
+    const strategicObjectives = allOKRTs
+      .filter(okrt => strategicObjectiveIds.includes(okrt.id))
+      .map(okrt => ({
+        id: okrt.id,
+        title: okrt.title,
+        description: okrt.description,
+        progress: okrt.progress || 0,
+        owner_name: okrt.owner_name
+      }));
+
+    // Get shared objectives based on objectiveIds from group
+    const sharedObjectives = allOKRTs
       .filter(okrt => group.objectiveIds?.includes(okrt.id))
       .map(okrt => ({
         id: okrt.id,
@@ -166,12 +195,28 @@ export default function IntervestOrgChart() {
         owner_name: okrt.owner_name
       }));
 
+    // Combine all objectives (strategic + shared, avoiding duplicates)
+    const allObjectivesMap = new Map();
+    
+    // Add strategic objectives first
+    strategicObjectives.forEach(obj => allObjectivesMap.set(obj.id, obj));
+    
+    // Add shared objectives (will not duplicate if already in strategic)
+    sharedObjectives.forEach(obj => {
+      if (!allObjectivesMap.has(obj.id)) {
+        allObjectivesMap.set(obj.id, obj);
+      }
+    });
+
+    const combinedObjectives = Array.from(allObjectivesMap.values());
+
     setGroupDetails(prev => ({
       ...prev,
       [groupId]: {
         members: group.members || [],
-        objectives: groupObjectives,
-        count: groupObjectives.length,
+        objectives: combinedObjectives,
+        strategicObjectiveIds: strategicObjectiveIds,
+        count: combinedObjectives.length,
         memberCount: group.members?.length || 0
       }
     }));
@@ -225,10 +270,13 @@ export default function IntervestOrgChart() {
         type: group.type,
         parent_group_id: group.parent_group_id,
         thumbnail_url: group.thumbnail_url,
-        members: group.members || []
+        vision: group.vision,
+        mission: group.mission,
+        members: group.members || [],
+        strategicObjectiveIds: group.strategicObjectiveIds || []
       });
     } else {
-      setEditingGroup({ ...groupData, members: [] });
+      setEditingGroup({ ...groupData, members: [], strategicObjectiveIds: [] });
     }
     setShowEditModal(true);
   };
@@ -242,6 +290,7 @@ export default function IntervestOrgChart() {
 
     if (response.ok) {
       await refreshGroupData();
+      setShowAddModal(false);
     } else {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to create group');
@@ -368,6 +417,7 @@ export default function IntervestOrgChart() {
             orgValue={orgValue}
             groupDetails={groupDetails}
             currentUserId={currentUser?.id}
+            currentUserRole={currentUser?.role}
             onNodeClick={handleNodeClick}
             expandedGroupId={expandedGroupId}
             onEditGroup={handleEditGroup}
@@ -402,6 +452,16 @@ export default function IntervestOrgChart() {
         onDelete={handleDeleteClick}
         onMemberRemoved={handleMemberRemoved}
         existingMembersFromMainTree={editingGroup?.members}
+        mainTree={mainTree}
+      />
+
+      {/* Add Group Modal */}
+      <AddGroupModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddGroup}
+        groups={groups}
+        mainTree={mainTree}
       />
 
       {/* Delete Confirmation Modal */}

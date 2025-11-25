@@ -1375,7 +1375,8 @@
       ],
       "objectiveIds": [
         "3cf20ded-8422-4b61-a076-03af2204bde3"
-      ]
+      ],
+      "strategicObjectiveIds": []
     },
     {
       "id": "qvis5IRA6kbykex0WaQy7",
@@ -1397,7 +1398,8 @@
           "is_admin": 1
         }
       ],
-      "objectiveIds": []
+      "objectiveIds": [],
+      "strategicObjectiveIds": []
     },
     {
       "id": "dTDHMimJ4MaP-OFcfl8er",
@@ -1419,7 +1421,8 @@
           "is_admin": 1
         }
       ],
-      "objectiveIds": []
+      "objectiveIds": [],
+      "strategicObjectiveIds": []
     },
     {
       "id": "auxRmi4rxFottvkw-qYzA",
@@ -1454,7 +1457,8 @@
         "114ee4d2-3647-487e-83c3-f0847f5e204c",
         "3cf20ded-8422-4b61-a076-03af2204bde3",
         "gen-9daysapp1"
-      ]
+      ],
+      "strategicObjectiveIds": []
     },
     {
       "id": "G_Boyd5e9nb3RRCXZ9BmL",
@@ -1478,7 +1482,8 @@
       ],
       "objectiveIds": [
         "114ee4d2-3647-487e-83c3-f0847f5e204c"
-      ]
+      ],
+      "strategicObjectiveIds": []
     },
     {
       "id": "xN4MPCojD4kY8gSD006U-",
@@ -1500,7 +1505,8 @@
           "is_admin": 1
         }
       ],
-      "objectiveIds": []
+      "objectiveIds": [],
+      "strategicObjectiveIds": []
     },
     {
       "id": "yUAnQrmUFWNuCqN-YRFdO",
@@ -1522,7 +1528,8 @@
           "is_admin": 1
         }
       ],
-      "objectiveIds": []
+      "objectiveIds": [],
+      "strategicObjectiveIds": []
     },
     {
       "id": "Cdve-9Afd41rqqjYnpJWJ",
@@ -1544,7 +1551,8 @@
           "is_admin": 1
         }
       ],
-      "objectiveIds": []
+      "objectiveIds": [],
+      "strategicObjectiveIds": []
     },
     {
       "id": "LiLQDU-BbZV5LaGBzAO-b",
@@ -1566,7 +1574,8 @@
           "is_admin": 1
         }
       ],
-      "objectiveIds": []
+      "objectiveIds": [],
+      "strategicObjectiveIds": []
     }
   ]
 }

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import styles from './OKRTModal.module.css'; // Reuse OKRT modal styles
+import { useUser } from '@/hooks/useUser';
 
 const GROUP_TYPES = [
   'Organisation',
-  'Department', 
+  'Department',
   'Team',
   'Chapter',
   'Squad',
@@ -21,13 +22,18 @@ export default function AddGroupModal({
   editingGroup = null, // Group being edited
   onDelete = null, // Delete handler
   onMemberRemoved = null, // Callback when member is removed
-  existingMembersFromMainTree = [] // Members from mainTree (for edit mode)
+  existingMembersFromMainTree = [], // Members from mainTree (for edit mode)
+  mainTree = null // MainTree data for objectives
 }) {
+  const { user: currentUser } = useUser();
   const [formData, setFormData] = useState({
     name: '',
     type: 'Group',
     parent_group_id: '',
-    members: [] // Array of selected users with admin status
+    vision: '',
+    mission: '',
+    members: [], // Array of selected users with admin status
+    strategic_objectives: [] // Array of selected objective IDs
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -42,6 +48,30 @@ export default function AddGroupModal({
   // Existing members state (for edit mode)
   const [existingMembers, setExistingMembers] = useState([]);
 
+  // Get available objectives from mainTree
+  const availableObjectives = useMemo(() => {
+    if (!mainTree || !mainTree.sharedOKRTs || !mainTree.groups) {
+      return [];
+    }
+
+    return mainTree.sharedOKRTs
+      .filter(okrt => okrt.type === 'O') // Only objectives
+      .map(okrt => {
+        // Find which groups this objective is shared with
+        const sharedGroupNames = mainTree.groups
+          .filter(group => group.objectiveIds?.includes(okrt.id))
+          .map(group => group.name)
+          .join(', ') || 'No Group';
+
+        return {
+          id: okrt.id,
+          title: okrt.title,
+          owner_name: okrt.owner_name,
+          sharedGroups: sharedGroupNames
+        };
+      });
+  }, [mainTree]);
+
   // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -51,7 +81,10 @@ export default function AddGroupModal({
           name: editingGroup.name || '',
           type: editingGroup.type || 'Group',
           parent_group_id: editingGroup.parent_group_id || '',
-          members: [] // Start with empty members for edit mode
+          vision: editingGroup.vision || '',
+          mission: editingGroup.mission || '',
+          members: [], // Start with empty members for edit mode
+          strategic_objectives: editingGroup.strategicObjectiveIds || []
         });
         // Set existing members from mainTree
         setExistingMembers(existingMembersFromMainTree || []);
@@ -61,7 +94,10 @@ export default function AddGroupModal({
           name: '',
           type: 'Group',
           parent_group_id: '',
-          members: []
+          vision: '',
+          mission: '',
+          members: [],
+          strategic_objectives: []
         });
         setMemberSearchQuery('');
         setMemberSearchResults([]);
@@ -70,7 +106,7 @@ export default function AddGroupModal({
       }
       setErrors({});
     }
-  }, [isOpen, editingGroup]);
+  }, [isOpen, editingGroup, existingMembersFromMainTree]);
 
   // Handle clicks outside member search dropdown
   useEffect(() => {
@@ -152,6 +188,48 @@ export default function AddGroupModal({
     }));
   };
 
+  // State for selected items in the listboxes
+  const [selectedAvailable, setSelectedAvailable] = useState([]);
+  const [selectedStrategic, setSelectedStrategic] = useState([]);
+
+  // Get available objectives (not yet selected)
+  const availableForSelection = useMemo(() => {
+    return availableObjectives.filter(obj =>
+      !formData.strategic_objectives.includes(obj.id)
+    );
+  }, [availableObjectives, formData.strategic_objectives]);
+
+  // Get selected strategic objectives with details
+  const selectedStrategicObjectives = useMemo(() => {
+    return formData.strategic_objectives
+      .map(id => availableObjectives.find(obj => obj.id === id))
+      .filter(Boolean);
+  }, [formData.strategic_objectives, availableObjectives]);
+
+  // Add selected objectives to strategic objectives
+  const handleAddObjectives = () => {
+    if (formData.strategic_objectives.length + selectedAvailable.length > 5) {
+      alert('You can only select up to 5 strategic objectives');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      strategic_objectives: [...prev.strategic_objectives, ...selectedAvailable]
+    }));
+    setSelectedAvailable([]);
+  };
+
+  // Remove selected objectives from strategic objectives
+  const handleRemoveObjectives = () => {
+    setFormData(prev => ({
+      ...prev,
+      strategic_objectives: prev.strategic_objectives.filter(id =>
+        !selectedStrategic.includes(id)
+      )
+    }));
+    setSelectedStrategic([]);
+  };
+
   // Remove existing member from group
   const removeExistingMember = async (userId) => {
     if (!editingGroup) return;
@@ -192,7 +270,7 @@ export default function AddGroupModal({
     }
   };
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors = {};
     
     if (!formData.name.trim()) {
@@ -203,12 +281,23 @@ export default function AddGroupModal({
       newErrors.type = 'Group type is required';
     }
     
+    // Check for duplicate Organisation group
+    if (formData.type === 'Organisation') {
+      const existingOrgGroup = groups.find(g =>
+        g.type === 'Organisation' && (!editingGroup || g.id !== editingGroup.id)
+      );
+      
+      if (existingOrgGroup) {
+        newErrors.general = 'An Organisation already exists. There can be only one group of type Organisation';
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    if (!(await validateForm())) return;
     
     setSaving(true);
     
@@ -277,7 +366,13 @@ export default function AddGroupModal({
                 value={formData.type}
                 onChange={e => handleInputChange('type', e.target.value)}
               >
-                {GROUP_TYPES.map(type => (
+                {GROUP_TYPES.filter(type => {
+                  // Only show "Organisation" option if user is Admin
+                  if (type === 'Organisation') {
+                    return currentUser?.role === 'Admin';
+                  }
+                  return true;
+                }).map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
@@ -300,6 +395,171 @@ export default function AddGroupModal({
                     </option>
                   ))}
               </select>
+            </div>
+          </div>
+
+          {/* Vision Field */}
+          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <label className={styles.label}>Vision</label>
+            <textarea
+              className={styles.textarea}
+              value={formData.vision}
+              onChange={e => handleInputChange('vision', e.target.value)}
+              placeholder="Enter the group's vision statement"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--text-primary)',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
+          {/* Mission Field */}
+          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <label className={styles.label}>Mission</label>
+            <textarea
+              className={styles.textarea}
+              value={formData.mission}
+              onChange={e => handleInputChange('mission', e.target.value)}
+              placeholder="Enter the group's mission statement"
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--text-primary)',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
+          {/* Strategic Objectives Section - Dual Listbox */}
+          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+            <label className={styles.label}>
+              Choose Strategic Objectives
+            </label>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* Available Objectives List */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                  Shared Objectives
+                </div>
+                <select
+                  multiple
+                  value={selectedAvailable}
+                  onChange={(e) => setSelectedAvailable(Array.from(e.target.selectedOptions, option => option.value))}
+                  style={{
+                    width: '100%',
+                    minHeight: '150px',
+                    padding: '8px',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--surface)',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {availableForSelection.length === 0 ? (
+                    <option disabled>No objectives available</option>
+                  ) : (
+                    availableForSelection.map(obj => (
+                      <option key={obj.id} value={obj.id}>
+                        {obj.sharedGroups} - {obj.owner_name} - {obj.title.length > 35 ? obj.title.substring(0, 35) + '...' : obj.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Add/Remove Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleAddObjectives}
+                  disabled={selectedAvailable.length === 0 || formData.strategic_objectives.length >= 5}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: selectedAvailable.length > 0 && formData.strategic_objectives.length < 5 ? 'var(--primary)' : 'var(--border)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: selectedAvailable.length > 0 && formData.strategic_objectives.length < 5 ? 'pointer' : 'not-allowed',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    minWidth: '60px'
+                  }}
+                  title="Add selected objectives"
+                >
+                  Add →
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveObjectives}
+                  disabled={selectedStrategic.length === 0}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: selectedStrategic.length > 0 ? 'var(--primary)' : 'var(--border)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: selectedStrategic.length > 0 ? 'pointer' : 'not-allowed',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    minWidth: '60px'
+                  }}
+                  title="Remove selected objectives"
+                >
+                  ← Remove
+                </button>
+              </div>
+
+              {/* Strategic Objectives List */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                  Strategic Objectives ({formData.strategic_objectives.length}/5)
+                </div>
+                <select
+                  multiple
+                  value={selectedStrategic}
+                  onChange={(e) => setSelectedStrategic(Array.from(e.target.selectedOptions, option => option.value))}
+                  style={{
+                    width: '100%',
+                    minHeight: '150px',
+                    padding: '8px',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--surface)',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {selectedStrategicObjectives.length === 0 ? (
+                    <option disabled>No objectives selected</option>
+                  ) : (
+                    selectedStrategicObjectives.map(obj => (
+                      <option key={obj.id} value={obj.id}>
+                        {obj.sharedGroups} - {obj.owner_name} - {obj.title.length > 35 ? obj.title.substring(0, 35) + '...' : obj.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.5rem' }}>
+              Select objectives from the left list and click "Add" to add them as strategic objectives. You can select up to 5 objectives.
             </div>
           </div>
 

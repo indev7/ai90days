@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import styles from '../../okrt/page.module.css';
 import CommentsSection from '../../../components/CommentsSection';
 import { ObjectiveHeader, KeyResultCard } from '@/components/OKRTCards';
@@ -186,9 +185,6 @@ export default function SharedOKRTDetailPage() {
         <div>
           <div className={styles.emptyTitle}>Error</div>
           <div className={styles.emptyText}>{error}</div>
-          <Link href="/shared" className={styles.backLink}>
-            ← Back to Shared OKRs
-          </Link>
         </div>
       </div>
     );
@@ -200,9 +196,6 @@ export default function SharedOKRTDetailPage() {
         <div>
           <div className={styles.emptyTitle}>Objective not found</div>
           <div className={styles.emptyText}>The shared objective you're looking for doesn't exist.</div>
-          <Link href="/shared" className={styles.backLink}>
-            ← Back to Shared OKRs
-          </Link>
         </div>
       </div>
     );
@@ -210,13 +203,6 @@ export default function SharedOKRTDetailPage() {
 
   return (
     <div className={styles.container}>
-      {/* Header with back link */}
-      <div className={styles.header}>
-        <Link href="/shared" className={styles.backLink}>
-          ← Back to Shared OKRs
-        </Link>
-      </div>
-
       {/* Main Content */}
       <main className={styles.main}>
         <div className={`${styles.objectiveSection} ${focusedObjectiveId === objective.id ? styles.focusedObjective : ''}`}>
