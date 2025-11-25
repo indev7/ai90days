@@ -375,40 +375,72 @@ export default function IntervestOrgChart() {
 
       <div className={styles.content}>
         {/* Toggle Switch */}
-        <div className={styles.header}>
-          <div className={styles.viewToggle}>
-            <div className={styles.toggleSwitch}>
-              <button
-                className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
-                onClick={() => setViewType('strategy')}
-              >
-                Strategy
-              </button>
-              <button
-                className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
-                onClick={() => setViewType('groups')}
-              >
-                Groups
-              </button>
-              <button
-                className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
-                onClick={() => {
-                  setViewType('objectives');
-                  if (objectivesValue.length === 0) {
-                    buildObjectivesHierarchy();
-                  }
-                }}
-              >
-                Objectives
-              </button>
+        {viewType !== 'strategy' && (
+          <div className={styles.header}>
+            <div className={styles.viewToggle}>
+              <div className={styles.toggleSwitch}>
+                <button
+                  className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
+                  onClick={() => setViewType('strategy')}
+                >
+                  Strategy
+                </button>
+                <button
+                  className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
+                  onClick={() => setViewType('groups')}
+                >
+                  Groups
+                </button>
+                <button
+                  className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
+                  onClick={() => {
+                    setViewType('objectives');
+                    if (objectivesValue.length === 0) {
+                      buildObjectivesHierarchy();
+                    }
+                  }}
+                >
+                  Objectives
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         {/* Render appropriate view based on viewType */}
         {viewType === 'strategy' && (
           <div className={styles.strategyContainer}>
-            <StrategyHouse />
+            <StrategyHouse
+              toggleSlot={(
+                <div className={styles.viewToggle}>
+                  <div className={styles.toggleSwitch}>
+                    <button
+                      className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
+                      onClick={() => setViewType('strategy')}
+                    >
+                      Strategy
+                    </button>
+                    <button
+                      className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
+                      onClick={() => setViewType('groups')}
+                    >
+                      Groups
+                    </button>
+                    <button
+                      className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
+                      onClick={() => {
+                        setViewType('objectives');
+                        if (objectivesValue.length === 0) {
+                          buildObjectivesHierarchy();
+                        }
+                      }}
+                    >
+                      Objectives
+                    </button>
+                  </div>
+                </div>
+              )}
+            />
           </div>
         )}
 

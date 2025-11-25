@@ -118,24 +118,12 @@ export async function GET(request) {
           sendSection('notifications', notifications);
           console.log('[Progressive] ✅ notifications sent');
 
-          // 4. Load SharedOKRTs (including child Key Results)
+          // 4. Load SharedOKRTs - Only Objectives, with KRs nested inside
           console.log('[Progressive] Loading sharedOKRTs...');
           const sharedOKRTsRaw = await all(`
-            WITH shared_objectives AS (
-              SELECT DISTINCT o.id
-              FROM okrt o
-              JOIN share s ON o.id = s.okrt_id
-              WHERE ((s.share_type = 'U' AND s.group_or_user_id = ?)
-                     OR (s.share_type = 'G' AND s.group_or_user_id IN (
-                       SELECT group_id FROM user_group WHERE user_id = ?
-                     )))
-                AND o.visibility = 'shared'
-            )
             SELECT DISTINCT ON (o.id)
-              o.id, o.type, o.parent_id, o.title,
-              CASE WHEN o.type = 'K' THEN o.description ELSE NULL END as description,
-              CASE WHEN o.type = 'K' THEN o.progress ELSE o.progress END as progress,
-              o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
+              o.id, o.type, o.parent_id, o.title, o.description,
+              o.progress, o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
               o.objective_kind, o.kr_target_number, o.kr_unit, o.kr_baseline_number,
               o.weight, o.task_status, o.due_date, o.created_at, o.updated_at,
               o.owner_id, u.display_name as owner_name, u.first_name as owner_first_name,
@@ -143,32 +131,54 @@ export async function GET(request) {
               CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following
             FROM okrt o
             JOIN users u ON o.owner_id = u.id
+            JOIN share s ON o.id = s.okrt_id
             LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ?
-            WHERE (o.id IN (SELECT id FROM shared_objectives))
-               OR (o.parent_id IN (SELECT id FROM shared_objectives) AND o.type = 'K')
+            WHERE ((s.share_type = 'U' AND s.group_or_user_id = ?)
+                   OR (s.share_type = 'G' AND s.group_or_user_id IN (
+                     SELECT group_id FROM user_group WHERE user_id = ?
+                   )))
+              AND o.visibility = 'shared'
+              AND o.type = 'O'
             ORDER BY o.id, CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC
           `, [userId, userId, userId]);
 
           const sharedOKRTs = await Promise.all(
             sharedOKRTsRaw.map(async (okrt) => {
-              if (okrt.type === 'O') {
-                const comments = await all(`
-                  SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count,
-                         c.sending_user, c.receiving_user, c.okrt_id,
-                         c.created_at, c.updated_at,
-                         su.display_name as sender_name, su.first_name as sender_first_name,
-                         su.last_name as sender_last_name, su.profile_picture_url as sender_avatar,
-                         ru.display_name as receiver_name, ru.first_name as receiver_first_name,
-                         ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar
-                  FROM comments c
-                  JOIN users su ON c.sending_user = su.id
-                  JOIN users ru ON c.receiving_user = ru.id
-                  WHERE c.okrt_id = ?
-                  ORDER BY c.created_at ASC
-                `, [okrt.id]);
-                return { ...okrt, comments };
-              }
-              return okrt;
+              // Fetch comments for this objective
+              const comments = await all(`
+                SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count,
+                       c.sending_user, c.receiving_user, c.okrt_id,
+                       c.created_at, c.updated_at,
+                       su.display_name as sender_name, su.first_name as sender_first_name,
+                       su.last_name as sender_last_name, su.profile_picture_url as sender_avatar,
+                       ru.display_name as receiver_name, ru.first_name as receiver_first_name,
+                       ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar
+                FROM comments c
+                JOIN users su ON c.sending_user = su.id
+                JOIN users ru ON c.receiving_user = ru.id
+                WHERE c.okrt_id = ?
+                ORDER BY c.created_at ASC
+              `, [okrt.id]);
+              
+              // Fetch KRs (Key Results) for this objective
+              const keyResults = await all(`
+                SELECT o.id, o.description, o.progress
+                FROM okrt o
+                WHERE o.parent_id = ? AND o.type = 'K'
+                ORDER BY o.order_index ASC
+              `, [okrt.id]);
+              
+              // Transform KRs to simple array with only description and progress
+              const krs = keyResults.map(kr => ({
+                description: kr.description,
+                progress: Math.round(kr.progress || 0)
+              }));
+              
+              return {
+                ...okrt,
+                comments,
+                keyResults: krs
+              };
             })
           );
           

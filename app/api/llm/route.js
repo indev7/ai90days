@@ -193,7 +193,7 @@ SCOPE & DATA MODEL
 - Single table "okrt" with types O/K/T and parent_id hierarchy.
 - If the user intend to update task progress, then propagate progress upwards to KR and to Objective using weighted sum.
 - Types: Objective (O), Key Result (K), Task (T). Hierarchy via parent_id.
-- Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D-Draft/A-Active/C-Complete), visibility (private/team/org), objective_kind (committed/stretch), progress (0–100).
+- Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D-Draft/A-Active/C-Complete), visibility (private/shared), objective_kind (committed/stretch), progress (0–100).
 - Key Result (K): description (required), kr_target_number, kr_unit ∈ {count, %, $, hrs}, kr_baseline_number?, weight (default 1.0), progress (0–100).
 - Task (T): description (required), due_date?, task_status ∈ {todo, in_progress, done, blocked}, weight (default 1.0), progress (0–100).
 - Progress propagation: parent_progress = Σ(child_progress × child_weight). Sibling weights under one parent should sum to 1.0.
@@ -272,7 +272,7 @@ function getActionsTool() {
                   task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
                   title: { type: "string" },
                   area:  { type: "string" },
-                  visibility: { type: "string", enum: ["private","team","org"] },
+                  visibility: { type: "string", enum: ["private","shared"] },
                   objective_kind: { type: "string", enum: ["committed","stretch"] },
                   status: { type: "string", enum: ["D","A","C"] },
                   cycle_qtr: { type: "string" },
