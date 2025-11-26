@@ -17,6 +17,7 @@ import '@/styles/themes/coffee.css';
 import '@/styles/themes/microsoft.css';
 import '@/styles/themes/purple.css';
 import '@/styles/themes/nature.css';
+import '@/styles/themes/dreambig.css';
 import '@/styles/app.css';
 
 export default function RootLayout({ children }) {

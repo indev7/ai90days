@@ -46,8 +46,13 @@ export async function GET(request) {
               o.progress, o.status, o.area, o.cycle_qtr, o.order_index,
               o.visibility, o.objective_kind, o.kr_target_number, o.kr_unit,
               o.kr_baseline_number, o.weight, o.task_status, o.due_date,
-              o.created_at, o.updated_at
+              o.created_at, o.updated_at,
+              COALESCE(u.display_name, NULLIF(CONCAT(u.first_name, ' ', u.last_name), ' '), 'You') as owner_name,
+              u.first_name as owner_first_name,
+              u.last_name as owner_last_name,
+              u.profile_picture_url as owner_avatar
             FROM okrt o
+            JOIN users u ON o.owner_id = u.id
             WHERE o.owner_id = ?
             ORDER BY CASE WHEN o.parent_id IS NULL THEN 0 ELSE 1 END, o.order_index ASC
           `, [userId]);
@@ -126,8 +131,11 @@ export async function GET(request) {
               o.progress, o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
               o.objective_kind, o.kr_target_number, o.kr_unit, o.kr_baseline_number,
               o.weight, o.task_status, o.due_date, o.created_at, o.updated_at,
-              o.owner_id, u.display_name as owner_name, u.first_name as owner_first_name,
+              o.owner_id,
+              COALESCE(u.display_name, NULLIF(CONCAT(u.first_name, ' ', u.last_name), ' ')) as owner_name,
+              u.first_name as owner_first_name,
               u.last_name as owner_last_name,
+              u.profile_picture_url as owner_avatar,
               CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following
             FROM okrt o
             JOIN users u ON o.owner_id = u.id

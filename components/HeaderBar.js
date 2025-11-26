@@ -95,20 +95,25 @@ export default function HeaderBar({
           )}
           
           <Link href="/" className={styles.logoLink}>
-            <div className={styles.logo}>90Days</div>
+            <div className={styles.logo}>DreamBig</div>
           </Link>
         </div>
 
         <div className={styles.center}>
-          {user && <LoadingIndicators />}
+          {/* LEDs moved next to user greeting */}
         </div>
 
         <div className={styles.right}>
           {user ? (
             <div className={styles.userMenu}>
-              <span className={styles.greeting}>
-                Welcome, {user.displayName}
-              </span>
+              <div className={styles.userInfo}>
+                <span className={styles.greeting}>
+                  Welcome, {user.displayName}
+                </span>
+                <div className={styles.userIndicators}>
+                  <LoadingIndicators />
+                </div>
+              </div>
               <AvatarDropdown user={user} />
             </div>
           ) : (
