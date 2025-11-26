@@ -1,0 +1,81 @@
+/* DreamBig Theme - Inspired by the "New Colours" palette */
+
+html[data-theme="dreambig"] {
+  /* Brand Colors (pulled from Staycation, Sunset, Horizon) */
+  --brand-primary: #65009b; /* Staycation purple */
+  --brand-secondary: #b43bd6; /* Sunset magenta */
+  --brand-accent: #169bc3; /* Horizon teal accent */
+  --brand-success: #169bc3; /* Use Horizon for positive states */
+
+  /* Extended Brand Palette (purple family + accent) */
+  --brand-50:  #f9f4ff;
+  --brand-100: #f3e8ff;
+  --brand-200: #e6d4ff;
+  --brand-500: #b43bd6;
+  --brand-600: #8a26c0;
+  --brand-700: #65009b;
+  --brand-900: #3b005d;
+
+  /* Strategy House Shades (Beach / light neutrals) */
+  --strategy-shade: #f5f0df;  /* Beach */
+  --strategy-column-bg: #f9f6ea; /* Subtle warmer neutral */
+  --strategy-band-bg: #f2f7fb;   /* Soft cool neutral to echo Horizon/Pacific */
+  
+  /* Toggle Switch Background */
+  --toggle-bg: #f0e8fb;  /* Light purple tint for pills */
+
+  /* Surfaces */
+  --bg:        linear-gradient(135deg, #f9f6ea 0%, #f2f7fb 100%); /* Beach into cool light */
+  --bg-solid:  #ffffff;
+  --surface:   #ffffff;
+  --surface-elevated: #ffffff;
+  --card:      #ffffff;
+  --border:    #e4ded2;   /* Neutral pulled from Beach tone */
+  --border-light: #eee8dc;
+
+  /* Text */
+  --text: #252525;              /* Body Copy */
+  --text-secondary: #4d4d4f;    /* Subtle body copy */
+  --muted: #6a6a6c;             /* Muted neutral */
+  --muted-light: #a6a6a8;       /* Light muted neutral */
+
+  /* Status */
+  --success: #169bc3;           /* Horizon teal */
+  --success-light: #e4f4fb;
+  --warn: #f6c02c;              /* Sunglow */
+  --warn-light: #fff4d6;
+  --danger: #a63d32;            /* Salsa */
+  --danger-light: #f8e3df;
+
+  /* Progress & Accents */
+  --progress-obj: var(--brand-primary);
+  --progress-kr:  var(--brand-accent);
+
+  /* Theme-specific shadows */
+  --shadow-brand: 0 4px 16px rgba(101, 0, 155, 0.25);
+  --shadow-glow:  0 0 24px rgba(180, 59, 214, 0.2);
+
+  /* Semantic Aliases */
+  --primary: var(--brand-primary);
+  --primary-color: var(--brand-primary);
+  --accent-color: var(--brand-primary);
+  --accent-color-dark: var(--brand-600);
+  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 70%);
+  --highlight: var(--brand-secondary); /* Menu & selection highlight */
+  --success-color: var(--brand-success);
+  --error-color: var(--danger);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-secondary);
+  --surface-0: var(--bg-solid);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-elevated);
+  --border-subtle: var(--border);
+
+  /* Strategy Temple Colors */
+  --strategy-temple-roof: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-band-bg);
+  --strategy-temple-column: var(--strategy-column-bg);
+  --strategy-temple-stroke: var(--border);
+  --strategy-temple-stroke-light: var(--border-light);
+  --strategy-temple-text: var(--brand-500);
+}

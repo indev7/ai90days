@@ -12,6 +12,7 @@ import StrategyHouse from './StrategyHouse';
 import GroupsView from './GroupsView';
 import ObjectivesView from './ObjectivesView';
 import styles from './page.module.css';
+import { useSearchParams } from 'next/navigation';
 
 /*************************
  * Helpers
@@ -86,6 +87,7 @@ export default function IntervestOrgChart() {
   const { user: currentUser, isLoading: userLoading } = useUser();
   const { isLoading: mainTreeLoading } = useMainTree();
   const mainTree = useMainTreeStore((state) => state.mainTree);
+  const searchParams = useSearchParams();
 
   // Process groups from mainTree
   useEffect(() => {
@@ -354,35 +356,16 @@ export default function IntervestOrgChart() {
     setShowDeleteConfirm(true);
   };
 
-  const toggleControls = (
-    <div className={styles.viewToggle}>
-      <div className={styles.toggleSwitch}>
-        <button
-          className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
-          onClick={() => setViewType('strategy')}
-        >
-          Strategy
-        </button>
-        <button
-          className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
-          onClick={() => setViewType('groups')}
-        >
-          Groups
-        </button>
-        <button
-          className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
-          onClick={() => {
-            setViewType('objectives');
-            if (objectivesValue.length === 0) {
-              buildObjectivesHierarchy();
-            }
-          }}
-        >
-          Objectives
-        </button>
-      </div>
-    </div>
-  );
+  // Sync viewType with URL query (?view=strategy|groups|objectives)
+  useEffect(() => {
+    const viewParam = searchParams?.get('view');
+    const allowedViews = new Set(['strategy', 'groups', 'objectives']);
+    const nextView = allowedViews.has(viewParam) ? viewParam : 'strategy';
+    setViewType(nextView);
+    if (nextView === 'objectives' && objectivesValue.length === 0) {
+      buildObjectivesHierarchy();
+    }
+  }, [searchParams]);
 
   return (
     <div className={styles.container}>
@@ -404,11 +387,8 @@ export default function IntervestOrgChart() {
       `}</style>
 
       <div className={styles.content}>
-        {/* Toggle Switch inside each view for consistent placement */}
-        {/* Render appropriate view based on viewType */}
         {viewType === 'strategy' && (
           <div className={`${styles.strategyContainer} ${styles.strategySurface}`}>
-            <div className={styles.strategyNavSlot}>{toggleControls}</div>
             <div className={styles.strategySurfaceContent}>
               <StrategyHouse />
             </div>
@@ -417,7 +397,6 @@ export default function IntervestOrgChart() {
 
         {viewType === 'groups' && (
           <div className={styles.strategySurface}>
-            <div className={styles.strategyNavSlot}>{toggleControls}</div>
             <div className={styles.strategySurfaceContent}>
               <GroupsView
                 orgValue={orgValue}
@@ -439,7 +418,6 @@ export default function IntervestOrgChart() {
 
         {viewType === 'objectives' && (
           <div className={`${styles.strategySurface} ${styles.objectiveSurface}`}>
-            <div className={styles.strategyNavSlot}>{toggleControls}</div>
             <div className={styles.strategySurfaceContent}>
               <ObjectivesView
                 objectivesValue={objectivesValue}

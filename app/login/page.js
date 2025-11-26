@@ -73,7 +73,7 @@ export default function LoginPage() {
       <div className={styles.formCard}>
         <div className={styles.header}>
           <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.subtitle}>Sign in to your 90Days account</p>
+          <p className={styles.subtitle}>Sign in to your DreamBig account</p>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>

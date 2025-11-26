@@ -41,6 +41,11 @@ export default function StrategyHouse({ toggleSlot = null }) {
         const objective = allOKRTs.find((okrt) => okrt.id === objId);
         if (!objective) return null;
 
+        const ownerName =
+          objective.owner_name ||
+          [objective.owner_first_name, objective.owner_last_name].filter(Boolean).join(' ') ||
+          'You';
+
         let keyResults = [];
         if (objective.keyResults && Array.isArray(objective.keyResults)) {
           keyResults = objective.keyResults.map((kr, idx) => ({
@@ -66,7 +71,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
           id: objective.id,
           title: objective.title,
           progress: Math.round(objective.progress || 0),
-          ownerName: objective.owner_name,
+          ownerName,
           ownerAvatar: objective.owner_avatar,
           keyResults,
         };
@@ -125,7 +130,10 @@ export default function StrategyHouse({ toggleSlot = null }) {
 
       <div className={styles.strategyHeroMetrics}>
         <div className={styles.strategyMetricCard}>
-          <div className={styles.strategyDonut} style={{ '--donut-value': overallProgress }}>
+          <div
+            className={styles.strategyDonut}
+            style={{ '--donut-value': overallProgress }}
+          >
             <div className={styles.strategyDonutInner}>{overallProgress}%</div>
           </div>
           <div>
@@ -186,11 +194,11 @@ export default function StrategyHouse({ toggleSlot = null }) {
                 <div className={styles.strategyObjectiveTitle} title={o.title}>
                   {o.title}
                 </div>
-                <div className={styles.strategyProgressBar}>
-                  <div
-                    className={styles.strategyProgressBarFill}
-                    style={{ width: `${o.progress}%` }}
-                  />
+                <div
+                  className={styles.strategyProgressBar}
+                  style={{ '--bar-value': `${o.progress}%` }}
+                >
+                  <div className={styles.strategyProgressBarFill} />
                 </div>
               </div>
             ))}
@@ -209,12 +217,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
         {objectives.length === 0 ? (
           <div className={styles.strategyEmpty}>Add objectives to see key results.</div>
         ) : (
-          <div
-            className={styles.strategyKrGrid}
-            style={{
-              gridTemplateColumns: `repeat(${Math.max(objectives.length, 1)}, minmax(0, 1fr))`,
-            }}
-          >
+          <div className={styles.strategyKrGrid}>
             {objectives.map((o) => (
               <div key={o.id} className={styles.strategyKrColumn}>
                 <div className={styles.strategyKrColumnHeader}>
@@ -238,11 +241,11 @@ export default function StrategyHouse({ toggleSlot = null }) {
                         <div className={styles.strategyKrTitle}>{kr.title}</div>
                         <div className={styles.strategyKrMeta}>
                           <span>{kr.progress}%</span>
-                          <div className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}>
-                            <div
-                              className={styles.strategyProgressBarFill}
-                              style={{ width: `${kr.progress}%` }}
-                            />
+                          <div
+                            className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
+                            style={{ '--bar-value': `${kr.progress}%` }}
+                          >
+                            <div className={styles.strategyProgressBarFill} />
                           </div>
                         </div>
                       </div>

@@ -154,6 +154,17 @@
   white-space: nowrap;
 }
 
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.userIndicators {
+  transform: translateY(2px);
+}
+
 .avatar {
   width: 44px;
   height: 44px;

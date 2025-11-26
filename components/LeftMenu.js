@@ -12,6 +12,7 @@ import { SiSlideshare } from "react-icons/si";
 import { RiOrganizationChart } from "react-icons/ri";
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
+import { GiGreekTemple } from "react-icons/gi";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
@@ -52,6 +53,9 @@ const getTopMenuItems = (userRole) => {
       icon: 'organisation',
       disabled: false,
       children: [
+        { href: '/organisation?view=strategy', label: 'Strategy', icon: 'strategy' },
+        { href: '/organisation?view=groups', label: 'Groups', icon: 'groups' },
+        { href: '/organisation?view=objectives', label: 'Objectives', icon: 'goals' },
         { href: '/organisation/create', label: 'Add Group', icon: 'new', isAction: true }
       ]
     },
@@ -79,6 +83,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
     organisation: <TbBriefcase size={iconSize} />,
+    strategy: <GiGreekTemple size={iconSize} />,
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,

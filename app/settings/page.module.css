@@ -1,6 +1,6 @@
 .container {
   min-height: calc(100vh - 72px);
-  padding: var(--space-8) var(--space-6);
+  
   background: var(--bg-solid);
 }
 
@@ -191,7 +191,7 @@
 
 .loadingIndicator {
   text-align: center;
-  padding: var(--space-4);
+ 
   color: var(--muted);
   font-size: var(--text-sm);
   font-style: italic;
