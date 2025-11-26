@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { searchUsers } from '@/lib/pgdb';
+import { searchUsers, all, getUserById } from '@/lib/pgdb';
 
 export async function GET(request) {
   try {
@@ -11,8 +11,28 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
+    const listAll = searchParams.get('all') === 'true';
     const limit = parseInt(searchParams.get('limit') || '10');
 
+    // If requesting all users, check if user is Admin
+    if (listAll) {
+      const currentUser = await getUserById(parseInt(session.sub));
+      if (!currentUser || currentUser.role !== 'Admin') {
+        return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+      }
+
+      // Fetch all users for Admin
+      const allUsers = await all(`
+        SELECT id, username, display_name, email, first_name, last_name,
+               profile_picture_url, role, auth_provider, created_at
+        FROM users
+        ORDER BY created_at DESC
+      `);
+
+      return NextResponse.json({ users: allUsers });
+    }
+
+    // Regular user search
     if (!query || query.trim().length < 2) {
       return NextResponse.json({ users: [] });
     }

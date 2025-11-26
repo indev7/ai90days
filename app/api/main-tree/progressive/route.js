@@ -46,8 +46,13 @@ export async function GET(request) {
               o.progress, o.status, o.area, o.cycle_qtr, o.order_index,
               o.visibility, o.objective_kind, o.kr_target_number, o.kr_unit,
               o.kr_baseline_number, o.weight, o.task_status, o.due_date,
-              o.created_at, o.updated_at
+              o.created_at, o.updated_at,
+              COALESCE(u.display_name, NULLIF(CONCAT(u.first_name, ' ', u.last_name), ' '), 'You') as owner_name,
+              u.first_name as owner_first_name,
+              u.last_name as owner_last_name,
+              u.profile_picture_url as owner_avatar
             FROM okrt o
+            JOIN users u ON o.owner_id = u.id
             WHERE o.owner_id = ?
             ORDER BY CASE WHEN o.parent_id IS NULL THEN 0 ELSE 1 END, o.order_index ASC
           `, [userId]);
@@ -118,16 +123,19 @@ export async function GET(request) {
           sendSection('notifications', notifications);
           console.log('[Progressive] ✅ notifications sent');
 
-          // 4. Load SharedOKRTs
+          // 4. Load SharedOKRTs - Only Objectives, with KRs nested inside
           console.log('[Progressive] Loading sharedOKRTs...');
           const sharedOKRTsRaw = await all(`
             SELECT DISTINCT ON (o.id)
-              o.id, o.type, o.parent_id, o.title, o.description, o.progress,
-              o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
+              o.id, o.type, o.parent_id, o.title, o.description,
+              o.progress, o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
               o.objective_kind, o.kr_target_number, o.kr_unit, o.kr_baseline_number,
               o.weight, o.task_status, o.due_date, o.created_at, o.updated_at,
-              o.owner_id, u.display_name as owner_name, u.first_name as owner_first_name,
+              o.owner_id,
+              COALESCE(u.display_name, NULLIF(CONCAT(u.first_name, ' ', u.last_name), ' ')) as owner_name,
+              u.first_name as owner_first_name,
               u.last_name as owner_last_name,
+              u.profile_picture_url as owner_avatar,
               CASE WHEN f.id IS NOT NULL THEN TRUE ELSE FALSE END as is_following
             FROM okrt o
             JOIN users u ON o.owner_id = u.id
@@ -138,29 +146,47 @@ export async function GET(request) {
                      SELECT group_id FROM user_group WHERE user_id = ?
                    )))
               AND o.visibility = 'shared'
+              AND o.type = 'O'
             ORDER BY o.id, CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC
           `, [userId, userId, userId]);
 
           const sharedOKRTs = await Promise.all(
             sharedOKRTsRaw.map(async (okrt) => {
-              if (okrt.type === 'O') {
-                const comments = await all(`
-                  SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count,
-                         c.sending_user, c.receiving_user, c.okrt_id,
-                         c.created_at, c.updated_at,
-                         su.display_name as sender_name, su.first_name as sender_first_name,
-                         su.last_name as sender_last_name, su.profile_picture_url as sender_avatar,
-                         ru.display_name as receiver_name, ru.first_name as receiver_first_name,
-                         ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar
-                  FROM comments c
-                  JOIN users su ON c.sending_user = su.id
-                  JOIN users ru ON c.receiving_user = ru.id
-                  WHERE c.okrt_id = ?
-                  ORDER BY c.created_at ASC
-                `, [okrt.id]);
-                return { ...okrt, comments };
-              }
-              return okrt;
+              // Fetch comments for this objective
+              const comments = await all(`
+                SELECT c.id, c.comment, c.parent_comment_id, c.type, c.count,
+                       c.sending_user, c.receiving_user, c.okrt_id,
+                       c.created_at, c.updated_at,
+                       su.display_name as sender_name, su.first_name as sender_first_name,
+                       su.last_name as sender_last_name, su.profile_picture_url as sender_avatar,
+                       ru.display_name as receiver_name, ru.first_name as receiver_first_name,
+                       ru.last_name as receiver_last_name, ru.profile_picture_url as receiver_avatar
+                FROM comments c
+                JOIN users su ON c.sending_user = su.id
+                JOIN users ru ON c.receiving_user = ru.id
+                WHERE c.okrt_id = ?
+                ORDER BY c.created_at ASC
+              `, [okrt.id]);
+              
+              // Fetch KRs (Key Results) for this objective
+              const keyResults = await all(`
+                SELECT o.id, o.description, o.progress
+                FROM okrt o
+                WHERE o.parent_id = ? AND o.type = 'K'
+                ORDER BY o.order_index ASC
+              `, [okrt.id]);
+              
+              // Transform KRs to simple array with only description and progress
+              const krs = keyResults.map(kr => ({
+                description: kr.description,
+                progress: Math.round(kr.progress || 0)
+              }));
+              
+              return {
+                ...okrt,
+                comments,
+                keyResults: krs
+              };
             })
           );
           
@@ -171,7 +197,7 @@ export async function GET(request) {
           console.log('[Progressive] Loading groups...');
           const allGroups = await all(`
             SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url,
-                   g.created_at, g.updated_at
+                   g.vision, g.mission, g.created_at, g.updated_at
             FROM groups g
             ORDER BY g.name ASC
           `);
@@ -204,6 +230,8 @@ export async function GET(request) {
               `, [group.id]);
 
               let objectiveIds = [];
+              let strategicObjectiveIds = [];
+              
               if (membership.is_member) {
                 const objectiveIdsResult = await all(`
                   SELECT DISTINCT s.okrt_id, o.updated_at
@@ -213,6 +241,15 @@ export async function GET(request) {
                   ORDER BY o.updated_at DESC
                 `, [group.id]);
                 objectiveIds = objectiveIdsResult.map(obj => obj.okrt_id);
+                
+                // Fetch strategic objectives for this group
+                const strategicObjectivesResult = await all(`
+                  SELECT so.okrt_id
+                  FROM strategic_objectives so
+                  WHERE so.group_id = ?
+                  ORDER BY so.created_at ASC
+                `, [group.id]);
+                strategicObjectiveIds = strategicObjectivesResult.map(obj => obj.okrt_id);
               }
 
               return {
@@ -220,7 +257,8 @@ export async function GET(request) {
                 is_member: membership.is_member,
                 is_admin: membership.is_admin,
                 members,
-                objectiveIds
+                objectiveIds,
+                strategicObjectiveIds
               };
             })
           );

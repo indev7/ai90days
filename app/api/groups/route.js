@@ -57,7 +57,9 @@ async function buildGroupHierarchy() {
       g.name,
       g.type,
       g.parent_group_id,
-      g.thumbnail_url
+      g.thumbnail_url,
+      g.vision,
+      g.mission
     FROM groups g
     ORDER BY g.name ASC
   `);
@@ -88,9 +90,18 @@ async function buildGroupHierarchy() {
     WHERE s.share_type = 'G' AND o.visibility = 'shared'
   `);
 
-  // Build maps for members and objectives by group
+  // Get strategic objectives for all groups
+  const allStrategicObjectives = await all(`
+    SELECT
+      group_id,
+      okrt_id
+    FROM strategic_objectives
+  `);
+
+  // Build maps for members, objectives, and strategic objectives by group
   const membersByGroup = new Map();
   const objectivesByGroup = new Map();
+  const strategicObjectivesByGroup = new Map();
 
   allMembers.forEach(member => {
     if (!membersByGroup.has(member.group_id)) {
@@ -106,13 +117,21 @@ async function buildGroupHierarchy() {
     objectivesByGroup.get(obj.group_id).push(obj.okrt_id);
   });
 
-  // Build a map for quick lookup with members and objectives
+  allStrategicObjectives.forEach(obj => {
+    if (!strategicObjectivesByGroup.has(obj.group_id)) {
+      strategicObjectivesByGroup.set(obj.group_id, []);
+    }
+    strategicObjectivesByGroup.get(obj.group_id).push(obj.okrt_id);
+  });
+
+  // Build a map for quick lookup with members, objectives, and strategic objectives
   const groupMap = new Map();
   groups.forEach(group => {
     groupMap.set(group.id, {
       ...group,
       members: membersByGroup.get(group.id) || [],
       objectiveIds: objectivesByGroup.get(group.id) || [],
+      strategicObjectiveIds: strategicObjectivesByGroup.get(group.id) || [],
       children: []
     });
   });
@@ -142,7 +161,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { name, type, parent_group_id, thumbnail_data } = body;
+    const { name, type, parent_group_id, thumbnail_data, strategic_objectives, vision, mission } = body;
 
     if (!name || !type) {
       return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
@@ -152,6 +171,22 @@ export async function POST(request) {
     const validTypes = ['Organisation', 'Department', 'Team', 'Chapter', 'Squad', 'Tribe', 'Group'];
     if (!validTypes.includes(type)) {
       return NextResponse.json({ error: 'Invalid group type' }, { status: 400 });
+    }
+
+    // Check if user is Admin when creating Organisation type
+    if (type === 'Organisation' && user.role !== 'Admin') {
+      return NextResponse.json({ error: 'Only Admin users can create Organisation groups' }, { status: 403 });
+    }
+
+    // Check for existing Organisation group
+    if (type === 'Organisation') {
+      const allGroups = await getAllGroups();
+      const existingOrgGroup = allGroups.find(g => g.type === 'Organisation');
+      if (existingOrgGroup) {
+        return NextResponse.json({
+          error: 'An Organisation already exists. There can be only one group of type Organisation'
+        }, { status: 409 });
+      }
     }
 
     const groupId = nanoid();
@@ -215,7 +250,9 @@ export async function POST(request) {
       name,
       type,
       parent_group_id: parent_group_id || null,
-      thumbnail_url: finalThumbnailUrl
+      thumbnail_url: finalThumbnailUrl,
+      vision: vision || null,
+      mission: mission || null
     };
 
     const group = await createGroup(groupData);
@@ -247,8 +284,25 @@ export async function POST(request) {
       }
     }
 
+    // Add strategic objectives to the group (max 5)
+    const { all, run } = await import('@/lib/pgdb');
+    if (strategic_objectives && Array.isArray(strategic_objectives)) {
+      const objectivesToAdd = strategic_objectives.slice(0, 5); // Limit to 5
+      for (const objectiveId of objectivesToAdd) {
+        try {
+          await run(`
+            INSERT INTO strategic_objectives (group_id, okrt_id)
+            VALUES ($1, $2)
+            ON CONFLICT (group_id, okrt_id) DO NOTHING
+          `, [groupId, objectiveId]);
+        } catch (error) {
+          console.error(`Error adding strategic objective ${objectiveId} to group:`, error);
+          // Continue with other objectives even if one fails
+        }
+      }
+    }
+
     // Fetch complete member details for cache
-    const { all } = await import('@/lib/pgdb');
     const memberDetails = await all(`
       SELECT
         u.id,
@@ -260,8 +314,15 @@ export async function POST(request) {
         ug.is_admin
       FROM users u
       JOIN user_group ug ON u.id = ug.user_id
-      WHERE ug.group_id = ?
+      WHERE ug.group_id = $1
       ORDER BY ug.is_admin DESC, u.display_name ASC
+    `, [groupId]);
+
+    // Fetch strategic objectives for cache
+    const strategicObjectives = await all(`
+      SELECT okrt_id
+      FROM strategic_objectives
+      WHERE group_id = $1
     `, [groupId]);
 
     // Return response with cache update instruction
@@ -274,7 +335,8 @@ export async function POST(request) {
           is_member: true,
           is_admin: true,
           members: memberDetails,
-          objectiveIds: []
+          objectiveIds: [],
+          strategicObjectiveIds: strategicObjectives.map(so => so.okrt_id)
         }
       }
     }, { status: 201 });

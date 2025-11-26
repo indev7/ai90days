@@ -12,6 +12,7 @@ import StrategyHouse from './StrategyHouse';
 import GroupsView from './GroupsView';
 import ObjectivesView from './ObjectivesView';
 import styles from './page.module.css';
+import { useSearchParams } from 'next/navigation';
 
 /*************************
  * Helpers
@@ -80,11 +81,13 @@ export default function IntervestOrgChart() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Use hooks for user and mainTree data
   const { user: currentUser, isLoading: userLoading } = useUser();
   const { isLoading: mainTreeLoading } = useMainTree();
   const mainTree = useMainTreeStore((state) => state.mainTree);
+  const searchParams = useSearchParams();
 
   // Process groups from mainTree
   useEffect(() => {
@@ -117,6 +120,18 @@ export default function IntervestOrgChart() {
       setOrgValue(chartData);
     }
   }, [mainTree]);
+
+  // Listen for createGroup event from LeftMenu
+  useEffect(() => {
+    const handleCreateGroup = () => {
+      setShowAddModal(true);
+    };
+
+    window.addEventListener('createGroup', handleCreateGroup);
+    return () => {
+      window.removeEventListener('createGroup', handleCreateGroup);
+    };
+  }, []);
 
   const refreshGroupData = async () => {
     try {
@@ -156,7 +171,23 @@ export default function IntervestOrgChart() {
       return;
     }
 
-    const groupObjectives = (mainTree?.sharedOKRTs || [])
+    // Combine myOKRTs and sharedOKRTs to search for objectives
+    const allOKRTs = [...(mainTree?.myOKRTs || []), ...(mainTree?.sharedOKRTs || [])];
+    
+    // Get strategic objectives based on strategicObjectiveIds from group
+    const strategicObjectiveIds = group.strategicObjectiveIds || [];
+    const strategicObjectives = allOKRTs
+      .filter(okrt => strategicObjectiveIds.includes(okrt.id))
+      .map(okrt => ({
+        id: okrt.id,
+        title: okrt.title,
+        description: okrt.description,
+        progress: okrt.progress || 0,
+        owner_name: okrt.owner_name
+      }));
+
+    // Get shared objectives based on objectiveIds from group
+    const sharedObjectives = allOKRTs
       .filter(okrt => group.objectiveIds?.includes(okrt.id))
       .map(okrt => ({
         id: okrt.id,
@@ -166,12 +197,28 @@ export default function IntervestOrgChart() {
         owner_name: okrt.owner_name
       }));
 
+    // Combine all objectives (strategic + shared, avoiding duplicates)
+    const allObjectivesMap = new Map();
+    
+    // Add strategic objectives first
+    strategicObjectives.forEach(obj => allObjectivesMap.set(obj.id, obj));
+    
+    // Add shared objectives (will not duplicate if already in strategic)
+    sharedObjectives.forEach(obj => {
+      if (!allObjectivesMap.has(obj.id)) {
+        allObjectivesMap.set(obj.id, obj);
+      }
+    });
+
+    const combinedObjectives = Array.from(allObjectivesMap.values());
+
     setGroupDetails(prev => ({
       ...prev,
       [groupId]: {
         members: group.members || [],
-        objectives: groupObjectives,
-        count: groupObjectives.length,
+        objectives: combinedObjectives,
+        strategicObjectiveIds: strategicObjectiveIds,
+        count: combinedObjectives.length,
         memberCount: group.members?.length || 0
       }
     }));
@@ -225,10 +272,13 @@ export default function IntervestOrgChart() {
         type: group.type,
         parent_group_id: group.parent_group_id,
         thumbnail_url: group.thumbnail_url,
-        members: group.members || []
+        vision: group.vision,
+        mission: group.mission,
+        members: group.members || [],
+        strategicObjectiveIds: group.strategicObjectiveIds || []
       });
     } else {
-      setEditingGroup({ ...groupData, members: [] });
+      setEditingGroup({ ...groupData, members: [], strategicObjectiveIds: [] });
     }
     setShowEditModal(true);
   };
@@ -242,6 +292,7 @@ export default function IntervestOrgChart() {
 
     if (response.ok) {
       await refreshGroupData();
+      setShowAddModal(false);
     } else {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to create group');
@@ -305,6 +356,17 @@ export default function IntervestOrgChart() {
     setShowDeleteConfirm(true);
   };
 
+  // Sync viewType with URL query (?view=strategy|groups|objectives)
+  useEffect(() => {
+    const viewParam = searchParams?.get('view');
+    const allowedViews = new Set(['strategy', 'groups', 'objectives']);
+    const nextView = allowedViews.has(viewParam) ? viewParam : 'strategy';
+    setViewType(nextView);
+    if (nextView === 'objectives' && objectivesValue.length === 0) {
+      buildObjectivesHierarchy();
+    }
+  }, [searchParams]);
+
   return (
     <div className={styles.container}>
       {/* PrimeReact overrides & connector tuning */}
@@ -325,67 +387,46 @@ export default function IntervestOrgChart() {
       `}</style>
 
       <div className={styles.content}>
-        {/* Toggle Switch */}
-        <div className={styles.header}>
-          <div className={styles.viewToggle}>
-            <div className={styles.toggleSwitch}>
-              <button
-                className={`${styles.toggleOption} ${viewType === 'strategy' ? styles.active : ''}`}
-                onClick={() => setViewType('strategy')}
-              >
-                Strategy
-              </button>
-              <button
-                className={`${styles.toggleOption} ${viewType === 'groups' ? styles.active : ''}`}
-                onClick={() => setViewType('groups')}
-              >
-                Groups
-              </button>
-              <button
-                className={`${styles.toggleOption} ${viewType === 'objectives' ? styles.active : ''}`}
-                onClick={() => {
-                  setViewType('objectives');
-                  if (objectivesValue.length === 0) {
-                    buildObjectivesHierarchy();
-                  }
-                }}
-              >
-                Objectives
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Render appropriate view based on viewType */}
         {viewType === 'strategy' && (
-          <div className={styles.strategyContainer}>
-            <StrategyHouse />
+          <div className={`${styles.strategyContainer} ${styles.strategySurface}`}>
+            <div className={styles.strategySurfaceContent}>
+              <StrategyHouse />
+            </div>
           </div>
         )}
 
         {viewType === 'groups' && (
-          <GroupsView
-            orgValue={orgValue}
-            groupDetails={groupDetails}
-            currentUserId={currentUser?.id}
-            onNodeClick={handleNodeClick}
-            expandedGroupId={expandedGroupId}
-            onEditGroup={handleEditGroup}
-            onAddGroup={handleAddGroup}
-            groups={groups}
-            mainTreeLoading={mainTreeLoading}
-            userLoading={userLoading}
-            error={error}
-          />
+          <div className={styles.strategySurface}>
+            <div className={styles.strategySurfaceContent}>
+              <GroupsView
+                orgValue={orgValue}
+                groupDetails={groupDetails}
+                currentUserId={currentUser?.id}
+                currentUserRole={currentUser?.role}
+                onNodeClick={handleNodeClick}
+                expandedGroupId={expandedGroupId}
+                onEditGroup={handleEditGroup}
+                onAddGroup={handleAddGroup}
+                groups={groups}
+                mainTreeLoading={mainTreeLoading}
+                userLoading={userLoading}
+                error={error}
+              />
+            </div>
+          </div>
         )}
 
         {viewType === 'objectives' && (
-          <ObjectivesView
-            objectivesValue={objectivesValue}
-            expandedObjectiveId={expandedObjectiveId}
-            onNodeClick={handleObjectiveNodeClick}
-            mainTreeLoading={mainTreeLoading}
-          />
+          <div className={`${styles.strategySurface} ${styles.objectiveSurface}`}>
+            <div className={styles.strategySurfaceContent}>
+              <ObjectivesView
+                objectivesValue={objectivesValue}
+                expandedObjectiveId={expandedObjectiveId}
+                onNodeClick={handleObjectiveNodeClick}
+                mainTreeLoading={mainTreeLoading}
+              />
+            </div>
+          </div>
         )}
       </div>
 
@@ -402,6 +443,16 @@ export default function IntervestOrgChart() {
         onDelete={handleDeleteClick}
         onMemberRemoved={handleMemberRemoved}
         existingMembersFromMainTree={editingGroup?.members}
+        mainTree={mainTree}
+      />
+
+      {/* Add Group Modal */}
+      <AddGroupModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleAddGroup}
+        groups={groups}
+        mainTree={mainTree}
       />
 
       {/* Delete Confirmation Modal */}

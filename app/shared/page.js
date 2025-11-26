@@ -17,7 +17,8 @@ export default function SharedGoalsPage() {
   // Subscribe to mainTreeStore
   const { mainTree, isLoading } = useMainTree();
   const { setSharedOKRTs } = useMainTreeStore();
-  const sharedOKRTs = mainTree.sharedOKRTs || [];
+  // Filter to show only Objectives (type 'O'), not Key Results
+  const sharedOKRTs = (mainTree.sharedOKRTs || []).filter(okrt => okrt.type === 'O');
   
   // Use cached user data
   const { user: currentUser } = useUser();

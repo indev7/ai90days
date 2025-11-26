@@ -11,6 +11,8 @@ import { MdOutlineSelfImprovement } from "react-icons/md";
 import { SiSlideshare } from "react-icons/si";
 import { RiOrganizationChart } from "react-icons/ri";
 import { TbBriefcase } from "react-icons/tb";
+import { HiOutlineUsers } from "react-icons/hi2";
+import { GiGreekTemple } from "react-icons/gi";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
@@ -21,30 +23,51 @@ import TaskUpdateModal from './TaskUpdateModal';
 import OKRTModal from './OKRTModal';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './LeftMenu.module.css';
 
-const topMenuItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  {
-    href: '/okrt',
-    label: 'My OKRs',
-    icon: 'goals',
-    children: [
-      { href: '/new', label: 'Add OKR', icon: 'new', isAction: true }
-    ] // Will be populated with objectives dynamically
-  },
-  {
-    href: '/calendar',
-    label: 'Schedule',
-    icon: 'calendar',
-    disabled: false,
-    children: [] // Will be populated with scheduled tasks dynamically
-  },
-  { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
-  { href: '/organisation', label: 'Organisation', icon: 'organisation', disabled: false },
-];
+const getTopMenuItems = (userRole) => {
+  const items = [
+    { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    {
+      href: '/okrt',
+      label: 'My OKRs',
+      icon: 'goals',
+      children: [
+        { href: '/new', label: 'Add OKR', icon: 'new', isAction: true }
+      ] // Will be populated with objectives dynamically
+    },
+    {
+      href: '/calendar',
+      label: 'Schedule',
+      icon: 'calendar',
+      disabled: false,
+      children: [] // Will be populated with scheduled tasks dynamically
+    },
+    { href: '/shared', label: 'Shared OKRs', icon: 'shared', disabled: false },
+    {
+      href: '/organisation',
+      label: 'Business',
+      icon: 'organisation',
+      disabled: false,
+      children: [
+        { href: '/organisation?view=strategy', label: 'Strategy', icon: 'strategy' },
+        { href: '/organisation?view=groups', label: 'Groups', icon: 'groups' },
+        { href: '/organisation?view=objectives', label: 'Objectives', icon: 'goals' },
+        { href: '/organisation/create', label: 'Add Group', icon: 'new', isAction: true }
+      ]
+    },
+  ];
+
+  // Add Members link for Admin users
+  if (userRole === 'Admin') {
+    items.push({ href: '/members', label: 'Members', icon: 'members', disabled: false });
+  }
+
+  return items;
+};
 
 const bottomMenuItems = [
   { href: '/coach', label: 'Coach', icon: 'coach', disabled: false },
@@ -60,6 +83,8 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     shared: <SiSlideshare size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
     organisation: <TbBriefcase size={iconSize} />,
+    strategy: <GiGreekTemple size={iconSize} />,
+    members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
@@ -118,8 +143,14 @@ export default function LeftMenu({
   // Load mainTree data (will use cached data if available)
   useMainTree();
   
+  // Get current user
+  const { user: currentUser } = useUser();
+  
   // Get mainTree from Zustand store
   const { mainTree, getUnreadNotificationCount } = useMainTreeStore();
+
+  // Get top menu items based on user role
+  const topMenuItems = getTopMenuItems(currentUser?.role);
 
   // Process data from mainTree store
   useEffect(() => {
@@ -599,25 +630,17 @@ export default function LeftMenu({
                           );
                         })}
                         
-                        {/* Show admin groups first */}
-                        {item.href === '/organisation' && adminGroups.map((group) => (
-                          <li key={`group-${group.id}`} className={styles.childMenuItem}>
-                            <button
-                              onClick={(e) => handleGroupEditClick(group.id, e)}
-                              className={styles.childMenuLink}
-                              title={`Edit ${group.name}`}
-                            >
-                       
-                              <span className={styles.label}>{group.name}</span>
-                            </button>
-                          </li>
-                        ))}
-                        
                         {/* Show original children (action buttons) */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
                           const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
+                          
+                          // Only show Add Group for Admin, Owner, or Leader roles
+                          if (isAddGroup && currentUser?.role && !['Admin', 'Owner', 'Leader'].includes(currentUser.role)) {
+                            return null;
+                          }
+                          
                           return (
                             <li key={child.href} className={styles.childMenuItem}>
                               {isAddGroup ? (
