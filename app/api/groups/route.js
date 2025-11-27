@@ -5,7 +5,8 @@ import {
   getAllGroups,
   getRootGroups,
   getUserGroups,
-  addUserToGroup
+  addUserToGroup,
+  getUserById
 } from '@/lib/pgdb';
 import { nanoid } from 'nanoid';
 import { generateAvatarSVG } from '@/lib/avatarGenerator';
@@ -155,9 +156,18 @@ async function buildGroupHierarchy() {
 
 export async function POST(request) {
   try {
-    const user = await getSession();
+    let user = await getSession();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Ensure we have an up-to-date role for permission checks
+    if (!user.role) {
+      const dbUser = await getUserById(parseInt(user.sub));
+      if (!dbUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      user = { ...user, role: dbUser.role };
     }
 
     const body = await request.json();

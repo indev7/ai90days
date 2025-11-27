@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './ShareModal.module.css';
 
 export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility = 'private' }) {
@@ -96,14 +97,17 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
         }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
+        processCacheUpdateFromData(data);
+        setVisibility(data.visibility || visibility);
         setSuccess('Sharing settings updated successfully!');
         setTimeout(() => {
           onClose();
         }, 1500);
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update sharing settings');
+        setError(data.error || 'Failed to update sharing settings');
       }
     } catch (err) {
       setError('Network error occurred');
