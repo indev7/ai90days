@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS users (
     last_name TEXT,
     profile_picture_url TEXT,
     auth_provider TEXT DEFAULT 'email',
+    microsoft_access_token TEXT,
+    microsoft_refresh_token TEXT,
+    microsoft_token_expires_at TIMESTAMPTZ,
+    role TEXT DEFAULT 'User' CHECK(role IN ('Admin', 'Owner', 'Leader', 'User')),
     -- Phase 14: User preferences
     preferences JSONB
 );
@@ -30,6 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_microsoft_id ON users(microsoft_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
 -- Trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -97,6 +102,8 @@ CREATE TABLE IF NOT EXISTS groups (
     type TEXT NOT NULL CHECK(type IN ('Organisation', 'Department', 'Team', 'Chapter', 'Squad', 'Tribe', 'Group')),
     parent_group_id TEXT,
     thumbnail_url TEXT,
+    vision TEXT,
+    mission TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_group_id) REFERENCES groups(id) ON DELETE CASCADE

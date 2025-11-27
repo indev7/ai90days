@@ -221,7 +221,6 @@ export default function GroupsView({
               <OrganizationChart
                 value={[rootGroup]}
                 nodeTemplate={(node) => NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentUserId, onEditGroup)}
-                collapsible={false}
               />
             </div>
           ))}

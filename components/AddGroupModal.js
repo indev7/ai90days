@@ -22,7 +22,7 @@ export default function AddGroupModal({
   editingGroup = null, // Group being edited
   onDelete = null, // Delete handler
   onMemberRemoved = null, // Callback when member is removed
-  existingMembersFromMainTree = [], // Members from mainTree (for edit mode)
+  existingMembersFromMainTree, // Members from mainTree (for edit mode)
   mainTree = null // MainTree data for objectives
 }) {
   const { user: currentUser } = useUser();
