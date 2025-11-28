@@ -1070,6 +1070,12 @@
   overflow: hidden;
 }
 
+.strategyObjectiveMeta {
+  font-size: 11px;
+  color: var(--strategy-text-muted);
+  margin-bottom: 8px;
+}
+
 .strategyProgressBar {
   position: relative;
   width: 100%;
@@ -1120,22 +1126,22 @@
 }
 
 .strategyKrColumn {
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 18px;
-  padding: 12px 12px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
 .strategyKrColumnHeader {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 2px;
+  margin-bottom: 2px;
 }
 
 .strategyKrColumnTitle {
@@ -1162,6 +1168,13 @@
   cursor: pointer;
 }
 
+.strategyKrHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .strategyKrTitle {
   font-size: 12px;
   font-weight: 500;
@@ -1169,6 +1182,62 @@
 }
 
 .strategyKrMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--strategy-text-muted);
+}
+
+.strategyKrToggle {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #fff;
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--strategy-transition), box-shadow var(--strategy-transition);
+}
+
+.strategyKrToggle:hover {
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
+}
+
+.strategyKrToggleIcon {
+  display: inline-block;
+  transform: rotate(-90deg);
+  transition: transform var(--strategy-transition);
+  color: #4b5563;
+}
+
+.strategyKrToggleIconOpen {
+  transform: rotate(0deg);
+}
+
+.strategyTaskList {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategyTaskItem {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.strategyTaskTitle {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.strategyTaskMeta {
   display: flex;
   align-items: center;
   gap: 8px;

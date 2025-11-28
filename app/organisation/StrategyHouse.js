@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
@@ -13,6 +13,7 @@ import styles from './page.module.css';
 export default function StrategyHouse({ toggleSlot = null }) {
   const mainTree = useMainTreeStore((state) => state.mainTree);
   const router = useRouter();
+  const [expandedTasks, setExpandedTasks] = useState(new Set());
 
   const strategyData = useMemo(() => {
     const emptyState = {
@@ -34,17 +35,48 @@ export default function StrategyHouse({ toggleSlot = null }) {
     }
 
     const strategicObjectiveIds = orgGroup.strategicObjectiveIds || [];
-    const allOKRTs = [...(mainTree.myOKRTs || []), ...(mainTree.sharedOKRTs || [])];
+    const allOKRTsRaw = [...(mainTree.myOKRTs || []), ...(mainTree.sharedOKRTs || [])];
+    const allOKRTs = allOKRTsRaw.reduce((acc, okrt) => {
+      const okrtId = okrt?.id;
+      if (!okrtId) {
+        acc.push(okrt);
+        return acc;
+      }
+      if (!acc.some((item) => item?.id === okrtId)) {
+        acc.push(okrt);
+      }
+      return acc;
+    }, []);
 
     const normalizeType = (type) => (typeof type === 'string' ? type.toLowerCase() : '');
     const isKeyResult = (okrt) => {
       const type = normalizeType(okrt?.type);
       return type === 'k' || type === 'keyresult';
     };
+    const isTask = (okrt) => {
+      const type = normalizeType(okrt?.type);
+      return type === 't' || type === 'task';
+    };
     const isObjective = (okrt) => {
       const type = normalizeType(okrt?.type);
       return type === 'o' || type === 'objective' || type === 'okr' || type === 'objectivenode' || type === '';
     };
+
+    const mapTasks = (kr) =>
+      allOKRTs
+        .filter((okrt) => okrt.parent_id === kr.id && isTask(okrt))
+        .reduce((acc, task, idx) => {
+          const taskId = task.id || `${kr.id}-task-${idx}`;
+          if (acc.some((t) => t.id === taskId)) {
+            return acc;
+          }
+          acc.push({
+            id: taskId,
+            title: task.title || task.description,
+            progress: Math.round(task.progress || 0),
+          });
+          return acc;
+        }, []);
 
     const mapKeyResults = (objective) => {
       if (!objective) return [];
@@ -54,6 +86,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
           id: kr.id ?? `${objective.id}-kr-${idx}`,
           title: kr.description || kr.title,
           progress: Math.round(kr.progress || 0),
+          tasks: mapTasks(kr),
         }));
       }
 
@@ -63,6 +96,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
           id: kr.id,
           title: kr.description || kr.title,
           progress: Math.round(kr.progress || 0),
+          tasks: mapTasks(kr),
         }));
     };
 
@@ -71,21 +105,27 @@ export default function StrategyHouse({ toggleSlot = null }) {
         .filter(
           (okrt) => okrt.parent_id === objectiveId && isObjective(okrt) && !isKeyResult(okrt)
         )
-        .map((child, idx) => {
+        .reduce((acc, child, idx) => {
+          const childId = child.id || `${objectiveId}-child-${idx}`;
+          if (acc.some((c) => c.id === childId)) {
+            return acc;
+          }
+
           const childOwnerName =
             child.owner_name ||
             [child.owner_first_name, child.owner_last_name].filter(Boolean).join(' ') ||
             'You';
 
-          return {
-            id: child.id || `${objectiveId}-child-${idx}`,
+          acc.push({
+            id: childId,
             title: child.title || child.description,
             progress: Math.round(child.progress || 0),
             ownerName: childOwnerName,
             ownerAvatar: child.owner_avatar,
             keyResults: mapKeyResults(child),
-          };
-        });
+          });
+          return acc;
+        }, []);
 
     const objectives = strategicObjectiveIds
       .map((objId) => {
@@ -151,6 +191,18 @@ export default function StrategyHouse({ toggleSlot = null }) {
     if (objectiveId) {
       router.push(`/shared/${objectiveId}`);
     }
+  };
+
+  const toggleTasks = (krId) => {
+    setExpandedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(krId)) {
+        next.delete(krId);
+      } else {
+        next.add(krId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -232,6 +284,9 @@ export default function StrategyHouse({ toggleSlot = null }) {
                 <div className={styles.strategyObjectiveTitle} title={o.title}>
                   {o.title}
                 </div>
+                <div className={styles.strategyObjectiveMeta}>
+                  {(o.childObjectives?.length || 0)} objective{o.childObjectives?.length === 1 ? '' : 's'} · {o.progress}% overall
+                </div>
                 <div
                   className={styles.strategyProgressBar}
                   style={{ '--bar-value': `${o.progress}%` }}
@@ -258,13 +313,6 @@ export default function StrategyHouse({ toggleSlot = null }) {
           <div className={styles.strategyKrGrid}>
             {objectives.map((o) => (
               <div key={o.id} className={styles.strategyKrColumn}>
-                <div className={styles.strategyKrColumnHeader}>
-                  <div className={styles.strategyKrColumnTitle}>{o.title}</div>
-                  <div className={styles.strategyKrColumnSub}>
-                    {o.childObjectives.length} objective{o.childObjectives.length === 1 ? '' : 's'} ·{' '}
-                    {o.progress}% overall
-                  </div>
-                </div>
                 <div className={styles.strategyKrColumnList}>
                   {o.childObjectives.length === 0 ? (
                     <div className={styles.strategyEmpty}>No child objectives yet.</div>
@@ -300,16 +348,68 @@ export default function StrategyHouse({ toggleSlot = null }) {
                                 }}
                                 role="button"
                               >
-                                <div className={styles.strategyKrTitle}>{kr.title}</div>
-                                <div className={styles.strategyKrMeta}>
-                                  <span>{kr.progress}%</span>
-                                  <div
-                                    className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
-                                    style={{ '--bar-value': `${kr.progress}%` }}
-                                  >
-                                    <div className={styles.strategyProgressBarFill} />
+                                <div className={styles.strategyKrHeader}>
+                                  <div>
+                                    <div className={styles.strategyKrTitle}>{kr.title}</div>
+                                    <div className={styles.strategyKrMeta}>
+                                      <span>{kr.progress}%</span>
+                                      <div
+                                        className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
+                                        style={{ '--bar-value': `${kr.progress}%` }}
+                                      >
+                                        <div className={styles.strategyProgressBarFill} />
+                                      </div>
+                                    </div>
                                   </div>
+                                  {kr.tasks?.length > 0 && (
+                                    <button
+                                      className={styles.strategyKrToggle}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleTasks(kr.id);
+                                      }}
+                                      aria-label={
+                                        expandedTasks.has(kr.id)
+                                          ? 'Hide tasks'
+                                          : 'Show tasks'
+                                      }
+                                    >
+                                      <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className={`${styles.strategyKrToggleIcon} ${
+                                          expandedTasks.has(kr.id)
+                                            ? styles.strategyKrToggleIconOpen
+                                            : ''
+                                        }`}
+                                      >
+                                        <polyline points="9,18 15,12 9,6" />
+                                      </svg>
+                                    </button>
+                                  )}
                                 </div>
+                                {expandedTasks.has(kr.id) && kr.tasks?.length > 0 && (
+                                  <div className={styles.strategyTaskList}>
+                                    {kr.tasks.map((task) => (
+                                      <div key={task.id} className={styles.strategyTaskItem}>
+                                        <div className={styles.strategyTaskTitle}>{task.title}</div>
+                                        <div className={styles.strategyTaskMeta}>
+                                          <span>{task.progress}%</span>
+                                          <div
+                                            className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
+                                            style={{ '--bar-value': `${task.progress}%` }}
+                                          >
+                                            <div className={styles.strategyProgressBarFill} />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ))
                           )}
