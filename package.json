@@ -17,6 +17,8 @@
     "@prisma/client": "^6.17.1",
     "bcryptjs": "^3.0.2",
     "boring-avatars": "^2.0.1",
+    "d3": "^5.16.0",
+    "d3-org-chart": "github:jorgefo/d3-organization-chart",
     "dotenv": "^17.2.3",
     "jose": "^6.0.12",
     "lucide-react": "^0.544.0",
@@ -36,6 +38,5 @@
     "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "zustand": "^5.0.8"
-
   }
 }
