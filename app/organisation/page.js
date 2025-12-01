@@ -9,7 +9,7 @@ import { useUser } from '@/hooks/useUser';
 import { useMainTree } from '@/hooks/useMainTree';
 import useMainTreeStore from '@/store/mainTreeStore';
 import StrategyHouse from './StrategyHouse';
-import GroupsView from './GroupsView_back';
+import GroupsView from './GroupsView';
 import ObjectivesView from './ObjectivesView';
 import styles from './page.module.css';
 import { useSearchParams } from 'next/navigation';
