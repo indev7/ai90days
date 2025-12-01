@@ -1,11 +1,11 @@
 /* Organisation Page Styles */
-:global(.p-organizationchart-node-content .p-node-toggler) {
+.container :global(.p-organizationchart-node-content .p-node-toggler) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-:global(.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon) {
+.container :global(.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon) {
   position: static !important;
   left: auto !important;
 }
