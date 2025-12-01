@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { themes, loadTheme, getCurrentTheme, getThemesByFamily } from '@/lib/themeManager';
+import { themes, loadTheme, getCurrentTheme } from '@/lib/themeManager';
 import styles from './page.module.css';
 
 export default function SettingsPage() {
@@ -11,8 +11,40 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState('coffee');
   const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const [preferredVoice, setPreferredVoice] = useState('alloy');
-  const [isSavingVoice, setIsSavingVoice] = useState(false);
+  const [preferredHome, setPreferredHome] = useState('dashboard');
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [initialPreferences, setInitialPreferences] = useState({
+    voice: 'alloy',
+    home: 'dashboard',
+    theme: 'coffee',
+  });
   const router = useRouter();
+
+  const normalizePreferredHome = (value) => {
+    if (typeof value !== 'string') return 'dashboard';
+    const normalized = value.trim().toLowerCase();
+    if (['dashboard', 'shared', 'business'].includes(normalized)) return normalized;
+    if (normalized === 'buisness') return 'business';
+    return 'dashboard';
+  };
+
+  const normalizeTheme = (value) => {
+    if (typeof value !== 'string') return 'coffee';
+    const normalized = value.trim().toLowerCase();
+    const validIds = themes.map(t => t.id);
+    if (validIds.includes(normalized)) return normalized;
+    if (normalized === 'blue') return 'microsoft';
+    return 'coffee';
+  };
+
+  const computeHasChanges = (voiceValue, homeValue, themeValue) => {
+    return (
+      voiceValue !== initialPreferences.voice ||
+      homeValue !== initialPreferences.home ||
+      themeValue !== initialPreferences.theme
+    );
+  };
 
   const voices = [
     { id: 'alloy', name: 'Alloy', description: 'Neutral and balanced' },
@@ -23,6 +55,20 @@ export default function SettingsPage() {
     { id: 'shimmer', name: 'Shimmer', description: 'Soft and soothing' },
   ];
 
+  const parsePreferences = (raw) => {
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw;
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error('Failed to parse preferences:', e);
+        return null;
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -30,16 +76,25 @@ export default function SettingsPage() {
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
-          
-          // Parse preferences to get preferred voice
-          if (data.user.preferences) {
-            try {
-              const preferences = JSON.parse(data.user.preferences);
-              setPreferredVoice(preferences.preferred_voice || 'alloy');
-            } catch (e) {
-              console.error('Failed to parse preferences:', e);
-            }
+
+          // Parse preferences to get preferred voice, home, and theme
+          let nextVoice = 'alloy';
+          let nextHome = 'dashboard';
+          let nextTheme = normalizeTheme(getCurrentTheme());
+
+          const parsedPreferences = parsePreferences(data.user.preferences);
+          if (parsedPreferences) {
+            nextVoice = parsedPreferences.preferred_voice || 'alloy';
+            nextHome = normalizePreferredHome(parsedPreferences.preferred_home);
+            nextTheme = normalizeTheme(parsedPreferences.theme || nextTheme);
           }
+
+          setPreferredVoice(nextVoice);
+          setPreferredHome(nextHome);
+          setTheme(nextTheme);
+          setInitialPreferences({ voice: nextVoice, home: nextHome, theme: nextTheme });
+          setHasChanges(false);
+          await loadTheme(nextTheme);
         } else {
           router.push('/login');
         }
@@ -53,9 +108,6 @@ export default function SettingsPage() {
 
     fetchUser();
 
-    // Get current theme
-    const currentTheme = getCurrentTheme();
-    setTheme(currentTheme);
   }, [router]);
 
   const handleThemeChange = async (newTheme) => {
@@ -63,7 +115,9 @@ export default function SettingsPage() {
     try {
       const success = await loadTheme(newTheme);
       if (success) {
-        setTheme(newTheme);
+        const normalizedTheme = normalizeTheme(newTheme);
+        setTheme(normalizedTheme);
+        setHasChanges(computeHasChanges(preferredVoice, preferredHome, normalizedTheme));
       } else {
         console.error('Failed to load theme:', newTheme);
       }
@@ -74,31 +128,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleVoiceChange = async (newVoice) => {
-    setIsSavingVoice(true);
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: user.firstName || user.displayName.split(' ')[0] || '',
-          lastName: user.lastName || user.displayName.split(' ').slice(1).join(' ') || '',
-          preferredVoice: newVoice,
-        }),
-      });
+  const handleVoiceChange = (newVoice) => {
+    setPreferredVoice(newVoice);
+    setHasChanges(computeHasChanges(newVoice, preferredHome, theme));
+  };
 
-      if (response.ok) {
-        setPreferredVoice(newVoice);
-      } else {
-        console.error('Failed to save voice preference');
-      }
-    } catch (error) {
-      console.error('Error saving voice preference:', error);
-    } finally {
-      setIsSavingVoice(false);
-    }
+  const handleHomeChange = (newHome) => {
+    setPreferredHome(newHome);
+    setHasChanges(computeHasChanges(preferredVoice, newHome, theme));
   };
 
   if (isLoading) {
@@ -181,20 +218,85 @@ export default function SettingsPage() {
                     key={voice.id}
                     className={`${styles.themeOption} ${preferredVoice === voice.id ? styles.active : ''}`}
                     onClick={() => handleVoiceChange(voice.id)}
-                    disabled={isSavingVoice}
                     title={voice.description}
                   >
                     <span>{voice.name}</span>
                   </button>
                 ))}
               </div>
-              
-              {isSavingVoice && (
-                <div className={styles.loadingIndicator}>
-                  Saving...
-                </div>
-              )}
             </div>
+          </div>
+
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Home Page</h2>
+            
+            <div className={styles.setting}>
+              <div className={styles.settingInfo}>
+                <label className={styles.settingLabel}>Preferred landing page</label>
+                <p className={styles.settingDescription}>
+                  Choose where to go right after you log in
+                </p>
+              </div>
+              
+              <div className={styles.themeToggle}>
+                {[
+                  { id: 'dashboard', label: 'Dashboard' },
+                  { id: 'shared', label: 'Shared OKRs' },
+                  { id: 'business', label: 'Business' },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    className={`${styles.themeOption} ${preferredHome === option.id ? styles.active : ''}`}
+                    onClick={() => handleHomeChange(option.id)}
+                  >
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.saveBar}>
+            <button
+              type="button"
+              className={styles.saveButton}
+              disabled={!hasChanges || isSavingPreferences}
+              onClick={async () => {
+                setIsSavingPreferences(true);
+                try {
+                  const response = await fetch('/api/profile', {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  body: JSON.stringify({
+                    firstName: user.firstName || user.displayName.split(' ')[0] || '',
+                    lastName: user.lastName || user.displayName.split(' ').slice(1).join(' ') || '',
+                    preferredVoice,
+                    preferredHome,
+                    preferredTheme: theme,
+                  }),
+                });
+
+                if (response.ok) {
+                  setInitialPreferences({
+                    voice: preferredVoice,
+                    home: preferredHome,
+                    theme,
+                  });
+                  setHasChanges(false);
+                  } else {
+                    console.error('Failed to save preferences');
+                  }
+                } catch (error) {
+                  console.error('Error saving preferences:', error);
+                } finally {
+                  setIsSavingPreferences(false);
+                }
+              }}
+            >
+              {isSavingPreferences ? 'Saving...' : 'Save preferences'}
+            </button>
           </div>
         </div>
       </div>

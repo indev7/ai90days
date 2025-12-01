@@ -145,8 +145,8 @@ const handler = NextAuth({
         return url;
       }
       
-      // Otherwise redirect to dashboard after Microsoft login
-      return baseUrl + '/dashboard';
+      // Otherwise redirect to preferred home page handler
+      return baseUrl + '/home';
     },
   },
   pages: {

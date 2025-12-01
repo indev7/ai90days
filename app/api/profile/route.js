@@ -13,7 +13,7 @@ export async function PUT(request) {
       );
     }
 
-    const { firstName, lastName, currentPassword, newPassword, preferredVoice } = await request.json();
+    const { firstName, lastName, currentPassword, newPassword, preferredVoice, preferredHome, preferredTheme } = await request.json();
 
     // Validate required fields
     if (!firstName || firstName.trim().length === 0) {
@@ -41,10 +41,10 @@ export async function PUT(request) {
       updated_at: new Date().toISOString(),
     };
 
-    // Only update preferences if preferredVoice is provided
-    if (preferredVoice) {
+    // Only update preferences if a preference is provided
+    if (preferredVoice || preferredHome || preferredTheme) {
       // Parse existing preferences
-      let preferences = { preferred_voice: 'alloy', theme: 'purple' };
+      let preferences = { preferred_voice: 'alloy', theme: 'coffee', preferred_home: 'dashboard' };
       if (currentUser.preferences) {
         try {
           preferences = JSON.parse(currentUser.preferences);
@@ -52,9 +52,33 @@ export async function PUT(request) {
           console.error('Failed to parse preferences:', e);
         }
       }
-      
-      // Update preferred voice
-      preferences.preferred_voice = preferredVoice;
+
+      // Update preferred voice if present
+      if (preferredVoice) {
+        preferences.preferred_voice = preferredVoice;
+      }
+
+      // Update preferred home if present and valid
+      if (preferredHome) {
+        const normalizedHome = preferredHome.toLowerCase();
+        const allowedHomes = ['dashboard', 'shared', 'business'];
+        if (allowedHomes.includes(normalizedHome)) {
+          preferences.preferred_home = normalizedHome;
+        }
+      }
+
+      // Update preferred theme if present and valid
+      if (preferredTheme) {
+        let normalizedTheme = preferredTheme.toLowerCase();
+        const allowedThemes = ['purple', 'dreambig', 'coffee', 'microsoft', 'nature'];
+        if (normalizedTheme === 'blue') {
+          normalizedTheme = 'microsoft';
+        }
+        if (allowedThemes.includes(normalizedTheme)) {
+          preferences.theme = normalizedTheme;
+        }
+      }
+
       updateData.preferences = JSON.stringify(preferences);
     }
 
