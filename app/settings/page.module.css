@@ -246,6 +246,41 @@
   font-size: var(--text-lg);
 }
 
+.saveBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-6);
+}
+
+.saveButton {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: none;
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.1s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.saveButton:disabled {
+  cursor: not-allowed;
+  background: #d1d5db;
+  color: #6b7280;
+  opacity: 1;
+  box-shadow: none;
+  transform: none;
+}
+
+.saveButton:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-brand);
+}
+
 @media (max-width: 767px) {
   .setting {
     flex-direction: column;

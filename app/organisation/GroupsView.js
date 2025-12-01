@@ -198,7 +198,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           max-height: 80vh;
           overflow-y: auto;
           background: var(--surface, #ffffff);
-          border-radius: 12px;
+          border-radius: 10px;
           box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
           padding: 18px 20px 20px;
           display: flex;
@@ -262,7 +262,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
         .popover__item {
           padding: 10px 12px;
           border: 1px solid var(--border, #e2e8f0);
-          border-radius: 8px;
+          border-radius: 10px;
           background: var(--surface-weak, #f8fafc);
         }
         .popover__itemTitle {
@@ -308,7 +308,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           gap: 8px;
           padding: 8px 10px;
           border: 1px solid var(--border, #e2e8f0);
-          border-radius: 8px;
+          border-radius: 10px;
           background: var(--surface-weak, #f8fafc);
         }
         .popover__memberAvatar {
@@ -350,7 +350,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           background: var(--brand-primary, #2563eb);
           color: var(--surface, #ffffff);
           border: none;
-          border-radius: 8px;
+          border-radius: 10px;
           padding: 10px 14px;
           font-weight: 700;
           font-size: 14px;
@@ -401,7 +401,7 @@ export default function GroupsView({
         ...baseNode,
         width: 340,
         height: 160,
-        borderRadius: 6,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: { red: 184, green: 210, blue: 210, alpha: 1 },
         backgroundColor: { red: 255, green: 255, blue: 255, alpha: 1 },
@@ -542,8 +542,8 @@ export default function GroupsView({
           gap: 10px;
           padding: 20px 22px;
           background: var(--surface, #ffffff);
-          border: 1px solid var(--border, #cdd7e1);
-          border-radius: 6px;
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 10px;
         }
 
         .org-card__content {
@@ -555,7 +555,7 @@ export default function GroupsView({
         .org-card__title {
           font-size: 20px;
           font-weight: 700;
-          color: var(--text, #0f172a);
+          color: var(--brand-primary, #6a4bff);
           line-height: 1.2;
         }
 
@@ -569,7 +569,7 @@ export default function GroupsView({
           background: var(--pill-bg, #eef2f2);
           color: var(--pill-text, #1f2937);
           border: 1px solid var(--pill-border, #cdd7e1);
-          border-radius: 12px;
+          border-radius: 10px;
           padding: 6px 10px;
           font-size: 13px;
           font-weight: 600;

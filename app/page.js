@@ -12,9 +12,9 @@ export default function HomePage() {
   const { user, isLoading } = useUser();
 
   useEffect(() => {
-    // Redirect authenticated users directly to dashboard
+    // Redirect authenticated users directly to their preferred home
     if (user) {
-      router.push('/dashboard');
+      router.push('/home');
     }
   }, [user, router]);
 

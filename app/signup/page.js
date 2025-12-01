@@ -56,7 +56,7 @@ export default function SignupPage() {
         window.localStorage.setItem('authChange', Date.now().toString());
         window.localStorage.removeItem('authChange');
         
-        router.push('/dashboard');
+        router.push('/home');
         router.refresh();
       } else {
         setError(data.error || 'Signup failed');
@@ -71,7 +71,7 @@ export default function SignupPage() {
   const handleMicrosoftSignup = async () => {
     try {
       await signIn('azure-ad', { 
-        callbackUrl: '/dashboard',
+        callbackUrl: '/home',
         redirect: true 
       });
     } catch (error) {
