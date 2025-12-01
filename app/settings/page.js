@@ -59,13 +59,21 @@ export default function SettingsPage() {
     { id: 'shimmer', name: 'Shimmer', description: 'Soft and soothing' },
   ];
 
-  // Sync preferences from mainTree (first section loaded)
+  // Apply preferences from mainTree (or fallback to user.preferences) when available
   useEffect(() => {
-    if (!mainTree || !mainTree.preferences) return;
+    if (hasChanges) return; // Do not override in-flight edits
 
-    const nextVoice = mainTree.preferences.preferred_voice || 'alloy';
-    const nextHome = normalizePreferredHome(mainTree.preferences.preferred_home);
-    const nextTheme = normalizeTheme(mainTree.preferences.theme || getCurrentTheme());
+    const sourcePrefs =
+      (mainTree && mainTree.preferences) ||
+      (user && user.preferences ? (() => {
+        try { return JSON.parse(user.preferences); } catch { return null; }
+      })() : null);
+
+    if (!sourcePrefs) return;
+
+    const nextVoice = sourcePrefs.preferred_voice || 'alloy';
+    const nextHome = normalizePreferredHome(sourcePrefs.preferred_home);
+    const nextTheme = normalizeTheme(sourcePrefs.theme || getCurrentTheme());
 
     setPreferredVoice(nextVoice);
     setPreferredHome(nextHome);
@@ -73,7 +81,7 @@ export default function SettingsPage() {
     setInitialPreferences({ voice: nextVoice, home: nextHome, theme: nextTheme });
     setHasChanges(false);
     loadTheme(nextTheme);
-  }, [mainTree]);
+  }, [mainTree, user, hasChanges]);
 
   const handleThemeChange = async (newTheme) => {
     setIsLoadingTheme(true);

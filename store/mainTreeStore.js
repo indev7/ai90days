@@ -76,6 +76,7 @@ const useMainTreeStore = create(
   isLoading: false,
   error: null,
   lastUpdated: null,
+  currentUserId: null,
   llmActivity: { active: false, lastStarted: null },
   
   // Actions
@@ -364,7 +365,8 @@ const useMainTreeStore = create(
       calendar: { loading: false, loaded: false, lastUpdated: null }
     },
     lastUpdated: null,
-    error: null
+    error: null,
+    currentUserId: null
   }),
   
   // Get unread notification count
@@ -380,7 +382,9 @@ const useMainTreeStore = create(
       const blockDate = new Date(block.start_time).toISOString().split('T')[0];
       return blockDate === date;
     });
-  }
+  },
+
+  setCurrentUserId: (userId) => set({ currentUserId: userId })
 }),
       {
         name: 'main-tree-storage', // unique name for localStorage key
@@ -389,7 +393,8 @@ const useMainTreeStore = create(
         partialize: (state) => ({
           mainTree: state.mainTree,
           lastUpdated: state.lastUpdated,
-          sectionStates: state.sectionStates
+          sectionStates: state.sectionStates,
+          currentUserId: state.currentUserId
         })
       }
     )

@@ -45,22 +45,29 @@ export async function GET(request) {
             [userId]
           );
 
-          let preferences = {
+          const defaultPreferences = {
             preferred_voice: 'alloy',
             preferred_home: 'dashboard',
-            theme: 'coffee'
+            theme: 'purple'
           };
+
+          let preferences = { ...defaultPreferences };
 
           if (preferencesRow?.preferences) {
             try {
-              const parsed = JSON.parse(preferencesRow.preferences);
-              preferences = {
-                preferred_voice: parsed.preferred_voice || preferences.preferred_voice,
-                preferred_home: parsed.preferred_home || preferences.preferred_home,
-                theme: parsed.theme || preferences.theme
-              };
+              const parsed = typeof preferencesRow.preferences === 'string'
+                ? JSON.parse(preferencesRow.preferences)
+                : preferencesRow.preferences;
+
+              if (parsed && typeof parsed === 'object') {
+                preferences = {
+                  ...defaultPreferences,
+                  ...parsed
+                };
+              }
             } catch (e) {
               console.error('Failed to parse preferences in progressive loader', e);
+              // Keep defaults if parsing fails
             }
           }
 

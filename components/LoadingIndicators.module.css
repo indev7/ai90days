@@ -12,7 +12,7 @@
 
 .indicators {
   display: flex;
-  gap: 0;
+  gap: 1px;
   align-items: center;
 }
 
@@ -93,15 +93,15 @@
     rgba(0, 209, 102, var(--llmBrightness)) 100%
   );
   border: 1px solid rgba(0, 196, 92, var(--llmBrightness));
-  box-shadow: 0 0 8px rgba(0, 255, 127, calc(var(--llmBrightness) * 0.6));
+  box-shadow: 0 0 8px rgba(0, 255, 127, calc(var(--llmBrightness) * 0.65));
   opacity: 1;
   animation: knightPulse 0.35s ease-in-out;
 }
 
 .led.llmSweep .ledGlow {
   box-shadow: 
-    0 0 12px rgba(0, 255, 127, calc(var(--llmBrightness) * 0.7)),
-    0 0 16px rgba(0, 209, 102, calc(var(--llmBrightness) * 0.45));
+    0 0 12px rgba(0, 255, 127, calc(var(--llmBrightness) * 0.75)),
+    0 0 16px rgba(0, 196, 92, calc(var(--llmBrightness) * 0.5));
   opacity: calc(0.2 + var(--llmBrightness) * 0.8);
 }
 
@@ -155,7 +155,7 @@
 /* Responsive adjustments */
 @media (max-width: 767px) {
   .indicators {
-    gap: 0;
+    gap: 1px;
   }
   
   .led {

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 
 const FRESHNESS_WINDOW = 5 * 60 * 1000;
@@ -20,6 +21,7 @@ let globalCalendarPromise = null;
  */
 export function useMainTree() {
   const router = useRouter();
+  const { user } = useUser();
   const {
     mainTree,
     lastUpdated,
@@ -29,21 +31,39 @@ export function useMainTree() {
     setError,
     setSectionLoading,
     setSectionLoaded,
-    setCalendar
+    setCalendar,
+    clearMainTree,
+    currentUserId,
+    setCurrentUserId
   } = useMainTreeStore();
   
   const hasFetchedRef = useRef(false);
   const hasLoadedCalendarRef = useRef(false);
+  const prevUserIdRef = useRef(null);
 
   useEffect(() => {
+    // Reset fetch flag when user changes (new login)
+    if (user?.id !== prevUserIdRef.current) {
+      hasFetchedRef.current = false;
+      prevUserIdRef.current = user?.id || null;
+    }
+
     // Skip if this component instance has already triggered a fetch
     if (hasFetchedRef.current) {
       return;
     }
 
     const loadMainTree = async () => {
+      // If user changed (new login), reset cached tree
+      if (user && currentUserId && currentUserId !== user.id) {
+        clearMainTree();
+      }
+      if (user && currentUserId !== user.id) {
+        setCurrentUserId(user.id);
+      }
+
       // Check if we already have data and it's fresh (less than 5 minutes old)
-      if (lastUpdated && mainTree?.preferences) {
+      if (lastUpdated && mainTree?.preferences && currentUserId === user?.id) {
         const lastUpdateTime = new Date(lastUpdated).getTime();
         const now = new Date().getTime();
         
@@ -241,7 +261,41 @@ export function useMainTree() {
     };
 
     loadMainTree();
-  }, []); // Only run once on mount
+  }, [user?.id, currentUserId, lastUpdated]); // rerun when user or freshness changes
+
+  // Clear cached tree when auth state changes in another tab (login/logout)
+  useEffect(() => {
+    const handleAuthChange = (event) => {
+      if (event.key !== 'authChange') {
+        return;
+      }
+
+      console.log('Auth change detected, clearing cached mainTree');
+      clearMainTree();
+      setCurrentUserId(null);
+      hasFetchedRef.current = false;
+      globalFetchInProgress = false;
+      globalFetchPromise = null;
+      globalCalendarLoadInProgress = false;
+      globalCalendarPromise = null;
+
+      try {
+        window.localStorage.removeItem('main-tree-storage');
+      } catch (err) {
+        console.warn('Failed to clear main-tree storage on auth change', err);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleAuthChange);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleAuthChange);
+      }
+    };
+  }, [clearMainTree, setCurrentUserId]);
 
   /**
    * Force refresh mainTree data from server

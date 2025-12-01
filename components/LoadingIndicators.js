@@ -69,7 +69,7 @@ export default function LoadingIndicators({ compact = false }) {
           const ledState = isLLMActive ? 'llmSweep' : getLEDState(section.key);
 
           // Set brightness levels for Knight Rider sweep
-          let brightness = 0.4;
+          let brightness = 0.2;
           if (isLLMActive) {
             const distance = Math.abs(idx - scanIndex);
             if (distance === 0) brightness = 1;

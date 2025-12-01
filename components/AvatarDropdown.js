@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import useMainTreeStore from '@/store/mainTreeStore';
+import { clearGlobalUserCache } from '@/hooks/useUser';
 import styles from './AvatarDropdown.module.css';
 
 /**
@@ -90,6 +91,7 @@ export default function AvatarDropdown({ user }) {
 
     // Clear mainTree from Zustand store and localStorage
     clearMainTree();
+    clearGlobalUserCache();
     
     // Clear the persisted mainTree from localStorage
     window.localStorage.removeItem('main-tree-storage');
