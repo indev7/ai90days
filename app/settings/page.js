@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { themes, loadTheme, getCurrentTheme } from '@/lib/themeManager';
+import { useMainTree } from '@/hooks/useMainTree';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useUser } from '@/hooks/useUser';
 import styles from './page.module.css';
 
 export default function SettingsPage() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading: userLoading } = useUser();
+  const { isLoading: mainTreeLoading } = useMainTree();
+  const { mainTree, setPreferences } = useMainTreeStore();
   const [theme, setTheme] = useState('coffee');
   const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const [preferredVoice, setPreferredVoice] = useState('alloy');
@@ -55,60 +59,21 @@ export default function SettingsPage() {
     { id: 'shimmer', name: 'Shimmer', description: 'Soft and soothing' },
   ];
 
-  const parsePreferences = (raw) => {
-    if (!raw) return null;
-    if (typeof raw === 'object') return raw;
-    if (typeof raw === 'string') {
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        console.error('Failed to parse preferences:', e);
-        return null;
-      }
-    }
-    return null;
-  };
-
+  // Sync preferences from mainTree (first section loaded)
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
+    if (!mainTree || !mainTree.preferences) return;
 
-          // Parse preferences to get preferred voice, home, and theme
-          let nextVoice = 'alloy';
-          let nextHome = 'dashboard';
-          let nextTheme = normalizeTheme(getCurrentTheme());
+    const nextVoice = mainTree.preferences.preferred_voice || 'alloy';
+    const nextHome = normalizePreferredHome(mainTree.preferences.preferred_home);
+    const nextTheme = normalizeTheme(mainTree.preferences.theme || getCurrentTheme());
 
-          const parsedPreferences = parsePreferences(data.user.preferences);
-          if (parsedPreferences) {
-            nextVoice = parsedPreferences.preferred_voice || 'alloy';
-            nextHome = normalizePreferredHome(parsedPreferences.preferred_home);
-            nextTheme = normalizeTheme(parsedPreferences.theme || nextTheme);
-          }
-
-          setPreferredVoice(nextVoice);
-          setPreferredHome(nextHome);
-          setTheme(nextTheme);
-          setInitialPreferences({ voice: nextVoice, home: nextHome, theme: nextTheme });
-          setHasChanges(false);
-          await loadTheme(nextTheme);
-        } else {
-          router.push('/login');
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-        router.push('/login');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUser();
-
-  }, [router]);
+    setPreferredVoice(nextVoice);
+    setPreferredHome(nextHome);
+    setTheme(nextTheme);
+    setInitialPreferences({ voice: nextVoice, home: nextHome, theme: nextTheme });
+    setHasChanges(false);
+    loadTheme(nextTheme);
+  }, [mainTree]);
 
   const handleThemeChange = async (newTheme) => {
     setIsLoadingTheme(true);
@@ -138,7 +103,7 @@ export default function SettingsPage() {
     setHasChanges(computeHasChanges(preferredVoice, newHome, theme));
   };
 
-  if (isLoading) {
+  if (userLoading || mainTreeLoading) {
     return (
       <div className={styles.container}>
         <div className={styles.loading}>Loading...</div>
@@ -155,7 +120,7 @@ export default function SettingsPage() {
       <div className={styles.content}>
         <div className={styles.header}>
           <h1 className={styles.title}>Settings</h1>
-          <p className={styles.subtitle}>Customize your 90Days experience</p>
+         
         </div>
 
         <div className={styles.card}>
@@ -163,33 +128,24 @@ export default function SettingsPage() {
             <h2 className={styles.sectionTitle}>Appearance</h2>
             
             <div className={styles.setting}>
-              <div className={styles.settingInfo}>
-                <label className={styles.settingLabel}>Theme</label>
-                <p className={styles.settingDescription}>
-                  Choose between Coffee Brown Light and Microsoft Light themes
-                </p>
-              </div>
+              <label className={styles.settingLabel}>Theme</label>
               
-              <div className={styles.themeToggle}>
+              <div className={styles.radioGroup}>
                 {themes.map((themeOption) => (
-                  <button
+                  <label
                     key={themeOption.id}
-                    className={`${styles.themeOption} ${theme === themeOption.id ? styles.active : ''}`}
-                    onClick={() => handleThemeChange(themeOption.id)}
-                    disabled={isLoadingTheme}
+                    className={`${styles.radioOption} ${theme === themeOption.id ? styles.active : ''}`}
                   >
-                    <div
-                      className={styles.themePreview}
-                      style={{
-                        backgroundColor: themeOption.preview,
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        marginRight: '8px'
-                      }}
+                    <input
+                      type="radio"
+                      name="theme"
+                      value={themeOption.id}
+                      checked={theme === themeOption.id}
+                      onChange={() => handleThemeChange(themeOption.id)}
+                      disabled={isLoadingTheme}
                     />
-                    <span>{themeOption.name}</span>
-                  </button>
+                    <span className={styles.radioLabel}>{themeOption.name}</span>
+                  </label>
                 ))}
               </div>
               
@@ -205,23 +161,24 @@ export default function SettingsPage() {
             <h2 className={styles.sectionTitle}>Coach Voice</h2>
             
             <div className={styles.setting}>
-              <div className={styles.settingInfo}>
-                <label className={styles.settingLabel}>Text-to-Speech Voice</label>
-                <p className={styles.settingDescription}>
-                  Choose the voice for your AI coach
-                </p>
-              </div>
+              <label className={styles.settingLabel}>Text-to-Speech Voice</label>
               
-              <div className={styles.themeToggle}>
+              <div className={styles.radioGroup}>
                 {voices.map((voice) => (
-                  <button
+                  <label
                     key={voice.id}
-                    className={`${styles.themeOption} ${preferredVoice === voice.id ? styles.active : ''}`}
-                    onClick={() => handleVoiceChange(voice.id)}
+                    className={`${styles.radioOption} ${preferredVoice === voice.id ? styles.active : ''}`}
                     title={voice.description}
                   >
-                    <span>{voice.name}</span>
-                  </button>
+                    <input
+                      type="radio"
+                      name="voice"
+                      value={voice.id}
+                      checked={preferredVoice === voice.id}
+                      onChange={() => handleVoiceChange(voice.id)}
+                    />
+                    <span className={styles.radioLabel}>{voice.name}</span>
+                  </label>
                 ))}
               </div>
             </div>
@@ -231,26 +188,27 @@ export default function SettingsPage() {
             <h2 className={styles.sectionTitle}>Home Page</h2>
             
             <div className={styles.setting}>
-              <div className={styles.settingInfo}>
-                <label className={styles.settingLabel}>Preferred landing page</label>
-                <p className={styles.settingDescription}>
-                  Choose where to go right after you log in
-                </p>
-              </div>
+              <label className={styles.settingLabel}>Preferred landing page</label>
               
-              <div className={styles.themeToggle}>
+              <div className={styles.radioGroup}>
                 {[
                   { id: 'dashboard', label: 'Dashboard' },
                   { id: 'shared', label: 'Shared OKRs' },
                   { id: 'business', label: 'Business' },
                 ].map((option) => (
-                  <button
+                  <label
                     key={option.id}
-                    className={`${styles.themeOption} ${preferredHome === option.id ? styles.active : ''}`}
-                    onClick={() => handleHomeChange(option.id)}
+                    className={`${styles.radioOption} ${preferredHome === option.id ? styles.active : ''}`}
                   >
-                    <span>{option.label}</span>
-                  </button>
+                    <input
+                      type="radio"
+                      name="home"
+                      value={option.id}
+                      checked={preferredHome === option.id}
+                      onChange={() => handleHomeChange(option.id)}
+                    />
+                    <span className={styles.radioLabel}>{option.label}</span>
+                  </label>
                 ))}
               </div>
             </div>
@@ -264,27 +222,32 @@ export default function SettingsPage() {
               onClick={async () => {
                 setIsSavingPreferences(true);
                 try {
-                  const response = await fetch('/api/profile', {
-                    method: 'PUT',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
+                const response = await fetch('/api/profile', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
                   body: JSON.stringify({
-                    firstName: user.firstName || user.displayName.split(' ')[0] || '',
-                    lastName: user.lastName || user.displayName.split(' ').slice(1).join(' ') || '',
-                    preferredVoice,
-                    preferredHome,
-                    preferredTheme: theme,
+                      firstName: user.firstName || user.displayName.split(' ')[0] || '',
+                      lastName: user.lastName || user.displayName.split(' ').slice(1).join(' ') || '',
+                      preferredVoice,
+                      preferredHome,
+                      preferredTheme: theme,
                   }),
                 });
 
-                if (response.ok) {
-                  setInitialPreferences({
-                    voice: preferredVoice,
-                    home: preferredHome,
-                    theme,
-                  });
-                  setHasChanges(false);
+                  if (response.ok) {
+                    setInitialPreferences({
+                      voice: preferredVoice,
+                      home: preferredHome,
+                      theme,
+                    });
+                    setHasChanges(false);
+                    setPreferences({
+                      preferred_voice: preferredVoice,
+                      preferred_home: preferredHome,
+                      theme,
+                    });
                   } else {
                     console.error('Failed to save preferences');
                   }
@@ -295,7 +258,7 @@ export default function SettingsPage() {
                 }
               }}
             >
-              {isSavingPreferences ? 'Saving...' : 'Save preferences'}
+              {isSavingPreferences ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>

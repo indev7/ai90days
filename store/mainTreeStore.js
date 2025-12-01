@@ -49,6 +49,7 @@ const useMainTreeStore = create(
       (set, get) => ({
   // Main tree data structure
   mainTree: {
+    preferences: null,
     myOKRTs: [],
     sharedOKRTs: [],
     notifications: [],
@@ -62,6 +63,7 @@ const useMainTreeStore = create(
   
   // Section loading states for LED indicators
   sectionStates: {
+    preferences: { loading: false, loaded: false, lastUpdated: null },
     myOKRTs: { loading: false, loaded: false, lastUpdated: null },
     sharedOKRTs: { loading: false, loaded: false, lastUpdated: null },
     notifications: { loading: false, loaded: false, lastUpdated: null },
@@ -74,12 +76,14 @@ const useMainTreeStore = create(
   isLoading: false,
   error: null,
   lastUpdated: null,
+  llmActivity: { active: false, lastStarted: null },
   
   // Actions
   setMainTree: (tree) => set((state) => {
     const now = new Date().toISOString();
     // Mark all sections as loaded when full tree is set
     const newSectionStates = {
+      preferences: { loading: false, loaded: true, lastUpdated: now },
       myOKRTs: { loading: false, loaded: true, lastUpdated: now },
       sharedOKRTs: { loading: false, loaded: true, lastUpdated: now },
       notifications: { loading: false, loaded: true, lastUpdated: now },
@@ -129,6 +133,21 @@ const useMainTreeStore = create(
       sectionStates: {
         ...state.sectionStates,
         myOKRTs: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
+
+  setPreferences: (preferences) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        preferences
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        preferences: { loading: false, loaded: true, lastUpdated: now }
       }
     };
   }),
@@ -312,10 +331,19 @@ const useMainTreeStore = create(
   
   // Set error state
   setError: (error) => set({ error }),
+
+  // Track LLM activity for UI indicators
+  setLLMActivity: (isActive) => set((state) => ({
+    llmActivity: {
+      active: isActive,
+      lastStarted: isActive ? new Date().toISOString() : state.llmActivity.lastStarted
+    }
+  })),
   
   // Clear all data
   clearMainTree: () => set({
     mainTree: {
+      preferences: null,
       myOKRTs: [],
       sharedOKRTs: [],
       notifications: [],
@@ -327,6 +355,7 @@ const useMainTreeStore = create(
       }
     },
     sectionStates: {
+      preferences: { loading: false, loaded: false, lastUpdated: null },
       myOKRTs: { loading: false, loaded: false, lastUpdated: null },
       sharedOKRTs: { loading: false, loaded: false, lastUpdated: null },
       notifications: { loading: false, loaded: false, lastUpdated: null },

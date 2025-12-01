@@ -111,7 +111,7 @@ export default function HeaderBar({
                   Welcome, {user.displayName}
                 </span>
                 <div className={styles.userIndicators}>
-                  <LoadingIndicators />
+                  <LoadingIndicators compact />
                 </div>
               </div>
               <AvatarDropdown user={user} />
