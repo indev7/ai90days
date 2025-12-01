@@ -34,7 +34,7 @@
 /* Lines and connectors */
 .p-organizationchart .p-organizationchart-lines {
   display: table-row !important;
-  height: 20px !important;
+  height: 52px !important;
 }
 
 .p-organizationchart .p-organizationchart-line-cell {
@@ -44,29 +44,29 @@
 
 /* Vertical line down from parent */
 .p-organizationchart .p-organizationchart-line-down {
-  margin: 0 auto !important;
-  height: 20px !important;
+  margin: -10px auto 0 auto !important;
+  height: 56px !important;
   width: 1px !important;
-  background-color: var(--border, #e5e7eb) !important;
+  background-color: rgba(88, 28, 135, 0.18) !important;
 }
 
 /* Horizontal connectors */
 .p-organizationchart .p-organizationchart-line-left {
-  border-right: 1px solid var(--border, #e5e7eb) !important;
-  border-top: 1px solid var(--border, #e5e7eb) !important;
-  height: 20px !important;
+  border-right: 1.5px solid rgba(88, 28, 135, 0.18) !important;
+  border-top: 1.5px solid rgba(88, 28, 135, 0.18) !important;
+  height: 52px !important;
 }
 
 .p-organizationchart .p-organizationchart-line-right {
-  border-left: 1px solid var(--border, #e5e7eb) !important;
-  border-top: 1px solid var(--border, #e5e7eb) !important;
-  height: 20px !important;
+  border-left: 1.5px solid rgba(88, 28, 135, 0.18) !important;
+  border-top: 1.5px solid rgba(88, 28, 135, 0.18) !important;
+  height: 52px !important;
 }
 
 /* Connector cells */
 .p-organizationchart .p-organizationchart-connectors {
   display: table-row !important;
-  height: 20px !important;
+  height: 52px !important;
 }
 
 .p-organizationchart .p-organizationchart-connector-cell {
@@ -77,21 +77,32 @@
 /* Down connector from parent */
 .p-organizationchart .p-organizationchart-connector-down {
   margin: 0 auto !important;
-  height: 20px !important;
+  height: 52px !important;
   width: 1px !important;
-  background-color: var(--border, #e5e7eb) !important;
+  background-color: rgba(88, 28, 135, 0.18) !important;
 }
 
 /* Node connector line */
 .p-organizationchart .p-organizationchart-node-connector {
-  height: 20px !important;
+  height: 52px !important;
 }
 
 .p-organizationchart .p-organizationchart-node-connector-line {
   margin: 0 auto !important;
-  height: 20px !important;
+  height: 52px !important;
   width: 1px !important;
-  background-color: var(--border, #e5e7eb) !important;
+  background-color: rgba(88, 28, 135, 0.18) !important;
+}
+
+/* Reduce gaps between line rows */
+.p-organizationchart .p-organizationchart-lines td {
+  padding: 0 !important;
+}
+
+/* Hide left/right arms when there is only one child */
+.p-organizationchart .p-organizationchart-lines td:only-child .p-organizationchart-line-left,
+.p-organizationchart .p-organizationchart-lines td:only-child .p-organizationchart-line-right {
+  display: none !important;
 }
 
 /* Remove default padding and backgrounds */
