@@ -10,6 +10,7 @@ import { processCacheUpdateFromData } from '@/lib/apiClient';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
 import { useUser } from '@/hooks/useUser';
+import { getThemeColorPalette } from '@/lib/clockUtils';
 import {
   ObjectiveHeader,
   KeyResultCard,
@@ -185,12 +186,11 @@ export default function OKRTPage() {
     };
   }, []);
 
-  // Initialize all objectives as expanded when data loads
+  // Keep objectives collapsed by default; only auto-expand when a specific objective is requested
   useEffect(() => {
-    if (objectives.length > 0) {
-      setExpandedObjectives(new Set(objectives.map(obj => obj.id)));
-    }
-  }, [objectives]);
+    if (!selectedObjectiveId) return;
+    setExpandedObjectives(new Set([selectedObjectiveId]));
+  }, [selectedObjectiveId]);
 
   // Group key results by their parent objective
   const getKeyResultsForObjective = (objId) => {
@@ -201,6 +201,66 @@ export default function OKRTPage() {
   const getTasksForKeyResult = (krId) => {
     return tasks.filter(task => task.parent_id === krId);
   };
+
+  // Build ordered objectives grouped by top-level family to keep siblings together
+  const { orderedObjectives, objectiveRootMap, familyColorMap } = useMemo(() => {
+    if (!objectives || objectives.length === 0) {
+      return { orderedObjectives: [], objectiveRootMap: new Map(), familyColorMap: new Map() };
+    }
+
+    const palette = getThemeColorPalette();
+    const hashToIndex = (value) => {
+      const str = String(value ?? '');
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+      }
+      return palette.length > 0 ? hash % palette.length : 0;
+    };
+
+    const childrenMap = new Map();
+    const objectiveMap = new Map(objectives.map((o) => [o.id, o]));
+
+    objectives.forEach((objective) => {
+      const parentKey = objective.parent_id || null;
+      if (!childrenMap.has(parentKey)) {
+        childrenMap.set(parentKey, []);
+      }
+      childrenMap.get(parentKey).push(objective);
+    });
+
+    const sortObjectives = (a, b) => {
+      const orderA = a.order_index ?? 0;
+      const orderB = b.order_index ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.title || '').localeCompare(b.title || '');
+    };
+
+    childrenMap.forEach((list) => list.sort(sortObjectives));
+
+    const roots = (childrenMap.get(null) || []).concat(
+      objectives.filter((o) => o.parent_id && !objectiveMap.has(o.parent_id))
+    );
+
+    const ordered = [];
+    const rootMap = new Map();
+    const colorMap = new Map();
+
+    const traverse = (node, rootId) => {
+      rootMap.set(node.id, rootId);
+      ordered.push(node);
+      const kids = childrenMap.get(node.id) || [];
+      kids.forEach((child) => traverse(child, rootId));
+    };
+
+    roots.forEach((root) => {
+      traverse(root, root.id);
+      const color = palette[hashToIndex(root.id)] || '#a78bfa';
+      colorMap.set(root.id, color);
+    });
+
+    return { orderedObjectives: ordered, objectiveRootMap: rootMap, familyColorMap: colorMap };
+  }, [objectives]);
 
   // Modal handlers
   const handleEditObjective = (objective) => {
@@ -419,6 +479,38 @@ export default function OKRTPage() {
     }
   };
 
+  // Filter objectives based on URL parameter or focus mode while preserving family order
+  const filteredObjectives = useMemo(() => {
+    return orderedObjectives.filter((objective) => {
+      if (selectedObjectiveId) {
+        return objective.id === selectedObjectiveId;
+      }
+      if (focusedObjectiveId) {
+        return objective.id === focusedObjectiveId;
+      }
+      return true;
+    });
+  }, [orderedObjectives, selectedObjectiveId, focusedObjectiveId]);
+
+  const familyGroups = useMemo(() => {
+    const groups = [];
+    const groupMap = new Map();
+
+    filteredObjectives.forEach((objective) => {
+      const rootId = objectiveRootMap.get(objective.id) || objective.id;
+      if (!groupMap.has(rootId)) {
+        const group = { rootId, objectives: [] };
+        groupMap.set(rootId, group);
+        groups.push(group);
+      }
+      groupMap.get(rootId).objectives.push(objective);
+    });
+
+    return groups;
+  }, [filteredObjectives, objectiveRootMap]);
+
+  const showFamilyBorders = filteredObjectives.length > 1;
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -429,17 +521,6 @@ export default function OKRTPage() {
 
   // Don't return early - render empty state with modal support
   const hasNoObjectives = objectives.length === 0;
-
-  // Filter objectives based on URL parameter or focus mode
-  const filteredObjectives = objectives.filter(objective => {
-    if (selectedObjectiveId) {
-      return objective.id === selectedObjectiveId;
-    }
-    if (focusedObjectiveId) {
-      return objective.id === focusedObjectiveId;
-    }
-    return true;
-  });
 
   return (
     <div className={styles.container}>
@@ -454,64 +535,75 @@ export default function OKRTPage() {
             </div>
           </div>
         ) : (
-          /* Stack all objectives vertically - show filtered objectives */
-          filteredObjectives.map((objective) => {
-            const objectiveKRs = getKeyResultsForObjective(objective.id);
-            
+          /* Stack objectives by family, preserving pre-order traversal */
+          familyGroups.map((group) => {
+            const familyColor = familyColorMap.get(group.rootId) || '#a78bfa';
+            const wrapperStyle = showFamilyBorders ? { borderColor: familyColor } : {};
             return (
-              <div key={objective.id} className={`${styles.objectiveSection} ${focusedObjectiveId === objective.id ? styles.focusedObjective : ''}`}>
-                <ObjectiveHeader
-                  objective={objective}
-                  onEditObjective={handleEditObjective}
-                  isExpanded={expandedObjectives.has(objective.id)}
-                  onToggleExpanded={() => handleToggleObjective(objective.id)}
-                  onShareObjective={handleShareObjective}
-                  onFocusObjective={handleFocusObjective}
-                  isFocused={focusedObjectiveId === objective.id}
-                  comments={objective.comments || []}
-                />
-
-              {/* Key Results Grid for this objective - only show when expanded */}
-              {expandedObjectives.has(objective.id) && (
-                <>
-                  <div className={styles.keyResultsGrid}>
-                    {objectiveKRs.map((kr) => (
-                      <KeyResultCard
-                        key={kr.id}
-                        kr={kr}
-                        selected={openKR?.id === kr.id}
-                        onOpen={setOpenKR}
-                        onEditKR={handleEditKR}
-                        onEditTask={handleEditTask}
-                        onAddTask={handleAddTask}
-                        tasks={getTasksForKeyResult(kr.id)}
-                        forceExpanded={krExpansionState[kr.id]}
+              <div
+                key={group.rootId}
+                className={`${styles.objectiveFamily} ${showFamilyBorders ? '' : styles.objectiveFamilyNoBorder}`}
+                style={wrapperStyle}
+              >
+                {group.objectives.map((objective) => {
+                  const objectiveKRs = getKeyResultsForObjective(objective.id);
+                  return (
+                    <div key={objective.id} className={`${styles.objectiveSection} ${focusedObjectiveId === objective.id ? styles.focusedObjective : ''}`}>
+                      <ObjectiveHeader
+                        objective={objective}
+                        onEditObjective={handleEditObjective}
+                        isExpanded={expandedObjectives.has(objective.id)}
+                        onToggleExpanded={() => handleToggleObjective(objective.id)}
+                        onShareObjective={handleShareObjective}
+                        onFocusObjective={handleFocusObjective}
+                        isFocused={focusedObjectiveId === objective.id}
+                        comments={objective.comments || []}
                       />
-                    ))}
-                    <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
-                  </div>
-                  
-                  {/* Single Comments Section for the entire Objective */}
-                  {user?.id && (
-                  <div className={styles.objectiveCommentsSection}>
-                  <CommentsSection
-                  okrtId={objective.id}
-                  currentUserId={user.id}
-                  okrtOwnerId={objective.owner_id}
-                    isExpanded={commentsExpanded[objective.id]}
-                    comments={objective.comments || []}
-                    onRewardUpdate={() => {
-                      // Trigger mainTree refresh when comments are added
-                      window.dispatchEvent(new CustomEvent('refreshMainTree'));
-                    }}
-                    />
-                    </div>
-                    )}
-                </>
-             )}
-           </div>
-         );
-       })
+
+                      {/* Key Results Grid for this objective - only show when expanded */}
+                      {expandedObjectives.has(objective.id) && (
+                        <>
+                          <div className={styles.keyResultsGrid}>
+                            {objectiveKRs.map((kr) => (
+                              <KeyResultCard
+                                key={kr.id}
+                                kr={kr}
+                                selected={openKR?.id === kr.id}
+                                onOpen={setOpenKR}
+                                onEditKR={handleEditKR}
+                                onEditTask={handleEditTask}
+                                onAddTask={handleAddTask}
+                                tasks={getTasksForKeyResult(kr.id)}
+                                forceExpanded={krExpansionState[kr.id]}
+                              />
+                            ))}
+                            <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
+                          </div>
+                          
+                          {/* Single Comments Section for the entire Objective */}
+                          {user?.id && (
+                          <div className={styles.objectiveCommentsSection}>
+                          <CommentsSection
+                          okrtId={objective.id}
+                          currentUserId={user.id}
+                          okrtOwnerId={objective.owner_id}
+                            isExpanded={commentsExpanded[objective.id]}
+                            comments={objective.comments || []}
+                            onRewardUpdate={() => {
+                              // Trigger mainTree refresh when comments are added
+                              window.dispatchEvent(new CustomEvent('refreshMainTree'));
+                            }}
+                            />
+                            </div>
+                            )}
+                        </>
+                     )}
+                   </div>
+                 );
+               })}
+             </div>
+           );
+         })
        )}
       </main>
 

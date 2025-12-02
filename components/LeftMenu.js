@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -128,6 +128,7 @@ export default function LeftMenu({
   const [unreadCount, setUnreadCount] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [objectives, setObjectives] = useState([]);
+  const [expandedObjectives, setExpandedObjectives] = useState(new Set());
   const [scheduledTasks, setScheduledTasks] = useState([]);
   const [taskUpdateModalState, setTaskUpdateModalState] = useState({
     isOpen: false,
@@ -257,6 +258,31 @@ export default function LeftMenu({
       window.removeEventListener('exitFocusMode', handleExitFocusMode);
     };
   }, []);
+
+  // Build a parent -> children map for objectives to render hierarchy quickly
+  const objectiveChildrenMap = useMemo(() => {
+    const map = new Map();
+    objectives.forEach((objective) => {
+      const parentKey = objective.parent_id || null;
+      if (!map.has(parentKey)) {
+        map.set(parentKey, []);
+      }
+      map.get(parentKey).push(objective);
+    });
+    return map;
+  }, [objectives]);
+
+  const toggleObjectiveNode = (objectiveId) => {
+    setExpandedObjectives(prev => {
+      const next = new Set(prev);
+      if (next.has(objectiveId)) {
+        next.delete(objectiveId);
+      } else {
+        next.add(objectiveId);
+      }
+      return next;
+    });
+  };
 
   const handleNewClick = (e) => {
     e?.preventDefault();
@@ -529,6 +555,57 @@ export default function LeftMenu({
     }
   };
 
+  const renderObjectiveTree = (parentId = null, depth = 0) => {
+    const children = objectiveChildrenMap.get(parentId) || [];
+    if (children.length === 0) return null;
+
+    return children.map((objective) => {
+      const objectiveTitle = objective.title || objective.description || 'Untitled Objective';
+      const childObjectives = objectiveChildrenMap.get(objective.id) || [];
+      const hasChildren = childObjectives.length > 0;
+      const isObjectiveExpanded = expandedObjectives.has(objective.id);
+
+      return (
+        <li key={`objective-${objective.id}`} className={styles.childMenuItem}>
+          <div
+            className={styles.objectiveRow}
+            style={{ paddingLeft: `${depth}ch` }}
+          >
+            {hasChildren ? (
+              <button
+                type="button"
+                className={`${styles.objectiveToggle} ${isObjectiveExpanded ? styles.objectiveToggleExpanded : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleObjectiveNode(objective.id);
+                }}
+                aria-expanded={isObjectiveExpanded}
+                aria-label={`${isObjectiveExpanded ? 'Collapse' : 'Expand'} ${objectiveTitle}`}
+              >
+                {isObjectiveExpanded ? '-' : '+'}
+              </button>
+            ) : (
+              <span className={styles.objectiveTogglePlaceholder} />
+            )}
+            <button
+              onClick={(e) => handleObjectiveClick(objective.id, e)}
+              className={`${styles.childMenuLink} ${styles.objectiveLink}`}
+              title={objectiveTitle}
+            >
+              <span className={styles.label}>{objectiveTitle}</span>
+            </button>
+          </div>
+          {hasChildren && isObjectiveExpanded && (
+            <ul className={styles.objectiveChildList}>
+              {renderObjectiveTree(objective.id, depth + 1)}
+            </ul>
+          )}
+        </li>
+      );
+    });
+  };
+
   const menuContent = (
     <nav className={`${styles.leftMenu} ${isCollapsed && !isMobileSlideIn ? styles.collapsed : ''} ${isDesktopCollapsed || isFocusMode ? styles.desktopCollapsed : ''} ${isMobileSlideIn ? styles.mobileSlideIn : ''}`}>
       <div className={styles.menuContent}>
@@ -593,19 +670,9 @@ export default function LeftMenu({
                       </Link>
                     )}
                     {item.children && (isMobileSlideIn || (!isDesktopCollapsed && !isCollapsed)) && isExpanded(item.href) && (
-                      <ul className={styles.childMenuList}>
+                      <ul className={`${styles.childMenuList} ${item.href === '/okrt' ? styles.objectiveTreeRoot : ''}`}>
                         {/* Show objectives for My Goals menu */}
-                        {item.href === '/okrt' && objectives.map((objective) => (
-                          <li key={`objective-${objective.id}`} className={styles.childMenuItem}>
-                            <button
-                              onClick={(e) => handleObjectiveClick(objective.id, e)}
-                              className={styles.childMenuLink}
-                              title={objective.title}
-                            >
-                              <span className={styles.label}>{objective.title}</span>
-                            </button>
-                          </li>
-                        ))}
+                        {item.href === '/okrt' && renderObjectiveTree()}
                         
                         {/* Show scheduled tasks for Schedule menu */}
                         {item.href === '/calendar' && scheduledTasks.map((task) => {

@@ -38,7 +38,43 @@ export async function GET(request) {
             controller.enqueue(encoder.encode(message));
           };
 
-          // 1. Load MyOKRTs first
+          // 0. Load user preferences first
+          console.log('[Progressive] Loading preferences...');
+          const preferencesRow = await get(
+            `SELECT preferences FROM users WHERE id = ?`,
+            [userId]
+          );
+
+          const defaultPreferences = {
+            preferred_voice: 'alloy',
+            preferred_home: 'dashboard',
+            theme: 'purple'
+          };
+
+          let preferences = { ...defaultPreferences };
+
+          if (preferencesRow?.preferences) {
+            try {
+              const parsed = typeof preferencesRow.preferences === 'string'
+                ? JSON.parse(preferencesRow.preferences)
+                : preferencesRow.preferences;
+
+              if (parsed && typeof parsed === 'object') {
+                preferences = {
+                  ...defaultPreferences,
+                  ...parsed
+                };
+              }
+            } catch (e) {
+              console.error('Failed to parse preferences in progressive loader', e);
+              // Keep defaults if parsing fails
+            }
+          }
+
+          sendSection('preferences', preferences);
+          console.log('[Progressive] ✅ preferences sent');
+
+          // 1. Load MyOKRTs
           console.log('[Progressive] Loading myOKRTs...');
           const myOKRTs = await all(`
             SELECT

@@ -537,7 +537,7 @@ export default function CoachPage() {
   // Subscribe to mainTreeStore to get all OKRTs and store actions
   const { mainTree } = useMainTree();
   const { myOKRTs } = mainTree;
-  const { addMyOKRT, updateMyOKRT, removeMyOKRT } = useMainTreeStore();
+  const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech();
@@ -578,6 +578,7 @@ export default function CoachPage() {
     addMessage(userMessage);
     setInput('');
     setLoading(true);
+    setLLMActivity(true);
 
     try {
       // Prepare OKRT context from mainTreeStore
@@ -680,6 +681,7 @@ export default function CoachPage() {
       });
     } finally {
       setLoading(false);
+      setLLMActivity(false);
     }
   };
 

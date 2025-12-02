@@ -41,6 +41,9 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Clear any cached mainTree state before loading new session data
+        window.localStorage.removeItem('main-tree-storage');
+
         // Trigger storage event to notify other tabs/windows
         window.localStorage.setItem('authChange', Date.now().toString());
         window.localStorage.removeItem('authChange');
@@ -58,6 +61,7 @@ export default function LoginPage() {
 
   const handleMicrosoftLogin = async () => {
     try {
+      window.localStorage.removeItem('main-tree-storage');
       await signIn('azure-ad', { 
         callbackUrl: '/home',
         redirect: true 
