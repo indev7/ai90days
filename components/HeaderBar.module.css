@@ -1,9 +1,10 @@
 .header {
-  background: linear-gradient(135deg, 
+  background: var(--header-bg, linear-gradient(135deg, 
     rgba(255, 255, 255, 0.98) 0%, 
-    rgba(252, 252, 253, 0.98) 100%
+    rgba(252, 252, 253, 0.98) 100%)
   );
-  border-bottom: 1px solid rgba(248, 250, 252, 0.8);
+  border-bottom: 1px solid var(--header-border, rgba(248, 250, 252, 0.8));
+  color: var(--header-text, var(--text));
   height: 72px;
   position: fixed;
   top: 0;
@@ -36,13 +37,13 @@
   height: 2rem;
   border: none;
   background: none;
-  color: var(--text);
+  color: var(--header-icon, var(--text));
   cursor: pointer;
   border-radius: var(--radius-md);
 }
 
 .menuToggle:hover {
-  background: var(--border-light);
+  background: var(--header-hover, var(--border-light));
 }
 
 /* Hide menu toggle on mobile and tablet */
@@ -60,13 +61,13 @@
   height: 2rem;
   border: none;
   background: none;
-  color: var(--text);
+  color: var(--header-icon, var(--text));
   cursor: pointer;
   border-radius: var(--radius-md);
 }
 
 .leftMenuToggle:hover {
-  background: var(--border-light);
+  background: var(--header-hover, var(--border-light));
 }
 
 /* Show left menu toggle only in mid-range (tablet landscape to small desktop) */
@@ -86,7 +87,7 @@
   background: none;
   border: none;
   padding: var(--space-2);
-  color: var(--text);
+  color: var(--header-icon, var(--text));
   cursor: pointer;
   border-radius: var(--radius-sm);
   min-height: 44px;
@@ -98,7 +99,7 @@
 }
 
 .mobileHamburger:hover {
-  background-color: var(--card);
+  background-color: var(--header-hover, var(--card));
 }
 
 /* Show mobile hamburger only on mobile and tablet portrait */
@@ -112,7 +113,7 @@
   display: flex;
   align-items: center;
   text-decoration: none;
-  color: var(--text);
+  color: var(--header-text, var(--text));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -123,7 +124,7 @@
 .logo {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--brand-700);
+  color: var(--header-logo, var(--brand-700));
 }
 
 .center {
@@ -150,7 +151,7 @@
 
 .greeting {
   font-size: var(--text-sm);
-  color: var(--muted);
+  color: var(--header-greeting, var(--muted));
   white-space: nowrap;
 }
 

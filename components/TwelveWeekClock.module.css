@@ -25,7 +25,7 @@
 }
 
 .clockWithBorder {
-  background: white;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   height: 100%;
