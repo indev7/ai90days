@@ -1,14 +1,3 @@
-/* Organisation Page Styles */
-.container :global(.p-organizationchart-node-content .p-node-toggler) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.container :global(.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon) {
-  position: static !important;
-  left: auto !important;
-}
 .container {
   min-height: calc(100vh - 72px);
   width: 100%;
@@ -266,90 +255,6 @@
   justify-content: center;
 }
 
-.orgChart :global(.p-organizationchart) {
-  background: transparent;
-}
-
-.chartContainer :global(.p-organizationchart) {
-  padding: 4px 6px 10px;
-}
-
-.chartContainer :global(.p-organizationchart-table) {
-  border-collapse: separate;
-  border-spacing: 14px 14px;
-}
-
-.chartContainer[data-density="compact"] :global(.p-organizationchart-table) {
-  border-spacing: 10px 10px;
-}
-
-.chartContainer :global(.p-organizationchart-node-content) {
-  border: none;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-}
-
-.chartContainer :global(.p-organizationchart-line-down) {
-  border-left: 2px solid var(--strategy-line, rgba(88, 28, 135, 0.22));
-  margin: 0 auto;
-  height: 30px; /* increased slightly from 28px to ensuring connection */
-  background: transparent;
-}
-
-.chartContainer :global(.p-organizationchart-line-left),
-.chartContainer :global(.p-organizationchart-line-right) {
-  border-color: var(--strategy-line, rgba(88, 28, 135, 0.22));
-  border-width: 2px;
-}
-
-/* Hide left/right lines for single children */
-.chartContainer :global(.p-organizationchart-node:only-child .p-organizationchart-line-left),
-.chartContainer :global(.p-organizationchart-node:only-child .p-organizationchart-line-right) {
-  display: none;
-}
-
-.chartContainer[data-density="compact"] :global(.p-organizationchart-line-down) {
-  height: 20px;
-}
-
-.chartContainer :global(.p-organizationchart-node-content) {
-  position: relative;
-  padding: 0 0 12px 0;
-}
-
-.chartContainer :global(.p-organizationchart-node-content .p-node-toggler) {
-  position: absolute;
-  left: 50%;
-  bottom: -12px;
-  transform: translate(-50%, 0);
-  background: var(--strategy-toggle-active-bg, #ffffff);
-  border: 1px solid var(--strategy-toolbar-border, rgba(148, 163, 184, 0.4));
-  box-shadow: 0 6px 16px var(--strategy-toolbar-shadow, rgba(15, 23, 42, 0.08));
-  width: 22px;
-  height: 22px;
-  color: var(--brand-primary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-  border-radius: 999px;
-}
-
-.chartContainer[data-density="compact"] :global(.p-organizationchart-node-content .p-node-toggler) {
-  width: 18px;
-  height: 18px;
-  bottom: -10px;
-}
-
-.chartContainer :global(.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon) {
-  position: relative;
-  inset: auto;
-  margin: 0;
-  transform: translateY(1px);
-  font-size: 12px;
-}
 
 /* Node wrapper for click handling */
 .nodeWrapper {
