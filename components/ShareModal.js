@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './ShareModal.module.css';
@@ -14,10 +14,13 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const visibilityChangedRef = useRef(false);
+  const fetchRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (isOpen) {
       setVisibility(currentVisibility);
+      visibilityChangedRef.current = false;
       fetchGroups();
       fetchCurrentShares();
     }
@@ -36,16 +39,25 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
   };
 
   const fetchCurrentShares = async () => {
+    const requestId = ++fetchRequestIdRef.current;
+
     try {
       const response = await fetch(`/api/okrt/${okrtId}/share`);
       if (response.ok) {
         const data = await response.json();
+        
+        // Ignore stale responses if a newer request was made
+        if (fetchRequestIdRef.current !== requestId) return;
+
         const groupShares = data.shares.filter(s => s.share_type === 'G');
         const userShares = data.shares.filter(s => s.share_type === 'U');
         
         setSelectedGroups(groupShares.map(s => s.group_or_user_id));
         setSelectedUsers(userShares.map(s => s.group_or_user_id));
-        setVisibility(data.visibility);
+        // Don't override a user's in-progress visibility change with the fetch result
+        if (!visibilityChangedRef.current) {
+          setVisibility(data.visibility);
+        }
       }
     } catch (err) {
       console.error('Error fetching current shares:', err);
@@ -53,6 +65,7 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
   };
 
   const handleVisibilityChange = (newVisibility) => {
+    visibilityChangedRef.current = true;
     setVisibility(newVisibility);
     if (newVisibility === 'private') {
       setSelectedGroups([]);
