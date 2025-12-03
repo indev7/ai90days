@@ -417,7 +417,7 @@
 }
 
 .familyWrapper {
-  border: 2px solid var(--border);
+  border: 2px solid var(--family-color, var(--border));
   border-radius: 1rem;
   padding: 1rem 1rem 1.25rem;
   background: var(--surface);
@@ -435,6 +435,7 @@
   width: 12px;
   height: 12px;
   border-radius: 999px;
+  background: var(--family-color, var(--brand-primary));
 }
 
 .familyTitle {
@@ -448,35 +449,6 @@
   min-height: 360px;
 }
 
-.orgChart {
-  --connector-color: rgba(99, 102, 241, 0.35);
-}
-
-.orgChart :global(.p-organizationchart-table) {
-  border-spacing: 20px 24px;
-}
-
-.orgChart :global(.p-organizationchart-node-content) {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.orgChart :global(.p-organizationchart-node-content .p-person) {
-  padding: 0;
-}
-
-.orgChart :global(.p-organizationchart-line-down) {
-  background: var(--connector-color);
-}
-
-.orgChart :global(.p-organizationchart-line-left),
-.orgChart :global(.p-organizationchart-line-top),
-.orgChart :global(.p-organizationchart-line-right) {
-  border-color: var(--connector-color);
-}
-
 .hierarchyBlank {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -487,66 +459,100 @@
   color: var(--text-primary);
 }
 
-.hNode {
+.orgChartWrapper {
+  width: 100%;
+  text-align: center;
+}
+
+.orgChart {
+  display: inline-block;
+}
+
+.orgChart :global(.p-organizationchart),
+.orgChart :global(.p-organizationchart-table) {
+  border: none;
+  background: transparent;
+}
+
+.orgChart :global(.p-organizationchart-table) {
+  border-spacing: 4px 0; /* reduced horizontal gap, tight vertical spacing */
+}
+
+.orgChart :global(.p-organizationchart-node) {
+  border: none;
+  background: transparent;
+}
+
+.orgChart :global(.p-organizationchart-line-down) {
+  margin: 0 auto;
+  background: var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+}
+
+.orgChart :global(.p-organizationchart-line-left),
+.orgChart :global(.p-organizationchart-line-top),
+.orgChart :global(.p-organizationchart-line-right) {
+  border-color: var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+}
+
+.orgChart :global(.p-organizationchart-node-content) {
+  position: relative;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.orgChart :global(.p-organizationchart-node-content .p-node-toggler) {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
   background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  min-width: 220px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.hNode:hover {
-  transform: translateY(-2px);
-  border-color: var(--brand-primary);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
-}
-
-.hTitle {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.4;
-  margin-bottom: 0.5rem;
-}
-
-.hOwnerRow {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.hAvatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-}
-
-.hInitial {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg,
-    var(--brand-primary) 0%,
-    var(--brand-secondary, #22d3ee) 50%,
-    var(--brand-accent, #f97316) 100%
-  );
+  border: 1.5px solid var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-weight: 700;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  padding: 0;
 }
 
-.hOwner {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+.orgChart :global(.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon) {
+  margin-top: 2px;
+  color: var(--text-primary);
+}
+
+.chartNode {
+  width: 220px;
+  height: 120px;
+  border: 1.5px solid var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.chartFlag {
+  width: 36px;
+  height: 24px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.chartLabel {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
 }
 
 /* Responsive design */

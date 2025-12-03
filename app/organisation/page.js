@@ -370,26 +370,6 @@ export default function IntervestOrgChart() {
 
   return (
     <div className={styles.container}>
-      {/* PrimeReact overrides & connector tuning */}{/*
-      <style>{`
-        .p-organizationchart { width: 100% !important; }
-        .p-organizationchart table { width: 100% !important; }
-        .p-organizationchart .p-organizationchart-node { padding: 0 12px !important; text-align: center !important; }
-        .p-organizationchart .p-organizationchart-node-content { padding: 0 !important; border-radius: 5px; border: none !important; background: transparent; margin: 0 auto !important; position: relative !important; box-sizing: border-box !important; display: inline-block !important; }
-        .p-organizationchart .p-organizationchart-node-content .p-organizationchart-toggler { position: absolute !important; left: 50% !important; bottom: -12px !important; margin: 0 !important; padding: 0 !important; }
-        .p-organizationchart .p-organizationchart-node-content .p-organizationchart-toggler button, .p-organizationchart .p-organizationchart-node-content .p-organizationchart-toggler .p-button { display: block !important; margin: 0 !important; padding: 0 !important; transform: translateX(-50%) !important; }
-        .p-organizationchart .p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon, .p-organizationchart .p-icon.p-node-toggler-icon { position: relative !important; top: .05rem !important; left: 0 !important; }
-        .p-organizationchart .p-organizationchart-line-down { height: 56px !important; min-height: 56px !important; margin: -10px auto 0 auto !important; border-left: 1.5px solid rgba(88, 28, 135, 0.18) !important; }
-        .p-organizationchart .p-organizationchart-lines .p-organizationchart-line-left { border-right: 1.5px solid rgba(88, 28, 135, 0.18) !important; border-top: 1.5px solid rgba(88, 28, 135, 0.18) !important; height: 52px !important; }
-        .p-organizationchart .p-organizationchart-lines .p-organizationchart-line-right { border-left: 1.5px solid rgba(88, 28, 135, 0.18) !important; border-top: 1.5px solid rgba(88, 28, 135, 0.18) !important; height: 52px !important; }
-        .p-organizationchart .p-organizationchart-lines .p-organizationchart-line-top { border-top: 1.5px solid rgba(88, 28, 135, 0.18) !important; }
-        .p-organizationchart .p-organizationchart-lines td { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 0; }
-        .p-organizationchart .p-organizationchart-lines td:only-child .p-organizationchart-line-left,
-        .p-organizationchart .p-organizationchart-lines td:only-child .p-organizationchart-line-right { display: none !important; }
-        .p-organizationchart .p-organizationchart-node { margin-top: 0 !important; margin-bottom: 0 !important; }
-      `}</style>
-      */}
-
       <div className={styles.content}>
         {viewType === 'strategy' && (
           <div className={`${styles.strategyContainer} ${styles.strategySurface}`}>
