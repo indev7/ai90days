@@ -338,12 +338,14 @@
   transition: all 0.2s ease;
   font-size: 1.25rem;
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .micButton:hover:not(:disabled) {
   border-color: var(--accent-color);
   background: var(--bg-solid);
   transform: scale(1.05);
+  color: var(--accent-color);
 }
 
 .micButton:disabled {
@@ -355,6 +357,7 @@
   background: rgba(239, 68, 68, 0.1);
   border-color: #ef4444;
   animation: pulse 1.5s ease-in-out infinite;
+  color: #ef4444;
 }
 
 @keyframes pulse {
@@ -400,12 +403,14 @@
   transition: all 0.2s ease;
   font-size: 1.25rem;
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
 .speakerButton:hover:not(:disabled) {
   border-color: var(--accent-color);
   background: var(--bg-solid);
   transform: scale(1.05);
+  color: var(--accent-color);
 }
 
 .speakerButton:disabled {
@@ -416,6 +421,7 @@
 .speakerButtonEnabled {
   background: rgba(124, 58, 237, 0.1);
   border-color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .speakerButtonSpeaking {

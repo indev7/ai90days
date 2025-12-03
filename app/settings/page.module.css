@@ -28,7 +28,7 @@
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--muted-light);
   border-radius: 16px;
   padding: var(--space-10);
   box-shadow: var(--shadow-3);

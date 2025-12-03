@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { themes, loadTheme, getCurrentTheme } from '@/lib/themeManager';
+import { themes, loadTheme, getCurrentTheme, normalizeThemeId } from '@/lib/themeManager';
 import { useMainTree } from '@/hooks/useMainTree';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useUser } from '@/hooks/useUser';
@@ -31,15 +31,6 @@ export default function SettingsPage() {
     if (['dashboard', 'shared', 'business'].includes(normalized)) return normalized;
     if (normalized === 'buisness') return 'business';
     return 'dashboard';
-  };
-
-  const normalizeTheme = (value) => {
-    if (typeof value !== 'string') return 'coffee';
-    const normalized = value.trim().toLowerCase();
-    const validIds = themes.map(t => t.id);
-    if (validIds.includes(normalized)) return normalized;
-    if (normalized === 'blue') return 'microsoft';
-    return 'coffee';
   };
 
   const computeHasChanges = (voiceValue, homeValue, themeValue) => {
@@ -73,7 +64,7 @@ export default function SettingsPage() {
 
     const nextVoice = sourcePrefs.preferred_voice || 'alloy';
     const nextHome = normalizePreferredHome(sourcePrefs.preferred_home);
-    const nextTheme = normalizeTheme(sourcePrefs.theme || getCurrentTheme());
+    const nextTheme = normalizeThemeId(sourcePrefs.theme || getCurrentTheme());
 
     setPreferredVoice(nextVoice);
     setPreferredHome(nextHome);
@@ -88,7 +79,7 @@ export default function SettingsPage() {
     try {
       const success = await loadTheme(newTheme);
       if (success) {
-        const normalizedTheme = normalizeTheme(newTheme);
+        const normalizedTheme = normalizeThemeId(newTheme);
         setTheme(normalizedTheme);
         setHasChanges(computeHasChanges(preferredVoice, preferredHome, normalizedTheme));
       } else {

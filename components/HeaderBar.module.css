@@ -171,8 +171,8 @@
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 33px;
+  height: 33px;
   border-radius: 50%;
   background: linear-gradient(135deg, 
     var(--brand-primary) 0%, 
@@ -184,9 +184,9 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: var(--text-sm);
+  font-size: 0.8rem;
   box-shadow: var(--shadow-brand);
-  border: 3px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.9);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

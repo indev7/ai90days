@@ -60,10 +60,11 @@ html[data-theme="nature"] {
   --primary-color: var(--brand-primary);
   --accent-color: var(--brand-primary);
   --accent-color-dark: var(--brand-600);
-  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-accent) 70%);
+  --accent-gradient: linear-gradient(135deg, var(--brand-100) 0%, var(--brand-50) 70%);
   --highlight: var(--brand-accent);
   --success-color: var(--brand-success);
   --error-color: var(--danger);
+  --error-light:var(--warn)
   --text-primary: var(--text);
   --text-secondary: var(--text-secondary);
   --surface-0: var(--bg-solid);
