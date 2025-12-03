@@ -197,9 +197,10 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           width: min(640px, calc(100vw - 32px));
           max-height: 80vh;
           overflow-y: auto;
-          background: var(--surface, #ffffff);
+          background: var(--surface, #0f1117);
+          border: 1px solid var(--border, #1f2937);
           border-radius: 10px;
-          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
           padding: 18px 20px 20px;
           display: flex;
           flex-direction: column;
@@ -230,8 +231,8 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           color: var(--muted, #94a3b8);
         }
         .popover__close {
-          background: var(--surface-weak, #f1f5f9);
-          border: 1px solid var(--border, #e2e8f0);
+          background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
+          border: 1px solid var(--menu-active-text, var(--border, #e2e8f0));
           width: 28px;
           height: 28px;
           border-radius: 50%;
@@ -261,9 +262,10 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
         }
         .popover__item {
           padding: 10px 12px;
-          border: 1px solid var(--border, #e2e8f0);
+          border: 1px solid var(--menu-active-text, var(--border, #1f2937));
           border-radius: 10px;
-          background: var(--surface-weak, #f8fafc);
+          background: var(--header-bg, var(--surface-1, var(--surface, #111321)));
+          color: var(--text, #f4f6fb);
         }
         .popover__itemTitle {
           font-size: 14px;
@@ -274,7 +276,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
         .popover__progress {
           width: 100%;
           height: 6px;
-          background: var(--border, #e2e8f0);
+          background: var(--border, #1f2937);
           border-radius: 999px;
           overflow: hidden;
           position: relative;
@@ -307,15 +309,16 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           align-items: center;
           gap: 8px;
           padding: 8px 10px;
-          border: 1px solid var(--border, #e2e8f0);
+          border: 1px solid var(--menu-active-text, var(--border, #1f2937));
           border-radius: 10px;
-          background: var(--surface-weak, #f8fafc);
+          background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
+          color: var(--text, #f4f6fb);
         }
         .popover__memberAvatar {
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: var(--pill-bg, #e2e8f0);
+          background: var(--pill-bg, var(--surface-2, #1a1d29));
           color: var(--text, #0f172a);
           display: inline-flex;
           align-items: center;
@@ -498,8 +501,8 @@ export default function GroupsView({
           padding: 20px 12px 32px;
           background: linear-gradient(
             180deg,
-            var(--surface-weak, #f4f6f9) 0%,
-            var(--surface, #f1f3f6) 100%
+            var(strategy-toolbar-bg, #f4f6f9) 0%,
+            var(--strategy-toolbar-bg, #f1f3f6) 100%
           );
         }
 
@@ -532,6 +535,16 @@ export default function GroupsView({
           background: transparent !important;
         }
 
+        .chartContainer {
+          --org-card-bg: var(--surface, #ffffff);
+          --org-card-border: var(--border, #e2e8f0);
+          --org-card-title: var(--brand-primary, #6a4bff);
+          --org-chip-bg: var(--surface-secondary, var(--surface-1, var(--surface, #ffffff)));
+          --org-chip-text: var(--text, #1f2937);
+          --org-chip-border: var(--border-light, var(--border, #cdd7e1));
+          --org-connector: var(--border, #3f3f46);
+        }
+
         .org-card {
           width: 100%;
           height: 100%;
@@ -541,8 +554,8 @@ export default function GroupsView({
           justify-content: center;
           gap: 10px;
           padding: 20px 22px;
-          background: var(--surface, #ffffff);
-          border: 1px solid var(--border, #e2e8f0);
+          background: var(--org-card-bg);
+          border: 1px solid var(--org-card-border);
           border-radius: 10px;
         }
 
@@ -555,7 +568,7 @@ export default function GroupsView({
         .org-card__title {
           font-size: 20px;
           font-weight: 700;
-          color: var(--brand-primary, #6a4bff);
+          color: var(--org-card-title);
           line-height: 1.2;
         }
 
@@ -566,9 +579,9 @@ export default function GroupsView({
         }
 
         .org-card__chip {
-          background: var(--pill-bg, #eef2f2);
-          color: var(--pill-text, #1f2937);
-          border: 1px solid var(--pill-border, #cdd7e1);
+          background: var(--org-chip-bg);
+          color: var(--org-chip-text);
+          border: 1px solid var(--org-chip-border);
           border-radius: 10px;
           padding: 6px 10px;
           font-size: 13px;
@@ -577,7 +590,7 @@ export default function GroupsView({
         }
 
         .chartContainer .link {
-          stroke: var(--connector, #3f3f46);
+          stroke: var(--org-connector);
           stroke-width: 2.4px;
         }
 

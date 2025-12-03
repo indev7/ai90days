@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
+import { getCurrentTheme, loadTheme, normalizeThemeId } from '@/lib/themeManager';
 
 const FRESHNESS_WINDOW = 5 * 60 * 1000;
 
@@ -296,6 +297,19 @@ export function useMainTree() {
       }
     };
   }, [clearMainTree, setCurrentUserId]);
+
+  // Apply theme preference as soon as preferences are available
+  useEffect(() => {
+    const preferredTheme = mainTree?.preferences?.theme;
+    if (!preferredTheme) return;
+
+    const normalizedTheme = normalizeThemeId(preferredTheme);
+    const currentTheme = getCurrentTheme();
+
+    if (normalizedTheme !== currentTheme) {
+      loadTheme(normalizedTheme);
+    }
+  }, [mainTree?.preferences?.theme]);
 
   /**
    * Force refresh mainTree data from server
