@@ -55,7 +55,6 @@ const getTopMenuItems = (userRole) => {
       children: [
         { href: '/organisation?view=strategy', label: 'Strategy', icon: 'strategy' },
         { href: '/organisation?view=groups', label: 'Groups', icon: 'groups' },
-        { href: '/organisation?view=objectives', label: 'Objectives', icon: 'goals' },
         { href: '/organisation/create', label: 'Add Group', icon: 'new', isAction: true }
       ]
     },

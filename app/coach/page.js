@@ -14,12 +14,14 @@ import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
 import { SlArrowUpCircle } from "react-icons/sl";
 
 /* ---------- Text-to-Speech Hook ---------- */
-function useTextToSpeech() {
+function useTextToSpeech(preferredVoice) {
   const [isTTSEnabled, setIsTTSEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef(null);
   const audioQueueRef = useRef([]);
+  const textQueueRef = useRef([]);
   const isPlayingRef = useRef(false);
+  const isFetchingRef = useRef(false);
 
   const toggleTTS = () => {
     setIsTTSEnabled(prev => !prev);
@@ -27,8 +29,13 @@ function useTextToSpeech() {
     if (isTTSEnabled && audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
+      audioQueueRef.current.forEach((item) => {
+        try { URL.revokeObjectURL(item.url); } catch (_) {}
+      });
       audioQueueRef.current = [];
+      textQueueRef.current = [];
       isPlayingRef.current = false;
+      isFetchingRef.current = false;
       setIsSpeaking(false);
     }
   };
@@ -60,9 +67,42 @@ function useTextToSpeech() {
     return text;
   };
 
+  const processQueue = () => {
+    if (isPlayingRef.current) return;
+    const next = audioQueueRef.current.shift();
+    if (!next) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    isPlayingRef.current = true;
+    setIsSpeaking(true);
+    audioRef.current = next.audio;
+
+    const handleDone = () => {
+      URL.revokeObjectURL(next.url);
+      audioRef.current = null;
+      isPlayingRef.current = false;
+      // Continue with the next item in the queue
+      processQueue();
+    };
+
+    next.audio.onended = handleDone;
+    next.audio.onerror = (e) => {
+      console.error('[TTS] Audio playback error:', e);
+      handleDone();
+    };
+
+    next.audio.play().catch((err) => {
+      console.error('[TTS] Audio play() failed:', err);
+      handleDone();
+    });
+  };
+
   const speak = async (text) => {
     console.log('[TTS] speak called with:', {
       isTTSEnabled,
+      preferredVoice,
       textLength: text?.length,
       text: text?.substring(0, 100)
     });
@@ -85,53 +125,60 @@ function useTextToSpeech() {
       return;
     }
 
-    try {
-      console.log('[TTS] Fetching audio from API...');
-      setIsSpeaking(true);
-      
-      const response = await fetch('/api/text-to-speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, model: 'tts-1' })
-      });
+    const voiceToUse = preferredVoice || 'alloy';
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[TTS] API error:', response.status, errorText);
-        throw new Error('Failed to generate speech');
+    const processTextQueue = async () => {
+      if (isFetchingRef.current) return;
+      const nextItem = textQueueRef.current.shift();
+      if (!nextItem) return;
+      isFetchingRef.current = true;
+
+      try {
+        console.log('[TTS] Fetching audio from API with voice:', nextItem.voice);
+        
+        const response = await fetch('/api/text-to-speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: nextItem.text, model: 'tts-1', voice: nextItem.voice })
+        });
+  
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[TTS] API error:', response.status, errorText);
+          throw new Error('Failed to generate speech');
+        }
+  
+        console.log('[TTS] Audio received, creating blob...');
+        const audioBlob = await response.blob();
+        console.log('[TTS] Blob size:', audioBlob.size, 'type:', audioBlob.type);
+        
+        const audioUrl = URL.createObjectURL(audioBlob);
+        console.log('[TTS] Audio URL created:', audioUrl);
+        
+        const audio = new Audio(audioUrl);
+        audioQueueRef.current.push({ audio, url: audioUrl });
+        console.log('[TTS] Enqueued audio. Queue length:', audioQueueRef.current.length);
+        processQueue();
+      } catch (error) {
+        console.error('[TTS] Error:', error);
+        if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
+          setIsSpeaking(false);
+        }
+      } finally {
+        isFetchingRef.current = false;
+        // Continue with the next text in the queue
+        if (textQueueRef.current.length > 0) {
+          processTextQueue();
+        }
       }
+    };
 
-      console.log('[TTS] Audio received, creating blob...');
-      const audioBlob = await response.blob();
-      console.log('[TTS] Blob size:', audioBlob.size, 'type:', audioBlob.type);
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
-      console.log('[TTS] Audio URL created:', audioUrl);
-      
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
+    const enqueueText = () => {
+      textQueueRef.current.push({ text: cleanText, voice: voiceToUse });
+      processTextQueue();
+    };
 
-      audio.onended = () => {
-        console.log('[TTS] Audio playback ended');
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        setIsSpeaking(false);
-      };
-
-      audio.onerror = (e) => {
-        console.error('[TTS] Audio playback error:', e);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        setIsSpeaking(false);
-      };
-
-      console.log('[TTS] Starting audio playback...');
-      await audio.play();
-      console.log('[TTS] Audio playing');
-    } catch (error) {
-      console.error('[TTS] Error:', error);
-      setIsSpeaking(false);
-    }
+    enqueueText();
   };
 
   return {
@@ -148,38 +195,66 @@ function useVoiceRecording(onTranscriptionComplete) {
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const silenceTimerRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const streamRef = useRef(null);
   const monitorIntervalRef = useRef(null);
+  const lastSoundTimeRef = useRef(0);
+  const recordingStartTimeRef = useRef(0);
+  const stopRequestedRef = useRef(false);
 
-  const SILENCE_THRESHOLD = 0.01; // Audio level threshold for silence
-  const SILENCE_DURATION = 2000; // 2 seconds of silence to auto-stop
+  const SILENCE_RMS_THRESHOLD = 0.015; // Normalized RMS threshold for silence
+  const SILENCE_DURATION_MS = 2000; // Stop after 2 seconds of silence
+  const MAX_RECORDING_MS = 60000; // Safety cap to stop very long recordings
+
+  const playBing = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.9, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+      osc.onended = () => ctx.close();
+    } catch (err) {
+      console.error('Unable to play chime:', err);
+    }
+  };
 
   const checkAudioLevel = () => {
     if (!analyserRef.current) return;
 
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-    
-    // Calculate average volume
-    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-    const normalizedLevel = average / 255;
+    const bufferLength = analyserRef.current.fftSize;
+    const dataArray = new Uint8Array(bufferLength);
+    analyserRef.current.getByteTimeDomainData(dataArray);
 
-    // If audio level is below threshold, start silence timer
-    if (normalizedLevel < SILENCE_THRESHOLD) {
-      if (!silenceTimerRef.current) {
-        silenceTimerRef.current = setTimeout(() => {
-          stopRecording();
-        }, SILENCE_DURATION);
-      }
-    } else {
-      // Reset silence timer if sound detected
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-      }
+    // Root mean square gives a stable measure of loudness
+    let sumSquares = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const sample = (dataArray[i] - 128) / 128; // Normalize to [-1, 1]
+      sumSquares += sample * sample;
+    }
+    const rms = Math.sqrt(sumSquares / bufferLength);
+
+    const now = Date.now();
+    if (rms > SILENCE_RMS_THRESHOLD) {
+      lastSoundTimeRef.current = now;
+    } else if (now - lastSoundTimeRef.current >= SILENCE_DURATION_MS) {
+      stopRecording('silence');
+      return;
+    }
+
+    // Safety stop if recording somehow keeps running
+    if (now - recordingStartTimeRef.current >= MAX_RECORDING_MS) {
+      stopRecording('timeout');
     }
   };
 
@@ -187,6 +262,10 @@ function useVoiceRecording(onTranscriptionComplete) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+
+      recordingStartTimeRef.current = Date.now();
+      lastSoundTimeRef.current = Date.now();
+      stopRequestedRef.current = false;
 
       // Set up audio analysis for silence detection
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -212,10 +291,6 @@ function useVoiceRecording(onTranscriptionComplete) {
         if (monitorIntervalRef.current) {
           clearInterval(monitorIntervalRef.current);
           monitorIntervalRef.current = null;
-        }
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = null;
         }
 
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
@@ -258,6 +333,7 @@ function useVoiceRecording(onTranscriptionComplete) {
           }
         } finally {
           setIsProcessing(false);
+          stopRequestedRef.current = false;
         }
       };
 
@@ -269,9 +345,15 @@ function useVoiceRecording(onTranscriptionComplete) {
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+  const stopRecording = (reason = 'manual') => {
+    if (stopRequestedRef.current) return;
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      stopRequestedRef.current = true;
+      if (reason !== 'manual') {
+        playBing();
+      }
+      recorder.stop();
       setIsRecording(false);
     }
   };
@@ -537,10 +619,11 @@ export default function CoachPage() {
   // Subscribe to mainTreeStore to get all OKRTs and store actions
   const { mainTree } = useMainTree();
   const { myOKRTs } = mainTree;
+  const preferredVoice = mainTree?.preferences?.preferred_voice;
   const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
-  const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech();
+  const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech(preferredVoice);
   
   // Voice recording hook with callback
   const handleTranscription = (text) => {
@@ -623,6 +706,20 @@ export default function CoachPage() {
 
       let textBuffer = '';
       let pendingActions = [];
+      let chunkBuffer = '';
+
+      const TTS_CHUNK_THRESHOLD = 400; // characters
+      const flushChunkIfReady = () => {
+        if (!isTTSEnabled) return;
+        const trimmed = chunkBuffer.trim();
+        if (!trimmed) return;
+        // Prefer to flush when we hit punctuation and have a reasonable length
+        const hasSentenceEnd = /[\\.\\?!]$/.test(trimmed);
+        if (trimmed.length >= TTS_CHUNK_THRESHOLD || (hasSentenceEnd && trimmed.length >= 120)) {
+          speak(trimmed);
+          chunkBuffer = '';
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -637,6 +734,8 @@ export default function CoachPage() {
             if (data.type === 'content') {
               textBuffer += data.data;
               updateMessage(assistantMessageId, { content: textBuffer });
+              chunkBuffer += data.data;
+              flushChunkIfReady();
             } else if (data.type === 'preparing_actions') {
               updateMessage(assistantMessageId, { content: textBuffer, preparingActions: true });
             } else if (data.type === 'actions') {
@@ -662,13 +761,13 @@ export default function CoachPage() {
         updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
       }
       
-      // Speak the response if TTS is enabled
-      console.log('[TTS] Message complete, checking TTS:', { isTTSEnabled, textLength: textBuffer.length });
-      if (isTTSEnabled && textBuffer.trim()) {
-        console.log('[TTS] Calling speak function...');
-        speak(textBuffer);
-      } else {
-        console.log('[TTS] Not speaking:', { isTTSEnabled, hasText: !!textBuffer.trim() });
+      // Flush any remaining chunk after stream ends
+      if (isTTSEnabled) {
+        const remaining = chunkBuffer.trim();
+        console.log('[TTS] Stream complete, flushing remaining chunk:', remaining ? remaining.substring(0, 80) : '(none)');
+        if (remaining) {
+          speak(remaining);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -805,7 +904,7 @@ export default function CoachPage() {
   const handleMicrophoneClick = () => {
     if (isRecording) {
       // Stop recording manually
-      stopRecording();
+      stopRecording('manual');
     } else {
       // Start recording
       startRecording();
