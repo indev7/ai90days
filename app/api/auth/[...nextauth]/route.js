@@ -22,6 +22,14 @@ const handler = NextAuth({
       console.log('SignIn callback:', { user, account: account?.provider, profile });
       
       if (account.provider === 'azure-ad') {
+        const allowedDomains = ['intervest.lk', 'staysure.co.uk'];
+        const emailDomain = user.email?.split('@')[1]?.toLowerCase();
+
+        if (!emailDomain || !allowedDomains.includes(emailDomain)) {
+          console.warn('Blocked Microsoft login for unauthorized domain:', emailDomain);
+          return false;
+        }
+
         try {
           // Check if user exists by email
           let existingUser = await getUserByEmail(user.email);

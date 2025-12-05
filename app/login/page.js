@@ -149,12 +149,13 @@ export default function LoginPage() {
         </button>
 
         <div className={styles.footer}>
-          <p className={styles.footerText}>
+          {/* Signup link intentionally disabled */}
+          {/* <p className={styles.footerText}>
             Don't have an account?{' '}
             <Link href="/signup" className={styles.footerLink}>
               Sign up
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>
