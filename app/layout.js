@@ -76,6 +76,7 @@ export default function RootLayout({ children }) {
     
     // If menu is being expanded (collapsed -> not collapsed), dispatch event to collapse OKRTs
     if (!newCollapsedState) {
+      window.dispatchEvent(new CustomEvent('exitFocusMode'));
       window.dispatchEvent(new CustomEvent('menuToggleToExpanded'));
     }
   };
@@ -86,6 +87,7 @@ export default function RootLayout({ children }) {
     
     // If menu is being expanded (collapsed -> not collapsed), dispatch event to collapse OKRTs
     if (!newCollapsedState) {
+      window.dispatchEvent(new CustomEvent('exitFocusMode'));
       window.dispatchEvent(new CustomEvent('menuToggleToExpanded'));
     }
   };

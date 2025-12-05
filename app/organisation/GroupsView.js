@@ -232,7 +232,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
         }
         .popover__close {
           background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
-          border: 1px solid var(--menu-active-text, var(--border, #e2e8f0));
+          border: 1px solid var(--muted-light);
           width: 28px;
           height: 28px;
           border-radius: 50%;
@@ -262,9 +262,9 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
         }
         .popover__item {
           padding: 10px 12px;
-          border: 1px solid var(--menu-active-text, var(--border, #1f2937));
+          border: 1px solid var(--muted-light);
           border-radius: 10px;
-          background: var(--header-bg, var(--surface-1, var(--surface, #111321)));
+          background: var(--brand-50);
           color: var(--text, #f4f6fb);
         }
         .popover__itemTitle {
@@ -309,7 +309,7 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
           align-items: center;
           gap: 8px;
           padding: 8px 10px;
-          border: 1px solid var(--menu-active-text, var(--border, #1f2937));
+          border: 1px solid var(--muted-light);
           border-radius: 10px;
           background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
           color: var(--text, #f4f6fb);
