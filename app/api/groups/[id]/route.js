@@ -64,6 +64,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = await params;
+    const requesterId = parseInt(session.sub);
     
     // Get the group to check its type
     const group = await getGroupById(id);
@@ -73,12 +74,20 @@ export async function PUT(request, { params }) {
     
     // Get current user to check role
     const { getUserById } = await import('@/lib/pgdb');
-    const currentUser = await getUserById(parseInt(session.sub));
+    const currentUser = await getUserById(requesterId);
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Check permissions based on user role and group type
+    // Require the user to be an admin of this specific group
+    const isGroupAdmin = await isUserGroupAdmin(requesterId, id);
+    if (!isGroupAdmin) {
+      return NextResponse.json({
+        error: 'Forbidden: Only admins of this group can update it'
+      }, { status: 403 });
+    }
+
+    // Additional guardrails based on user role and group type
     const userRole = currentUser.role;
     const allowedRoles = ['Admin', 'Owner', 'Leader'];
     
@@ -199,7 +208,7 @@ export async function PUT(request, { params }) {
           updates: {
             ...updatedGroup,
             is_member: isMember,
-            is_admin: isAdminUser,
+            is_admin: isGroupAdmin || isAdminUser,
             members: memberDetails,
             objectiveIds: isMember ? objectiveIds.map(o => o.id) : [],
             strategicObjectiveIds: strategicObjectives.map(so => so.okrt_id)

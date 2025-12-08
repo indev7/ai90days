@@ -78,7 +78,13 @@ function buildFlatNodes(tree, expandedGroupId) {
   return nodes;
 }
 
-function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
+function GroupDetailsPopover({
+  group,
+  details,
+  onClose,
+  onEditGroup,
+  currentUserId,
+}) {
   const strategicIds = details.strategicObjectiveIds || [];
   const objectives = details.objectives || [];
   const strategicObjectives = objectives.filter((obj) =>
@@ -88,6 +94,9 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
     (obj) => !strategicIds.includes(obj.id)
   );
   const members = details.members || [];
+  const isCurrentUserAdmin =
+    details.isCurrentUserAdmin ??
+    members.some((member) => member.id === currentUserId && member.is_admin);
 
   return (
     <>
@@ -169,18 +178,23 @@ function GroupDetailsPopover({ group, details, onClose, onEditGroup }) {
             </ul>
           )}
         </div>
-        <div className="popover__actions">
-          <button
-            type="button"
-            className="popover__editButton"
-            onClick={() =>
-              onEditGroup &&
-              onEditGroup({ id: group.groupId || group.nodeId, name: group.name })
-            }
-          >
-            Edit group
-          </button>
-        </div>
+        {isCurrentUserAdmin && (
+          <div className="popover__actions">
+            <button
+              type="button"
+              className="popover__editButton"
+              onClick={() =>
+                onEditGroup &&
+                onEditGroup({
+                  id: group.groupId || group.nodeId,
+                  name: group.name,
+                })
+              }
+            >
+              Edit group
+            </button>
+          </div>
+        )}
       </div>
       <style jsx>{`
         .popover-backdrop {
@@ -377,6 +391,7 @@ export default function GroupsView({
   expandedGroupId,
   groupDetails = {},
   onEditGroup,
+  currentUserId,
 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -493,6 +508,7 @@ export default function GroupsView({
           details={groupDetails[expandedGroupId]}
           onClose={() => onNodeClick && onNodeClick(null)}
           onEditGroup={onEditGroup}
+          currentUserId={currentUserId}
         />
       )}
       <style jsx>{`
