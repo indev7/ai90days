@@ -235,13 +235,18 @@ function getCoachSystemPromptForOllama(okrtContext) {
   const taskCount = objectives.reduce((sum, o) => 
     sum + (o.krs || []).reduce((kSum, kr) => kSum + (kr.tasks || []).length, 0), 0);
 
-  // Send only summary of existing OKRTs, not full JSON (reduces context from 12KB to ~500 bytes)
+  // Send compact list of OKRTs with IDs for UPDATE/DELETE operations
   const contextBlock = objectives.length > 0
     ? `
-EXISTING USER OKRTS (Summary):
+EXISTING USER OKRTS:
 User: ${displayName}
-Total: ${objectives.length} objectives, ${krCount} key results, ${taskCount} tasks
-Recent: ${objectives.slice(0, 3).map(o => `"${o.title}"`).join(', ')}`
+${objectives.map(o => {
+  const krs = o.krs || [];
+  return `- [${o.id}] Objective: "${o.title}"
+${krs.map(kr => `  - [${kr.id}] KR: "${kr.description}"`).join('\n')}`;
+}).join('\n')}
+
+IMPORTANT: For UPDATE or DELETE, use the EXACT IDs shown in brackets [id] above!`
     : `
 EXISTING USER OKRTS:
 User: ${displayName} has no OKRTs yet.`;
@@ -265,7 +270,18 @@ ACTIONS_JSON:
 DATA MODEL:
 O (Objective) → K (Key Result) → T (Task) linked by parent_id
 
-EACH ACTION MUST HAVE:
+⚠️ CRITICAL ID RULES:
+- CREATE: Generate NEW random IDs like gen-k3x7m9p2
+- UPDATE/DELETE: Use EXACT IDs from "EXISTING USER OKRTS" list above (shown in [brackets])
+
+⚠️ ENDPOINT RULES:
+- CREATE uses: "/api/okrt" 
+- UPDATE uses: "/api/okrt/ACTUAL-ID" (ID must be in URL!)
+- DELETE uses: "/api/okrt/ACTUAL-ID" (ID must be in URL!)
+
+ACTION TYPES:
+
+1. CREATE_OKRT - Create new OKRT
 {
   "intent": "CREATE_OKRT",
   "endpoint": "/api/okrt",
@@ -273,9 +289,39 @@ EACH ACTION MUST HAVE:
   "payload": {
     "id": "gen-XXXXXXXX",
     "type": "O" or "K" or "T",
-    ...other required fields below...
+    ...fields...
   }
 }
+
+2. UPDATE_OKRT - Update existing OKRT
+{
+  "intent": "UPDATE_OKRT",
+  "endpoint": "/api/okrt/ACTUAL-ID-HERE",
+  "method": "PUT",
+  "payload": {
+    "id": "ACTUAL-ID-HERE",
+    ...ONLY the fields you want to change...
+  }
+}
+⚠️ CRITICAL FOR UPDATE:
+- Endpoint MUST be "/api/okrt/" + the actual OKRT id (e.g., "/api/okrt/gen-u3v4w5x6")
+- Payload MUST include "id" field with same id
+- Payload should ONLY include fields being changed (not all fields!)
+- Example: To change kr_target_number to 300:
+  endpoint: "/api/okrt/gen-u3v4w5x6"
+  payload: {"id": "gen-u3v4w5x6", "kr_target_number": 300}
+
+3. DELETE_OKRT - Delete existing OKRT
+{
+  "intent": "DELETE_OKRT",
+  "endpoint": "/api/okrt/{id}",
+  "method": "DELETE",
+  "payload": {
+    "id": "{id}"
+  }
+}
+CRITICAL: For DELETE, endpoint MUST include the ID: "/api/okrt/gen-abc12345"
+Also include "id" in payload (same ID as in endpoint)
 
 REQUIRED PAYLOAD FIELDS:
 
@@ -301,17 +347,47 @@ FIELD VALUES:
 - progress: NUMBER 0
 - weight: NUMBER 1.0 or 0.5
 
-IDs: Generate as "gen-" + 8 random lowercase letters/digits
+IDs: CRITICAL - Generate UNIQUE random IDs as "gen-" + 8 random chars
+Examples: gen-x7m9k2p4, gen-w3n8q5r1, gen-t6y2h9v3
+NEVER reuse IDs from examples! Generate NEW random ones EVERY time!
 
-EXAMPLE OUTPUT (COPY THIS FORMAT EXACTLY):
+EXAMPLES (STRUCTURE ONLY - GENERATE NEW IDS):
 
+Example 1 - CREATE:
 User: "Create fitness objective with 2 key results"
 
 Your response:
 Let's track your fitness!
 
 ACTIONS_JSON:
-{"actions":[{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-a1b2c3d4","type":"O","title":"Improve Fitness","description":"Get healthier","area":"Life","status":"D","visibility":"private","objective_kind":"committed","cycle_qtr":"${timeCtx.currentQuarter}","progress":0}},{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-e5f6g7h8","type":"K","parent_id":"gen-a1b2c3d4","description":"Run 5km 3 times/week","kr_target_number":3,"kr_unit":"count","kr_baseline_number":0,"weight":0.5,"progress":0}},{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-i9j0k1l2","type":"K","parent_id":"gen-a1b2c3d4","description":"Lose 5kg","kr_target_number":5,"kr_unit":"count","kr_baseline_number":0,"weight":0.5,"progress":0}}]}
+{"actions":[{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-x7m9k2p4","type":"O","title":"Improve Fitness","description":"Get healthier","area":"Life","status":"D","visibility":"private","objective_kind":"committed","cycle_qtr":"${timeCtx.currentQuarter}","progress":0}},{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-w3n8q5r1","type":"K","parent_id":"gen-x7m9k2p4","description":"Run 5km 3 times/week","kr_target_number":3,"kr_unit":"count","kr_baseline_number":0,"weight":0.5,"progress":0}},{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-t6y2h9v3","type":"K","parent_id":"gen-x7m9k2p4","description":"Lose 5kg","kr_target_number":5,"kr_unit":"count","kr_baseline_number":0,"weight":0.5,"progress":0}}]}
+
+Example 2 - UPDATE:
+User: "Change the subscriber key result to 500"
+(Assuming [gen-u3v4w5x6] is the ID from EXISTING USER OKRTS list)
+
+Your response:
+I'll update that target for you!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"UPDATE_OKRT","endpoint":"/api/okrt/gen-u3v4w5x6","method":"PUT","payload":{"id":"gen-u3v4w5x6","kr_target_number":500}}]}
+
+NOTE: ID gen-u3v4w5x6 comes from the EXISTING USER OKRTS list, NOT from examples!
+
+Example 3 - DELETE:
+User: "Delete the fitness objective"
+(Assuming [acdc55dd-dc11-486f-bbaf-73da24612a90] is the ID from EXISTING USER OKRTS list)
+
+Your response:
+I'll remove that objective and its children.
+
+ACTIONS_JSON:
+{"actions":[{"intent":"DELETE_OKRT","endpoint":"/api/okrt/acdc55dd-dc11-486f-bbaf-73da24612a90","method":"DELETE","payload":{"id":"acdc55dd-dc11-486f-bbaf-73da24612a90"}}]}
+
+NOTE: ID comes from the EXISTING USER OKRTS list, NOT from examples!
+
+IMPORTANT: IDs in examples are gen-x7m9k2p4, gen-w3n8q5r1, gen-t6y2h9v3, gen-abc12345
+YOUR IDs must be DIFFERENT! Generate random combinations like: gen-j4k8m1n7, gen-p9r2s5t8, etc.
 
 CRITICAL RULES:
 1. NO markdown fences (no \`\`\`json)
@@ -815,8 +891,47 @@ Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
                 
                 // Final attempt at extracting actions
                 if (!actionsSent) {
-                  const actions = tryExtractActions(accumText);
+                  let actions = tryExtractActions(accumText);
                   if (actions && actions.length) {
+                    // FIX: Regenerate IDs if model used example IDs
+                    const exampleIds = [
+                      'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2', 
+                      'gen-x7m9k2p4', 'gen-w3n8q5r1', 'gen-t6y2h9v3',
+                      'gen-abc12345', 'gen-u3v4w5x6', 'gen-j4k8m1n7', 'gen-p9r2s5t8'
+                    ];
+                    const usedIds = new Set();
+                    
+                    actions = actions.map(action => {
+                      // ONLY regenerate IDs for CREATE actions, not UPDATE/DELETE
+                      if (action.intent === 'CREATE_OKRT' && action.payload && action.payload.id) {
+                        const originalId = action.payload.id;
+                        // Check if ID is from examples or duplicate
+                        if (exampleIds.includes(originalId) || usedIds.has(originalId)) {
+                          const newId = `gen-${Math.random().toString(36).substring(2, 10)}`;
+                          console.log(`⚠️  Replaced duplicate/example ID ${originalId} → ${newId}`);
+                          action.payload.id = newId;
+                          
+                          // Update parent_id references in other actions
+                          actions.forEach(a => {
+                            if (a.payload && a.payload.parent_id === originalId) {
+                              a.payload.parent_id = newId;
+                            }
+                          });
+                        }
+                        usedIds.add(action.payload.id);
+                      }
+                      
+                      // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
+                      if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && 
+                          action.payload?.id && 
+                          action.endpoint === '/api/okrt') {
+                        action.endpoint = `/api/okrt/${action.payload.id}`;
+                        console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
+                      }
+                      
+                      return action;
+                    });
+                    
                     console.log('✅ SUCCESS: Extracted', actions.length, 'action(s)');
                     console.log(JSON.stringify(actions, null, 2));
                     controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actions }) + '\n'));
@@ -842,8 +957,46 @@ Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
                     accumText += content;
                     controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: content }) + '\n'));
                     if (!actionsSent) {
-                      const actions = tryExtractActions(accumText);
+                      let actions = tryExtractActions(accumText);
                       if (actions && actions.length) {
+                        // FIX: Regenerate IDs if model used example IDs
+                        const exampleIds = [
+                          'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2', 
+                          'gen-x7m9k2p4', 'gen-w3n8q5r1', 'gen-t6y2h9v3',
+                          'gen-abc12345', 'gen-u3v4w5x6', 'gen-j4k8m1n7', 'gen-p9r2s5t8'
+                        ];
+                        const usedIds = new Set();
+                        
+                        actions = actions.map(action => {
+                          // ONLY regenerate IDs for CREATE actions, not UPDATE/DELETE
+                          if (action.intent === 'CREATE_OKRT' && action.payload && action.payload.id) {
+                            const originalId = action.payload.id;
+                            if (exampleIds.includes(originalId) || usedIds.has(originalId)) {
+                              const newId = `gen-${Math.random().toString(36).substring(2, 10)}`;
+                              console.log(`⚠️  Replaced duplicate/example ID ${originalId} → ${newId}`);
+                              action.payload.id = newId;
+                              
+                              // Update parent_id references
+                              actions.forEach(a => {
+                                if (a.payload && a.payload.parent_id === originalId) {
+                                  a.payload.parent_id = newId;
+                                }
+                              });
+                            }
+                            usedIds.add(action.payload.id);
+                          }
+                          
+                          // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
+                          if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && 
+                              action.payload?.id && 
+                              action.endpoint === '/api/okrt') {
+                            action.endpoint = `/api/okrt/${action.payload.id}`;
+                            console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
+                          }
+                          
+                          return action;
+                        });
+                        
                         console.log('=== OLLAMA EXTRACTED ACTIONS (STREAMING) ===');
                         console.log(JSON.stringify(actions, null, 2));
                         console.log('=== END OLLAMA ACTIONS ===');
