@@ -161,7 +161,7 @@ function getCoachSystemPrompt(okrtContext) {
 CONTEXT - Current User's Information and OKRTs:
 User Display Name: ${displayName}
 Number of Objectives: ${objectives.length}
-Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions for user-facing text. Use IDs only inside tool calls:
+Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has ${objectives.length} objective(s) with ${krCount} key result(s).`
     : `
@@ -204,8 +204,9 @@ OUTPUT CONTRACT
 1) Stream a short paragraph of coaching text.
 2) If changes are requested, call "emit_actions" once with an ordered "actions" array.
 
-ID SAFETY (MANDATORY)
-- IDs (id, parent_id, owner_id) are for tool calls only. Never include them in the coaching paragraph or any user-visible text; refer to items by title/description instead.
+ ID SAFETY (MANDATORY)
+- Use IDs only inside emit_actions; never surface them in user-facing text.
+- IDs/UUIDs (id, parent_id, owner_id, gen-* tokens) must not appear in the coaching paragraph. If a sentence would contain an ID, rewrite it without the ID. Before sending text, scan and remove any token matching a UUID (`\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b`) or `gen-[a-z0-9]{8}`. Do not remove numeric values like weights or progress percentages.
 - For UPDATE_OKRT and DELETE_OKRT you MUST copy IDs exactly as they appear in CONTEXT. Never modify, shorten, or reformat IDs.
 - For every CREATE_OKRT payload you MUST include an "id".
 - New IDs must be in gen-XXXXXXXX format where X is a lowercase letter or digit.
