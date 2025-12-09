@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { OrganizationChart } from 'primereact/organizationchart';
 import 'primereact/resources/themes/lara-light-blue/theme.css';
 import 'primereact/resources/primereact.min.css';
@@ -94,6 +94,144 @@ function buildFamilies(sharedOKRTs = []) {
   return families;
 }
 
+// Custom hook for drag-to-scroll with auto-centering
+function useDragToScroll(contentRef) {
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef({ startX: 0, scrollLeft: 0, hasMoved: false });
+
+  useEffect(() => {
+    const element = contentRef.current;
+    if (!element) return;
+
+    // Center content on mount if it overflows
+    const centerContent = () => {
+      const containerWidth = element.clientWidth;
+      const contentWidth = element.scrollWidth;
+
+      if (contentWidth > containerWidth) {
+        // Content overflows - center it
+        element.scrollLeft = (contentWidth - containerWidth) / 2;
+      }
+    };
+
+    // Center after render and on resize
+    const timer = setTimeout(centerContent, 100);
+    window.addEventListener('resize', centerContent);
+
+    const handleMouseDown = (e) => {
+      // Allow button clicks
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+      setIsDragging(true);
+      dragStateRef.current = {
+        startX: e.pageX - element.offsetLeft,
+        scrollLeft: element.scrollLeft,
+        hasMoved: false
+      };
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+
+      const x = e.pageX - element.offsetLeft;
+      const walk = (x - dragStateRef.current.startX) * 1.5;
+      element.scrollLeft = dragStateRef.current.scrollLeft - walk;
+
+      if (Math.abs(walk) > 5) {
+        dragStateRef.current.hasMoved = true;
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const handleMouseLeave = () => {
+      setIsDragging(false);
+    };
+
+    // Touch events
+    const handleTouchStart = (e) => {
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+      setIsDragging(true);
+      dragStateRef.current = {
+        startX: e.touches[0].pageX - element.offsetLeft,
+        scrollLeft: element.scrollLeft,
+        hasMoved: false
+      };
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isDragging) return;
+
+      const x = e.touches[0].pageX - element.offsetLeft;
+      const walk = (x - dragStateRef.current.startX) * 1.5;
+      element.scrollLeft = dragStateRef.current.scrollLeft - walk;
+
+      if (Math.abs(walk) > 5) {
+        dragStateRef.current.hasMoved = true;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+    };
+
+    element.addEventListener('mousedown', handleMouseDown);
+    element.addEventListener('mousemove', handleMouseMove);
+    element.addEventListener('mouseup', handleMouseUp);
+    element.addEventListener('mouseleave', handleMouseLeave);
+    element.addEventListener('touchstart', handleTouchStart, { passive: true });
+    element.addEventListener('touchmove', handleTouchMove, { passive: true });
+    element.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', centerContent);
+      element.removeEventListener('mousedown', handleMouseDown);
+      element.removeEventListener('mousemove', handleMouseMove);
+      element.removeEventListener('mouseup', handleMouseUp);
+      element.removeEventListener('mouseleave', handleMouseLeave);
+      element.removeEventListener('touchstart', handleTouchStart);
+      element.removeEventListener('touchmove', handleTouchMove);
+      element.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [contentRef, isDragging]);
+
+  return isDragging;
+}
+
+// Family chart wrapper component
+function FamilyChartWrapper({ family, nodeTemplate }) {
+  const wrapperRef = useRef(null);
+  const isDragging = useDragToScroll(wrapperRef);
+
+  return (
+    <div
+      className={styles.familyWrapper}
+      style={{ '--family-color': family.color }}
+    >
+      <div className={styles.familyHeader}>
+        <span className={styles.familyDot} style={{ backgroundColor: family.color }} />
+        <div className={styles.familyTitle}>{family.root.title || 'Objective'}</div>
+      </div>
+      <div
+        ref={wrapperRef}
+        className={`${styles.orgChartWrapper} ${isDragging ? styles.dragging : ''}`}
+      >
+        <OrganizationChart
+          value={family.tree}
+          nodeTemplate={nodeTemplate}
+          className={styles.orgChart}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function SharedHierarchyView() {
   const { mainTree, isLoading } = useMainTree();
   const router = useRouter();
@@ -129,23 +267,11 @@ export default function SharedHierarchyView() {
   return (
     <div className={styles.hierarchyStack}>
       {families.map((family) => (
-        <div
+        <FamilyChartWrapper
           key={family.root.id}
-          className={styles.familyWrapper}
-          style={{ '--family-color': family.color }}
-        >
-          <div className={styles.familyHeader}>
-            <span className={styles.familyDot} style={{ backgroundColor: family.color }} />
-            <div className={styles.familyTitle}>{family.root.title || 'Objective'}</div>
-          </div>
-          <div className={styles.orgChartWrapper}>
-            <OrganizationChart
-              value={family.tree}
-              nodeTemplate={nodeTemplate}
-              className={styles.orgChart}
-            />
-          </div>
-        </div>
+          family={family}
+          nodeTemplate={nodeTemplate}
+        />
       ))}
     </div>
   );
