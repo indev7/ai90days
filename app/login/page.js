@@ -41,11 +41,14 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Clear any cached mainTree state before loading new session data
+        window.localStorage.removeItem('main-tree-storage');
+
         // Trigger storage event to notify other tabs/windows
         window.localStorage.setItem('authChange', Date.now().toString());
         window.localStorage.removeItem('authChange');
         
-        router.push('/dashboard');
+        router.push('/home');
       } else {
         setError(data.error || 'Login failed');
       }
@@ -58,8 +61,9 @@ export default function LoginPage() {
 
   const handleMicrosoftLogin = async () => {
     try {
+      window.localStorage.removeItem('main-tree-storage');
       await signIn('azure-ad', { 
-        callbackUrl: '/dashboard',
+        callbackUrl: '/home',
         redirect: true 
       });
     } catch (error) {
@@ -145,12 +149,13 @@ export default function LoginPage() {
         </button>
 
         <div className={styles.footer}>
-          <p className={styles.footerText}>
+          {/* Signup link intentionally disabled */}
+          {/* <p className={styles.footerText}>
             Don't have an account?{' '}
             <Link href="/signup" className={styles.footerLink}>
               Sign up
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

@@ -1,10 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
+import { getCurrentTheme, loadTheme, normalizeThemeId } from '@/lib/themeManager';
+
+const FRESHNESS_WINDOW = 5 * 60 * 1000;
 
 // Global flag to track if a fetch is in progress across all hook instances
 let globalFetchInProgress = false;
 let globalFetchPromise = null;
+let globalCalendarLoadInProgress = false;
+let globalCalendarPromise = null;
 
 /**
  * Custom hook to ensure mainTree is loaded
@@ -16,6 +22,7 @@ let globalFetchPromise = null;
  */
 export function useMainTree() {
   const router = useRouter();
+  const { user } = useUser();
   const {
     mainTree,
     lastUpdated,
@@ -25,27 +32,44 @@ export function useMainTree() {
     setError,
     setSectionLoading,
     setSectionLoaded,
-    setCalendar
+    setCalendar,
+    clearMainTree,
+    currentUserId,
+    setCurrentUserId
   } = useMainTreeStore();
   
   const hasFetchedRef = useRef(false);
   const hasLoadedCalendarRef = useRef(false);
+  const prevUserIdRef = useRef(null);
 
   useEffect(() => {
+    // Reset fetch flag when user changes (new login)
+    if (user?.id !== prevUserIdRef.current) {
+      hasFetchedRef.current = false;
+      prevUserIdRef.current = user?.id || null;
+    }
+
     // Skip if this component instance has already triggered a fetch
     if (hasFetchedRef.current) {
       return;
     }
 
     const loadMainTree = async () => {
+      // If user changed (new login), reset cached tree
+      if (user && currentUserId && currentUserId !== user.id) {
+        clearMainTree();
+      }
+      if (user && currentUserId !== user.id) {
+        setCurrentUserId(user.id);
+      }
+
       // Check if we already have data and it's fresh (less than 5 minutes old)
-      if (lastUpdated) {
+      if (lastUpdated && mainTree?.preferences && currentUserId === user?.id) {
         const lastUpdateTime = new Date(lastUpdated).getTime();
         const now = new Date().getTime();
-        const fiveMinutes = 5 * 60 * 1000;
         
         // If data is fresh, don't reload (even if user has no OKRTs yet)
-        if (now - lastUpdateTime < fiveMinutes) {
+        if (now - lastUpdateTime < FRESHNESS_WINDOW) {
           console.log('MainTree data is fresh, skipping reload');
           hasFetchedRef.current = true;
           
@@ -82,6 +106,7 @@ export function useMainTree() {
         setSectionLoading('notifications', true);
         setSectionLoading('sharedOKRTs', true);
         setSectionLoading('groups', true);
+        setSectionLoading('preferences', true);
         
         console.log('Loading mainTree data progressively...');
 
@@ -129,6 +154,9 @@ export function useMainTree() {
                   // Update store for each section as it arrives
                   const store = useMainTreeStore.getState();
                   switch (section) {
+                    case 'preferences':
+                      store.setPreferences(data);
+                      break;
                     case 'myOKRTs':
                       store.setMyOKRTs(data);
                       break;
@@ -174,36 +202,114 @@ export function useMainTree() {
       if (hasLoadedCalendarRef.current) {
         return;
       }
-      
-      try {
-        setSectionLoading('calendar', true);
-        console.log('Loading calendar events in background...');
-        
-        const response = await fetch('/api/main-tree/calendar');
-        if (!response.ok) {
-          console.error('Failed to load calendar events');
-          return;
-        }
-        
-        const data = await response.json();
-        if (data && data.calendar) {
-          setCalendar(data.calendar);
-          setSectionLoaded('calendar');
-          console.log('Calendar loaded successfully:', {
-            events: data.calendar.events?.length || 0
-          });
-        }
-        
+
+      const calendarState = useMainTreeStore.getState().sectionStates?.calendar;
+      const isCalendarFresh = calendarState?.lastUpdated
+        ? (Date.now() - new Date(calendarState.lastUpdated).getTime()) < FRESHNESS_WINDOW
+        : false;
+
+      // Skip reload if we already have fresh calendar data
+      if (calendarState?.loaded && isCalendarFresh) {
         hasLoadedCalendarRef.current = true;
+        return;
+      }
+
+      // If another instance is already loading calendar, wait for it
+      if (globalCalendarLoadInProgress && globalCalendarPromise) {
+        await globalCalendarPromise;
+        hasLoadedCalendarRef.current = true;
+        return;
+      }
+
+      try {
+        globalCalendarLoadInProgress = true;
+        const calendarPromise = (async () => {
+          setSectionLoading('calendar', true);
+          console.log('Loading calendar events in background...');
+          
+          const response = await fetch('/api/main-tree/calendar');
+          if (!response.ok) {
+            console.error('Failed to load calendar events');
+            setSectionLoading('calendar', false);
+            return false;
+          }
+          
+          const data = await response.json();
+          if (data && data.calendar) {
+            setCalendar(data.calendar);
+            setSectionLoaded('calendar');
+            console.log('Calendar loaded successfully:', {
+              events: data.calendar.events?.length || 0
+            });
+            return true;
+          }
+
+          setSectionLoading('calendar', false);
+          return false;
+        })();
+
+        globalCalendarPromise = calendarPromise;
+        const calendarLoaded = await calendarPromise;
+        hasLoadedCalendarRef.current = calendarLoaded;
       } catch (error) {
         console.error('Error loading calendar:', error);
         // Don't fail the whole app if calendar fails
         setSectionLoading('calendar', false);
+      } finally {
+        globalCalendarLoadInProgress = false;
+        globalCalendarPromise = null;
       }
     };
 
     loadMainTree();
-  }, []); // Only run once on mount
+  }, [user?.id, currentUserId, lastUpdated]); // rerun when user or freshness changes
+
+  // Clear cached tree when auth state changes in another tab (login/logout)
+  useEffect(() => {
+    const handleAuthChange = (event) => {
+      if (event.key !== 'authChange') {
+        return;
+      }
+
+      console.log('Auth change detected, clearing cached mainTree');
+      clearMainTree();
+      setCurrentUserId(null);
+      hasFetchedRef.current = false;
+      globalFetchInProgress = false;
+      globalFetchPromise = null;
+      globalCalendarLoadInProgress = false;
+      globalCalendarPromise = null;
+
+      try {
+        window.localStorage.removeItem('main-tree-storage');
+      } catch (err) {
+        console.warn('Failed to clear main-tree storage on auth change', err);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleAuthChange);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleAuthChange);
+      }
+    };
+  }, [clearMainTree, setCurrentUserId]);
+
+  // Apply theme preference as soon as preferences are available
+  useEffect(() => {
+    const preferredTheme = mainTree?.preferences?.theme;
+    if (!preferredTheme) return;
+
+    const normalizedTheme = normalizeThemeId(preferredTheme);
+    const currentTheme = getCurrentTheme();
+
+    if (normalizedTheme !== currentTheme) {
+      loadTheme(normalizedTheme);
+    }
+  }, [mainTree?.preferences?.theme]);
 
   /**
    * Force refresh mainTree data from server

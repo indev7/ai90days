@@ -52,11 +52,14 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Clear any cached mainTree state before loading the new session
+        window.localStorage.removeItem('main-tree-storage');
+
         // Trigger storage event to notify other tabs/windows
         window.localStorage.setItem('authChange', Date.now().toString());
         window.localStorage.removeItem('authChange');
         
-        router.push('/dashboard');
+        router.push('/home');
         router.refresh();
       } else {
         setError(data.error || 'Signup failed');
@@ -70,8 +73,9 @@ export default function SignupPage() {
 
   const handleMicrosoftSignup = async () => {
     try {
+      window.localStorage.removeItem('main-tree-storage');
       await signIn('azure-ad', { 
-        callbackUrl: '/dashboard',
+        callbackUrl: '/home',
         redirect: true 
       });
     } catch (error) {

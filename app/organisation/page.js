@@ -18,7 +18,7 @@ import { useSearchParams } from 'next/navigation';
  * Helpers
  *************************/
 /** Transform API group data to OrganizationChart format */
-function transformGroupToChartNode(group) {
+function transformGroupToChartNode(group, depth = 0) {
   const memberCount = Array.isArray(group.members) ? group.members.length : 0;
   const objectiveCount = Array.isArray(group.objectiveIds) ? group.objectiveIds.length : 0;
   
@@ -32,11 +32,12 @@ function transformGroupToChartNode(group) {
       thumbnail_url: group.thumbnail_url,
       objectiveCount: objectiveCount,
       memberCount: memberCount,
+      depth,
     },
   };
 
   if (group.children && group.children.length > 0) {
-    node.children = group.children.map(transformGroupToChartNode);
+    node.children = group.children.map((child) => transformGroupToChartNode(child, depth + 1));
   }
 
   return node;
@@ -369,23 +370,6 @@ export default function IntervestOrgChart() {
 
   return (
     <div className={styles.container}>
-      {/* PrimeReact overrides & connector tuning */}
-      <style>{`
-        .p-organizationchart { width: 100% !important; }
-        .p-organizationchart table { width: 100% !important; }
-        .p-organizationchart .p-organizationchart-node { padding: 0 12px !important; text-align: center !important; }
-        .p-organizationchart .p-organizationchart-node-content { padding: 0 !important; border-radius: 5px; border: none !important; background: transparent; margin: 0 auto !important; position: relative !important; box-sizing: border-box !important; display: inline-block !important; }
-        .p-organizationchart .p-organizationchart-node-content .p-organizationchart-toggler { position: absolute !important; left: 50% !important; bottom: -12px !important; margin: 0 !important; padding: 0 !important; }
-        .p-organizationchart .p-organizationchart-node-content .p-organizationchart-toggler button, .p-organizationchart .p-organizationchart-node-content .p-organizationchart-toggler .p-button { display: block !important; margin: 0 !important; padding: 0 !important; transform: translateX(-50%) !important; }
-        .p-organizationchart .p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon, .p-organizationchart .p-icon.p-node-toggler-icon { position: relative !important; top: .3rem !important; left:-0.75rem; }
-        .p-organizationchart .p-organizationchart-line-down { height: 12px !important; min-height: 12px !important; margin: 0 auto !important; border-left: 1px solid var(--border) !important; }
-        .p-organizationchart .p-organizationchart-lines .p-organizationchart-line-left { border-right: 1px solid var(--border) !important; }
-        .p-organizationchart .p-organizationchart-lines .p-organizationchart-line-right { border-left: 1px solid var(--border) !important; }
-        .p-organizationchart .p-organizationchart-lines .p-organizationchart-line-top { border-top: 1px solid var(--border) !important; }
-        .p-organizationchart .p-organizationchart-lines td { padding-top: 8px !important; padding-bottom: 8px !important; line-height: 0; }
-        .p-organizationchart .p-organizationchart-node { margin-top: 0 !important; margin-bottom: 0 !important; }
-      `}</style>
-
       <div className={styles.content}>
         {viewType === 'strategy' && (
           <div className={`${styles.strategyContainer} ${styles.strategySurface}`}>

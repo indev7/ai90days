@@ -1,7 +1,3 @@
-/* Organisation Page Styles */
-.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon  {
-  left:-12px !important;
-}
 .container {
   min-height: calc(100vh - 72px);
   width: 100%;
@@ -77,10 +73,10 @@
   align-items: center;
   gap: 12px;
   padding: 4px 4px;
-  background: linear-gradient(135deg, rgba(106, 75, 255, 0.12), rgba(106, 75, 255, 0.05));
+  background: var(--strategy-toggle-bg, linear-gradient(135deg, rgba(106, 75, 255, 0.12), rgba(106, 75, 255, 0.05)));
   border-radius: 999px;
   box-shadow: 0 10px 30px rgba(88, 28, 135, 0.15);
-  border: 1px solid rgba(106, 75, 255, 0.14);
+  border: 1px solid var(--strategy-toggle-border, rgba(106, 75, 255, 0.14));
 }
 
 .toggleOption {
@@ -91,7 +87,7 @@
   min-width: 110px;
   border: none;
   background: transparent;
-  color: #4b5563;
+  color: var(--strategy-toggle-text, #4b5563);
   font-size: 15px;
   font-weight: 600;
   border-radius: 999px;
@@ -105,9 +101,9 @@
 }
 
 .toggleOption.active {
-  background: #ffffff;
-  color: var(--brand-primary);
-  box-shadow: 0 12px 30px rgba(88, 28, 135, 0.2);
+  background: var(--strategy-toggle-active-bg, #ffffff);
+  color: var(--strategy-toggle-active-text, var(--brand-primary));
+  box-shadow: 0 12px 30px var(--strategy-toggle-shadow, rgba(88, 28, 135, 0.2));
 }
 
 .strategyNavSlot {
@@ -117,8 +113,7 @@
 }
 
 .strategySurface {
-  background: radial-gradient(circle at top left, #f0e9ff 0, #f7f5ff 48%, #f9fafb 100%);
-  border-radius: 24px;
+  background: var(--strategy-surface-bg, radial-gradient(circle at top left, #f0e9ff 0, #f7f5ff 48%, #f9fafb 100%));
  
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
   color: var(--strategy-text-main, var(--text, #0f172a));
@@ -154,10 +149,101 @@
   color: var(--error-color);
 }
 
+.chartShell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chartToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--strategy-toolbar-bg, rgba(255, 255, 255, 0.75));
+  border: 1px solid var(--strategy-toolbar-border, rgba(148, 163, 184, 0.25));
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 20px var(--strategy-toolbar-shadow, rgba(15, 23, 42, 0.06));
+}
+
+.toolbarGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.toolbarValue {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand-primary);
+}
+
+.zoomSlider {
+  accent-color: var(--brand-primary);
+  width: 140px;
+}
+
+.densityButtons {
+  display: inline-flex;
+  border-radius: 999px;
+  background: var(--strategy-toggle-bg, rgba(148, 163, 184, 0.12));
+  padding: 4px;
+  gap: 4px;
+}
+
+.densityButton {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.densityButton:hover {
+  color: var(--brand-primary);
+}
+
+.densityActive {
+  background: var(--strategy-toggle-active-bg, #fff);
+  color: var(--strategy-toggle-active-text, var(--brand-primary));
+  box-shadow: 0 6px 16px var(--strategy-toggle-shadow, rgba(88, 28, 135, 0.16));
+}
+
+.chartViewport {
+  overflow: auto;
+  border-radius: 16px;
+  background: var(--strategy-canvas-bg, radial-gradient(circle at 10% 20%, rgba(124, 58, 237, 0.04), transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(88, 28, 135, 0.04), transparent 45%),
+    #f8f7ff);
+  border: 1px solid var(--strategy-canvas-border, rgba(148, 163, 184, 0.22));
+  box-shadow: 0 12px 28px var(--strategy-canvas-shadow, rgba(15, 23, 42, 0.08));
+  padding: 12px 12px 16px;
+}
+
+.chartCanvas {
+  transform: scale(var(--chart-zoom, 1));
+  transform-origin: top left;
+  transition: transform 0.15s ease-out;
+  min-width: max-content;
+}
+
 .chartContainer {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 28px;
   width: 100%;
   min-width: fit-content;
 }
@@ -168,6 +254,7 @@
   display: flex;
   justify-content: center;
 }
+
 
 /* Node wrapper for click handling */
 .nodeWrapper {
@@ -188,8 +275,8 @@
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(106, 75, 255, 0.12);
-  color: var(--brand-primary);
+  background: var(--strategy-toggle-bg, rgba(106, 75, 255, 0.12));
+  color: var(--strategy-text-main, var(--brand-primary));
   font-size: 12px;
   font-weight: 600;
 }
@@ -204,16 +291,48 @@
   align-items: flex-start;
   gap: 6px;
   padding: 14px 16px;
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(246, 243, 255, 0.9));
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  background: var(--strategy-card-bg, linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(246, 243, 255, 0.9)));
+  border: 1px solid var(--strategy-card-border, rgba(148, 163, 184, 0.4));
   transition: all 0.2s ease;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 22px var(--strategy-card-shadow, rgba(15, 23, 42, 0.08));
 }
 
 .nodeBox.expanded {
-  border-color: rgba(106, 75, 255, 0.5);
-  box-shadow: 0 12px 32px rgba(88, 28, 135, 0.18);
+  border-color: var(--strategy-card-border-strong, rgba(106, 75, 255, 0.5));
+  box-shadow: 0 12px 32px var(--strategy-card-shadow-strong, rgba(88, 28, 135, 0.18));
+}
+
+.depth0 .nodeBox {
+  background: var(--strategy-card-bg-depth0, var(--strategy-card-bg, linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(244, 240, 255, 0.92))));
+}
+
+.depth1 .nodeBox {
+  background: var(--strategy-card-bg-depth1, var(--strategy-card-bg, linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(244, 244, 255, 0.9))));
+  box-shadow: 0 6px 18px var(--strategy-card-shadow, rgba(15, 23, 42, 0.06));
+}
+
+.depth2 .nodeBox {
+  background: var(--strategy-card-bg-depth2, var(--strategy-card-bg, linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(250, 248, 255, 0.9))));
+  box-shadow: 0 4px 12px var(--strategy-card-shadow, rgba(15, 23, 42, 0.05));
+  border-color: var(--strategy-card-border, rgba(148, 163, 184, 0.3));
+}
+
+.chartContainer[data-density="compact"] .nodeBox {
+  width: 200px;
+  min-height: 86px;
+  padding: 12px 14px;
+  gap: 4px;
+  border-radius: 16px;
+}
+
+.chartContainer[data-density="compact"] .nodeTitle {
+  font-size: 14px;
+}
+
+.chartContainer[data-density="compact"] .nodeMetaChip {
+  padding: 4px 8px;
+  font-size: 11px;
 }
 
 .nodeTitle {
@@ -564,7 +683,7 @@
 .strategyPantheon {
   position: relative;
   background: transparent;
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 24px 24px 32px;
   box-shadow: none;
   border: none;
@@ -600,7 +719,7 @@
   max-width: 620px;
   text-align: center;
   padding: 10px 16px;
-  background-color: white;
+  background-color: var(--strategy-vision-bg, #ffffff);
   border-radius: 10px;
   
 
@@ -664,8 +783,8 @@
 
 .strategyCard {
   border-radius: 14px;
-  background: var(--strategy-shade);
-  border: 1px solid var(--border);
+  background: var(--strategy-card-bg, var(--strategy-shade));
+  border: 1px solid var(--strategy-card-border, var(--border));
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -775,6 +894,58 @@
   flex-shrink: 0;
 }
 
+/* Dark-theme hardening for strategy view (Nightfall) */
+:global(html[data-theme="nature"]) .strategySurface {
+  background: var(--strategy-surface-bg, #07090f);
+  color: var(--strategy-text-main, #e8eaf5);
+}
+
+:global(html[data-theme="nature"]) .chartViewport {
+  background: var(--strategy-canvas-bg, #0a0c13);
+  border-color: var(--strategy-canvas-border, rgba(255, 255, 255, 0.08));
+}
+
+:global(html[data-theme="nature"]) .strategyCard,
+:global(html[data-theme="nature"]) .nodeBox {
+  background: var(--strategy-card-bg, #141722);
+  border-color: var(--strategy-card-border, rgba(255, 255, 255, 0.12));
+  color: var(--strategy-text-main, #e8eaf5);
+  box-shadow: 0 8px 22px var(--strategy-card-shadow, rgba(0, 0, 0, 0.55));
+}
+
+:global(html[data-theme="nature"]) .visionMission {
+  background: var(--strategy-vision-bg, #0c0f18);
+  color: var(--strategy-text-main, #e8eaf5);
+}
+
+:global(html[data-theme="nature"]) .strategyName,
+:global(html[data-theme="nature"]) .nodeTitle,
+:global(html[data-theme="nature"]) .nodeMeta,
+:global(html[data-theme="nature"]) .initiativeName,
+:global(html[data-theme="nature"]) .initiativeProgress {
+  color: var(--strategy-text-main, #e8eaf5);
+}
+
+:global(html[data-theme="nature"]) .strategyProgress,
+:global(html[data-theme="nature"]) .ownerName {
+  color: var(--strategy-text-subtle, #c2c6d4);
+}
+
+:global(html[data-theme="nature"]) .toggleSwitch,
+:global(html[data-theme="nature"]) .densityButtons {
+  background: var(--strategy-toggle-bg, rgba(122, 107, 246, 0.2));
+  border-color: var(--strategy-toggle-border, rgba(122, 107, 246, 0.35));
+}
+
+:global(html[data-theme="nature"]) .toggleOption {
+  color: var(--strategy-toggle-text, #e8eaf5);
+}
+
+:global(html[data-theme="nature"]) .toggleOption.active {
+  background: var(--strategy-toggle-active-bg, #131724);
+  color: var(--strategy-toggle-active-text, #f6f3ff);
+}
+
 @media (max-width: 900px) {
   .strategiesGrid {
     /* Grid columns handled dynamically, responsive wrapping */
@@ -825,23 +996,23 @@
 
 /* Strategy House v2 (Phase19 template) */
 .strategyRoot {
-  --strategy-bg: #f7f5ff;
-  --strategy-surface: #ffffff;
+  --strategy-bg: var(--strategy-surface-bg, var(--bg, #0f1117));
+  --strategy-surface: var(--surface, #111321);
   --strategy-primary: var(--brand-primary, #6a4bff);
-  --strategy-primary-soft: rgba(106, 75, 255, 0.08);
-  --strategy-border-subtle: rgba(15, 23, 42, 0.06);
-  --strategy-text-main: var(--text, #0f172a);
-  --strategy-text-muted: #64748b;
+  --strategy-primary-soft: color-mix(in srgb, var(--brand-primary, #6a4bff) 12%, transparent);
+  --strategy-border-subtle: var(--border, rgba(15, 23, 42, 0.06));
+  --strategy-text-main: var(--strategy-text-main, var(--text, #e8eaf5));
+  --strategy-text-muted: var(--strategy-text-subtle, var(--text-secondary, #c2c6d4));
   --strategy-radius-lg: 24px;
   --strategy-radius-md: 16px;
-  --strategy-shadow-soft: 0 14px 40px rgba(15, 23, 42, 0.08);
+  --strategy-shadow-soft: var(--strategy-card-shadow, 0 14px 40px rgba(0, 0, 0, 0.35));
   --strategy-transition: 160ms ease-out;
   --strategy-progress-start: var(--progress-obj, var(--strategy-primary, #6a4bff));
   --strategy-progress-mid: var(--brand-secondary, #a855f7);
   --strategy-progress-end: var(--success-color, var(--brand-success, #22c55e));
   min-height: 100%;
   padding: 14px 20px 20px;
-  background: radial-gradient(circle at top left, #f0e9ff 0, #f7f5ff 48%, #f9fafb 100%);
+  background: var(--strategy-bg);
   border-radius: 24px;
   color: var(--strategy-text-main);
   width: 100%;
@@ -855,8 +1026,8 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: url('/pantheon.png') center/cover no-repeat;
-  opacity: 0.35;
+  /* background: url('/pantheon.png') center/cover no-repeat; */
+  /* opacity: 0.35; */
   pointer-events: none;
   border-radius: inherit;
   z-index: 0;
@@ -875,7 +1046,7 @@
   border-radius: var(--strategy-radius-lg);
   border: 1px solid var(--strategy-border-subtle);
   box-shadow: var(--strategy-shadow-soft);
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--strategy-surface, var(--surface, #111321));
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -888,15 +1059,15 @@
 }
 
 .strategyHeroPane + .strategyHeroPane {
-  border-left: 1px solid rgba(148, 163, 184, 0.24);
-  background: radial-gradient(circle at top right, #f2ecff 0, #ffffff 60%);
+  border-left: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.24));
+  background: var(--strategy-surface, var(--surface, #111321));
 }
 
 .strategyPillTag {
   align-self: flex-start;
   padding: 4px 12px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--strategy-toggle-bg, rgba(148, 163, 184, 0.12));
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -921,8 +1092,8 @@
 .strategyMetricCard {
   padding: 12px 16px;
   border-radius: var(--strategy-radius-md);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: linear-gradient(145deg, #fdfbff, #f6f3ff);
+  border: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.25));
+  background: var(--strategy-card-bg, var(--surface, #111321));
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -949,7 +1120,10 @@
   width: 48px;
   height: 48px;
   border-radius: 999px;
-  background: conic-gradient(var(--strategy-primary) calc(var(--donut-value, 60) * 1%), rgba(203, 213, 225, 0.8) 0);
+  background: conic-gradient(
+    var(--strategy-primary) calc(var(--donut-value, 60) * 1%),
+    var(--strategy-border-subtle, rgba(148, 163, 184, 0.25)) 0
+  );
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -960,7 +1134,7 @@
   width: 30px;
   height: 30px;
   border-radius: inherit;
-  background: #fff;
+  background: var(--strategy-surface, var(--surface, #111321));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -977,8 +1151,8 @@
 .strategyMetricChip {
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.03);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: var(--strategy-toggle-bg, rgba(15, 23, 42, 0.08));
+  border: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.4));
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1024,17 +1198,17 @@
 .strategyObjectiveCard {
   text-align: left;
   padding: 14px 14px 12px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid transparent;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+  border-radius: 10px;
+  background: var(--strategy-card-bg, var(--surface, #111321));
+  border: 1px solid var(--strategy-card-border, rgba(148, 163, 184, 0.4));
+  box-shadow: var(--strategy-card-shadow, 0 10px 28px rgba(0, 0, 0, 0.35));
   cursor: pointer;
   transition: transform var(--strategy-transition), box-shadow var(--strategy-transition);
 }
 
 .strategyObjectiveCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--strategy-card-shadow-strong, 0 12px 32px rgba(0, 0, 0, 0.45));
 }
 
 .strategyObjectiveHeader {
@@ -1048,7 +1222,7 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
+  background: var(--strategy-toggle-bg, rgba(148, 163, 184, 0.15));
   color: var(--strategy-text-muted);
 }
 
@@ -1056,8 +1230,8 @@
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: var(--strategy-surface, var(--surface, #111321));
+  border: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.6));
 }
 
 .strategyObjectiveTitle {
@@ -1070,12 +1244,18 @@
   overflow: hidden;
 }
 
+.strategyObjectiveMeta {
+  font-size: 11px;
+  color: var(--strategy-text-muted);
+  margin-bottom: 8px;
+}
+
 .strategyProgressBar {
   position: relative;
   width: 100%;
   height: 6px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.25);
+  background: var(--strategy-border-subtle, rgba(148, 163, 184, 0.25));
   overflow: hidden;
 }
 
@@ -1120,22 +1300,22 @@
 }
 
 .strategyKrColumn {
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 18px;
-  padding: 12px 12px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
 .strategyKrColumnHeader {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 2px;
+  margin-bottom: 2px;
 }
 
 .strategyKrColumnTitle {
@@ -1157,9 +1337,16 @@
 .strategyKrCard {
   padding: 8px 8px 6px;
   border-radius: 14px;
-  background: rgba(249, 250, 251, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: var(--strategy-surface, var(--surface, #111321));
+  border: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.25));
   cursor: pointer;
+}
+
+.strategyKrHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .strategyKrTitle {
@@ -1176,6 +1363,111 @@
   color: var(--strategy-text-muted);
 }
 
+.strategyKrToggle {
+  border: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.3));
+  background: var(--strategy-surface, var(--surface, #111321));
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--strategy-transition), box-shadow var(--strategy-transition);
+}
+
+.strategyKrToggle:hover {
+  box-shadow: 0 4px 10px var(--strategy-card-shadow, rgba(0, 0, 0, 0.25));
+}
+
+.strategyKrToggleIcon {
+  display: inline-block;
+  transform: rotate(-90deg);
+  transition: transform var(--strategy-transition);
+  color: var(--strategy-text-muted);
+}
+
+.strategyKrToggleIconOpen {
+  transform: rotate(0deg);
+}
+
+.strategyTaskList {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategyTaskItem {
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--strategy-surface, var(--surface, #111321));
+  border: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.2));
+}
+
+.strategyTaskTitle {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.strategyTaskMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--strategy-text-muted);
+}
+
+.strategyChildObjectiveCard {
+  padding: 10px 10px 12px;
+  border-radius: 16px;
+  background: var(--strategy-card-bg, var(--surface, #111321));
+  border: 1px solid var(--strategy-card-border, rgba(148, 163, 184, 0.25));
+  box-shadow: var(--strategy-card-shadow, 0 8px 22px rgba(0, 0, 0, 0.35));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform var(--strategy-transition), box-shadow var(--strategy-transition);
+}
+
+.strategyChildObjectiveCard:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--strategy-card-shadow-strong, 0 12px 30px rgba(0, 0, 0, 0.4));
+}
+
+.strategyChildHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.strategyChildTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.strategyChildMeta {
+  font-size: 11px;
+  color: var(--strategy-text-muted);
+}
+
+.strategyChildKrList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategyEmptyInline {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--strategy-toggle-bg, rgba(148, 163, 184, 0.1));
+  color: var(--strategy-text-muted);
+  font-size: 12px;
+}
+
 .strategyProgressBarSmall {
   height: 4px;
 }
@@ -1183,7 +1475,7 @@
 .strategyEmpty {
   padding: 12px;
   border-radius: 12px;
-  background: rgba(148, 163, 184, 0.08);
+  background: var(--strategy-toggle-bg, rgba(148, 163, 184, 0.08));
   color: var(--strategy-text-muted);
   font-size: 13px;
 }
@@ -1199,7 +1491,7 @@
 
   .strategyHeroPane + .strategyHeroPane {
     border-left: none;
-    border-top: 1px solid rgba(148, 163, 184, 0.24);
+    border-top: 1px solid var(--strategy-border-subtle, rgba(148, 163, 184, 0.24));
   }
 
   .strategyObjectiveGrid {

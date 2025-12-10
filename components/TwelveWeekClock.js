@@ -1,6 +1,4 @@
 import React from "react";
-import { GiGolfFlag } from "react-icons/gi";
-import { FaPlus } from "react-icons/fa";
 import { getCurrentQuarterName, getThemeColorPalette } from '@/lib/clockUtils';
 import OKRTs from '@/components/OKRTs';
 import styles from './TwelveWeekClock.module.css';
@@ -10,7 +8,6 @@ import styles from './TwelveWeekClock.module.css';
  * - 12 week numerals, 7 daily ticks per week (black)
  * - Elapsed pastel wedge + sweep hand to current day (0..83)
  * - Concentric progress rings for each objective
- * - KR due-date flags per objective (GiGolfFlag)
  * - Responsive legend (right side on desktop, below on mobile)
  */
 
@@ -153,23 +150,6 @@ function TwelveWeekClock({
 
   const weeks = Array.from({ length: TOTAL_WEEKS }, (_, i) => i);
 
-  // Place a KR golf flag so its base touches the ring's centerline.
-  function placeKR(r, dueDay, color) {
-    const deg = (dueDay / TOTAL_DAYS) * 360;
-    const pos = polar(cx, cy, r, deg);
-    // Scale flag size based on clock size - proportional to the original 460px size
-    const scaleFactor = size / 460;
-    const flagSize = Math.max(12, Math.round(22 * scaleFactor)); // Minimum 12px, scales with clock
-    const verticalOffset = flagSize; // Full flag height for proper base positioning
-    const horizontalOffset = flagSize / 2; // Half width for centering
-    
-    return (
-      <g key={`kr-${r}-${dueDay}`} transform={`translate(${pos.x - horizontalOffset}, ${pos.y - verticalOffset})`}>
-        <GiGolfFlag size={flagSize} style={{ color: ticksAndText }} />
-      </g>
-    );
-  }
-
   return (
     <div className={styles.clockContainer} style={{ color: ticksAndText }}>
       {/* Clock with border (same style as legend) */}
@@ -300,7 +280,6 @@ function TwelveWeekClock({
                     </g>
                   )
                 )}
-                {(obj?.krs ?? []).map((kr) => placeKR(r, clamp(kr.dueDay, 0, TOTAL_DAYS - 1), color))}
               </g>
             );
           })}

@@ -1,232 +1,634 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
-import { OrganizationChart } from "primereact/organizationchart";
-import { GrTrophy } from 'react-icons/gr';
-import { FaFlagCheckered } from 'react-icons/fa';
-import { RiAdminLine } from 'react-icons/ri';
-import { FaRegUser } from 'react-icons/fa';
-import { FaPlus } from 'react-icons/fa';
-import AddGroupModal from '../../components/AddGroupModal';
-import styles from './page.module.css';
 
-/**
- * Progress Bar Component
- */
-function ProgressBar({ value }) {
-  const pct = Math.round(Math.max(0, Math.min(100, value)));
-  return (
-    <div className={styles.progressBar}>
-      <div 
-        className={styles.progressFill} 
-        style={{ width: `${pct}%` }} 
-      />
-    </div>
-  );
-}
+import React, { useEffect, useMemo, useRef } from "react";
+import OrgChart from "d3-org-chart";
 
-/**
- * Expanded Group Content
- */
-function ExpandedGroupContent({ group, objectives = [], members = [], currentUserId, onEditClick }) {
-  const isAdmin = members.some(member => member.id === currentUserId && member.is_admin);
-  
-  const handleClick = (e) => {
-    if (isAdmin) {
-      e.stopPropagation();
-      onEditClick();
-    }
-  };
-  
-  // Separate strategic objectives from other shared objectives
-  const strategicObjectiveIds = group.strategicObjectiveIds || [];
-  const strategicObjectives = objectives.filter(obj => strategicObjectiveIds.includes(obj.id));
-  const otherObjectives = objectives.filter(obj => !strategicObjectiveIds.includes(obj.id));
-  
-  return (
-    <div
-      className={styles.expandedDetails}
-      onClick={handleClick}
-      style={isAdmin ? { cursor: 'pointer' } : undefined}
-      title={isAdmin ? "Click to edit group" : undefined}
-    >
-      {/* Strategic Objectives Section */}
-      {strategicObjectives.length > 0 && (
-        <>
-          <div className={styles.objectivesSection}>
-            <div className={styles.sectionLabel}>Strategic Objectives</div>
-            {strategicObjectives.map((objective) => (
-              <div key={objective.id} className={styles.objectiveItem}>
-                <FaFlagCheckered className={styles.objectiveIcon} />
-                <div className={styles.objectiveContent}>
-                  <div className={styles.objectiveTitle}>{objective.title}</div>
-                  <div className={styles.objectiveProgress}>
-                    <ProgressBar value={objective.progress} />
-                    <div className={styles.progressText}>{Math.round(objective.progress)}%</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {otherObjectives.length > 0 && <div className={styles.divider} />}
-        </>
-      )}
-
-      {/* Other Shared Objectives Section */}
-      {otherObjectives.length > 0 && (
-        <div className={styles.objectivesSection}>
-          <div className={styles.sectionLabel}>Shared Objectives</div>
-          {otherObjectives.map((objective) => (
-            <div key={objective.id} className={styles.objectiveItem}>
-              <GrTrophy className={styles.objectiveIcon} />
-              <div className={styles.objectiveContent}>
-                <div className={styles.objectiveTitle}>{objective.title}</div>
-                <div className={styles.objectiveProgress}>
-                  <ProgressBar value={objective.progress} />
-                  <div className={styles.progressText}>{Math.round(objective.progress)}%</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      {objectives.length === 0 && (
-        <div className={styles.objectivesSection}>
-          <div className={styles.emptyText}>No objectives shared yet.</div>
-        </div>
-      )}
-
-      <div className={styles.divider} />
-
-      <div className={styles.membersSection}>
-        {members.map((member) => (
-          <div key={member.id} className={styles.memberItem}>
-            {member.is_admin ? (
-              <RiAdminLine className={styles.memberIcon} />
-            ) : (
-              <FaRegUser className={styles.memberIcon} />
-            )}
-            <span className={styles.memberName}>{member.display_name}</span>
-            {member.is_admin && (
-              <span className={styles.adminLabel}>admin</span>
-            )}
-          </div>
-        ))}
+const NODE_TEMPLATE = `
+  <div class="org-card">
+    <div class="org-card__content">
+      <div class="org-card__title">{NAME}</div>
+      <div class="org-card__chips">
+        <span class="org-card__chip">Objectives: {OBJECTIVE_COUNT}</span>
+        <span class="org-card__chip">Members: {MEMBER_COUNT}</span>
       </div>
     </div>
-  );
-}
+  </div>
+`;
 
-/**
- * Node Template
- */
-function NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentUserId, onEditGroup) {
-  const d = node.data || {};
-  const nodeRef = useRef(null);
-  const isExpanded = expandedGroupId === d.id;
+const TEMPLATE_REPLACE = {
+  NAME: "name",
+  OBJECTIVE_COUNT: "objectiveCountDisplay",
+  MEMBER_COUNT: "memberCountDisplay",
+};
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (isExpanded && nodeRef.current && !nodeRef.current.contains(event.target)) {
-        onNodeClick(null);
+function buildFlatNodes(tree, expandedGroupId) {
+  const nodes = [];
+
+  const traverse = (items, parentId = null, depth = 0) => {
+    if (!Array.isArray(items)) return;
+
+    items.forEach((item, index) => {
+      const data = item?.data || {};
+      const nodeId = data.id ?? `${parentId || "root"}-${index}`;
+      const memberCount = Number.isFinite(data.memberCount)
+        ? data.memberCount
+        : 0;
+      const objectiveCount = Number.isFinite(data.objectiveCount)
+        ? data.objectiveCount
+        : 0;
+      const isActive = expandedGroupId && expandedGroupId === data.id;
+
+      nodes.push({
+        nodeId,
+        groupId: data.id,
+        parentNodeId: parentId,
+        name: data.name || item?.label || "Group",
+        typeLabel: data.type || "Group",
+        meta: "",
+        objectiveCount,
+        objectiveCountDisplay: `${objectiveCount}`,
+        memberCount,
+        memberCountDisplay: `${memberCount}`,
+        memberLabel: `${memberCount} member${memberCount === 1 ? "" : "s"}`,
+        objectiveLabel: `${objectiveCount} objective${
+          objectiveCount === 1 ? "" : "s"
+        }`,
+        depth,
+        expanded: true,
+        width: 260,
+        height: 136,
+        borderWidth: isActive ? 2 : 1,
+        borderColor: isActive
+          ? { red: 88, green: 28, blue: 135, alpha: 1 }
+          : { red: 226, green: 232, blue: 240, alpha: 1 },
+        backgroundColor: isActive
+          ? { red: 247, green: 243, blue: 255, alpha: 1 }
+          : { red: 255, green: 255, blue: 255, alpha: 1 },
+        template: NODE_TEMPLATE,
+        replaceData: TEMPLATE_REPLACE,
+      });
+
+      if (Array.isArray(item.children) && item.children.length) {
+        traverse(item.children, nodeId, depth + 1);
       }
-    };
+    });
+  };
 
-    if (isExpanded) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isExpanded, onNodeClick]);
+  traverse(tree);
+  return nodes;
+}
 
-  const title = d.name || node.label;
-  const metaParts = [];
-  if (d.memberCount !== undefined)
-    metaParts.push(`${d.memberCount} member${d.memberCount === 1 ? "" : "s"}`);
-  if (d.objectiveCount !== undefined)
-    metaParts.push(`${d.objectiveCount} objective${d.objectiveCount === 1 ? "" : "s"}`);
-  const meta = metaParts.join(" • ");
-
-  const details = groupDetails[d.id];
+function GroupDetailsPopover({
+  group,
+  details,
+  onClose,
+  onEditGroup,
+  currentUserId,
+}) {
+  const strategicIds = details.strategicObjectiveIds || [];
+  const objectives = details.objectives || [];
+  const strategicObjectives = objectives.filter((obj) =>
+    strategicIds.includes(obj.id)
+  );
+  const otherObjectives = objectives.filter(
+    (obj) => !strategicIds.includes(obj.id)
+  );
+  const members = details.members || [];
+  const isCurrentUserAdmin =
+    details.isCurrentUserAdmin ??
+    members.some((member) => member.id === currentUserId && member.is_admin);
 
   return (
-    <div ref={nodeRef} className={styles.nodeWrapper}>
-      <div 
-        className={`${styles.nodeBox} ${isExpanded ? styles.expanded : ''}`}
-        onClick={() => onNodeClick(d.id)}
-      >
-        <div className={styles.nodeTitle}>{title}</div>
-        <div className={styles.nodeMeta}>
-          {metaParts.map((item, idx) => (
-            <span key={idx} className={styles.nodeMetaChip}>{item}</span>
-          ))}
+    <>
+      <div className="popover-backdrop" onClick={onClose} />
+      <div className="popover">
+        <div className="popover__header">
+          <div>
+            <div className="popover__title">{group.name}</div>
+            <div className="popover__meta">
+              <span>{group.objectiveCount} objectives</span>
+              <span className="dot">•</span>
+              <span>{group.memberCount} members</span>
+            </div>
+          </div>
+          <button className="popover__close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
         </div>
+
+        {strategicObjectives.length > 0 && (
+          <div className="popover__section">
+            <div className="popover__sectionTitle">Strategic Objectives</div>
+            <ul className="popover__list">
+              {strategicObjectives.map((obj) => (
+                <li key={obj.id} className="popover__item">
+                  <div className="popover__itemTitle">{obj.title}</div>
+                  <div className="popover__progress">
+                    <div
+                      className="popover__progressFill"
+                      style={{ width: `${Math.round(obj.progress || 0)}%` }}
+                    />
+                  </div>
+                  <div className="popover__progressText">
+                    {Math.round(obj.progress || 0)}%
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {otherObjectives.length > 0 && (
+          <div className="popover__section">
+            <div className="popover__sectionTitle">Shared Objectives</div>
+            <ul className="popover__list">
+              {otherObjectives.map((obj) => (
+                <li key={obj.id} className="popover__item">
+                  <div className="popover__itemTitle">{obj.title}</div>
+                  <div className="popover__progress">
+                    <div
+                      className="popover__progressFill"
+                      style={{ width: `${Math.round(obj.progress || 0)}%` }}
+                    />
+                  </div>
+                  <div className="popover__progressText">
+                    {Math.round(obj.progress || 0)}%
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="popover__section">
+          <div className="popover__sectionTitle">Members</div>
+          {members.length === 0 ? (
+            <div className="popover__empty">No members</div>
+          ) : (
+            <ul className="popover__members">
+              {members.map((m) => (
+                <li key={m.id} className="popover__member">
+                  <span className="popover__memberAvatar">
+                    {m.display_name?.[0]?.toUpperCase() || "?"}
+                  </span>
+                  <span className="popover__memberName">{m.display_name}</span>
+                  {m.is_admin && <span className="popover__badge">Admin</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {isCurrentUserAdmin && (
+          <div className="popover__actions">
+            <button
+              type="button"
+              className="popover__editButton"
+              onClick={() =>
+                onEditGroup &&
+                onEditGroup({
+                  id: group.groupId || group.nodeId,
+                  name: group.name,
+                })
+              }
+            >
+              Edit group
+            </button>
+          </div>
+        )}
       </div>
-      {isExpanded && details && (
-        <div className={styles.expandedCard}>
-          <ExpandedGroupContent
-            group={{ ...d, strategicObjectiveIds: details.strategicObjectiveIds || [] }}
-            objectives={details.objectives || []}
-            members={details.members || []}
-            currentUserId={currentUserId}
-            onEditClick={() => onEditGroup(d)}
-          />
-        </div>
-      )}
-    </div>
+      <style jsx>{`
+        .popover-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.25);
+          z-index: 999;
+        }
+        .popover {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: min(640px, calc(100vw - 32px));
+          max-height: 80vh;
+          overflow-y: auto;
+          background: var(--surface, #0f1117);
+          border: 1px solid var(--border, #1f2937);
+          border-radius: 10px;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+          padding: 18px 20px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          z-index: 1000;
+        }
+        .popover__header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .popover__title {
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--text, #0f172a);
+        }
+        .popover__meta {
+          margin-top: 4px;
+          display: inline-flex;
+          gap: 8px;
+          align-items: center;
+          color: var(--text-secondary, #475569);
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .popover__meta .dot {
+          color: var(--muted, #94a3b8);
+        }
+        .popover__close {
+          background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
+          border: 1px solid var(--muted-light);
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          color: var(--text, #0f172a);
+          font-size: 18px;
+          cursor: pointer;
+          line-height: 1;
+        }
+        .popover__section {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .popover__sectionTitle {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--text, #1f2937);
+          letter-spacing: 0.01em;
+        }
+        .popover__list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .popover__item {
+          padding: 10px 12px;
+          border: 1px solid var(--muted-light);
+          border-radius: 10px;
+          background: var(--brand-50);
+          color: var(--text, #f4f6fb);
+        }
+        .popover__itemTitle {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--text, #1f2937);
+          margin-bottom: 8px;
+        }
+        .popover__progress {
+          width: 100%;
+          height: 6px;
+          background: var(--border, #1f2937);
+          border-radius: 999px;
+          overflow: hidden;
+          position: relative;
+        }
+        .popover__progressFill {
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            var(--success-strong, #22c55e),
+            var(--success, #16a34a)
+          );
+          border-radius: 999px;
+        }
+        .popover__progressText {
+          margin-top: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary, #475569);
+        }
+        .popover__members {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .popover__member {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 10px;
+          border: 1px solid var(--muted-light);
+          border-radius: 10px;
+          background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
+          color: var(--text, #f4f6fb);
+        }
+        .popover__memberAvatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: var(--pill-bg, var(--surface-2, #1a1d29));
+          color: var(--text, #0f172a);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 14px;
+        }
+        .popover__memberName {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text, #1f2937);
+        }
+        .popover__badge {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--brand-strong, #0f172a);
+          background: var(--badge-bg, #e0f2fe);
+          border: 1px solid var(--badge-border, #bae6fd);
+          border-radius: 999px;
+          padding: 4px 8px;
+        }
+        .popover__empty {
+          font-size: 13px;
+          color: var(--text-secondary, #64748b);
+        }
+        .popover__actions {
+          display: flex;
+          justify-content: flex-end;
+          padding-top: 4px;
+        }
+        .popover__editButton {
+          background: var(--brand-primary, #2563eb);
+          color: var(--surface, #ffffff);
+          border: none;
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-weight: 700;
+          font-size: 14px;
+          cursor: pointer;
+          box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+        }
+        .popover__editButton:hover {
+          background: var(--brand-primary-strong, #1d4ed8);
+        }
+      `}</style>
+    </>
   );
 }
 
-/**
- * GroupsView Component
- */
 export default function GroupsView({
-  orgValue,
-  groupDetails,
-  currentUserId,
-  onNodeClick,
-  expandedGroupId,
-  onEditGroup,
-  onAddGroup,
-  groups,
+  orgValue = [],
   mainTreeLoading,
   userLoading,
   error,
-  currentUserRole
+  onNodeClick,
+  expandedGroupId,
+  groupDetails = {},
+  onEditGroup,
+  currentUserId,
 }) {
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+
+  const flatNodes = useMemo(
+    () => buildFlatNodes(orgValue, expandedGroupId),
+    [orgValue, expandedGroupId]
+  );
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const chart = new OrgChart();
+    chartRef.current = chart;
+
+    const baseNode = chart.defaultNode();
+    chart
+      .container(containerRef.current)
+      .backgroundColor("transparent")
+      .initialZoom(0.75)
+      .duration(450)
+      .depth(260)
+      .template(NODE_TEMPLATE)
+      .replaceData(TEMPLATE_REPLACE)
+      .defaultNode({
+        ...baseNode,
+        width: 340,
+        height: 160,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: { red: 184, green: 210, blue: 210, alpha: 1 },
+        backgroundColor: { red: 255, green: 255, blue: 255, alpha: 1 },
+        connectorLineColor: { red: 64, green: 64, blue: 64, alpha: 1 },
+        connectorLineWidth: 2.4,
+        nodeImage: { ...baseNode.nodeImage, width: 0, height: 0, borderWidth: 0, shadow: false },
+        nodeIcon: { ...baseNode.nodeIcon, size: 0 },
+      });
+
+    const handleResize = () => {
+      if (!chartRef.current || !containerRef.current) {
+        return;
+      }
+
+      chartRef.current
+        .svgWidth(containerRef.current.clientWidth || 900)
+        .render();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chartRef.current = null;
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+  const chart = chartRef.current;
+  if (!chart || !containerRef.current) return;
+
+  chart.onNodeClick((nodeId) => {
+    if (onNodeClick) {
+      onNodeClick(nodeId);
+    }
+  });
+
+  if (!flatNodes.length) {
+    containerRef.current.innerHTML = "";
+    return;
+  }
+
+    const width = containerRef.current.clientWidth || 900;
+    const height = Math.max(520, flatNodes.length * 140);
+
+    chart.svgWidth(width).svgHeight(height).data(flatNodes).render();
+  }, [flatNodes, onNodeClick]);
+
+  if (mainTreeLoading || userLoading) {
+    return <div className="loading">Loading group hierarchy...</div>;
+  }
+
+  if (error) {
+    return <div className="error">Error: {error}</div>;
+  }
+
+  if (!flatNodes.length) {
+    return (
+      <div className="empty">
+        No groups found. Create a group to get started.
+      </div>
+    );
+  }
+
   return (
     <>
-      {(mainTreeLoading || userLoading) && (
-        <div className={styles.loading}>
-          Loading group hierarchy...
-        </div>
+      <div className="chartShell">
+        <div
+          ref={containerRef}
+          className="chartContainer"
+          aria-label="Group organization chart"
+        />
+      </div>
+      {expandedGroupId && groupDetails[expandedGroupId] && (
+        <GroupDetailsPopover
+          group={
+            flatNodes.find((n) => n.nodeId === expandedGroupId) || {
+              name: "Group",
+              objectiveCount: 0,
+              memberCount: 0,
+            }
+          }
+          details={groupDetails[expandedGroupId]}
+          onClose={() => onNodeClick && onNodeClick(null)}
+          onEditGroup={onEditGroup}
+          currentUserId={currentUserId}
+        />
       )}
-      
-      {error && (
-        <div className={styles.error}>
-          Error: {error}
-        </div>
-      )}
-      
-      {!mainTreeLoading && !userLoading && !error && orgValue.length === 0 && (
-        <div className={styles.empty}>
-          No groups found. Create a group to get started.
-        </div>
-      )}
-      
-      {!mainTreeLoading && !userLoading && !error && orgValue.length > 0 && (
-        <div className={styles.chartContainer}>
-          {orgValue.map((rootGroup, index) => (
-            <div key={rootGroup.data?.id || index} className={styles.chartSection}>
-              <OrganizationChart
-                value={[rootGroup]}
-                nodeTemplate={(node) => NodeTemplate(node, expandedGroupId, onNodeClick, groupDetails, currentUserId, onEditGroup)}
-                collapsible={false}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <style jsx>{`
+        .chartShell {
+          width: 100%;
+          padding: 20px 12px 32px;
+          background: linear-gradient(
+            180deg,
+            var(strategy-toolbar-bg, #f4f6f9) 0%,
+            var(--strategy-toolbar-bg, #f1f3f6) 100%
+          );
+        }
+
+        .chartContainer {
+          width: 100%;
+          min-height: 540px;
+          background: transparent;
+          border: none;
+          border-radius: 0;
+          box-shadow: none;
+          padding: 0;
+        }
+
+        .loading,
+        .error,
+        .empty {
+          text-align: center;
+          padding: 40px;
+          color: var(--text-secondary, #64748b);
+          font-size: 14px;
+          line-height: 1.4;
+        }
+
+        .error {
+          color: var(--error-color, #dc2626);
+        }
+      `}</style>
+      <style jsx global>{`
+        .chartContainer svg {
+          background: transparent !important;
+        }
+
+        .chartContainer {
+          --org-card-bg: var(--surface, #ffffff);
+          --org-card-border: var(--border, #e2e8f0);
+          --org-card-title: var(--brand-primary, #6a4bff);
+          --org-chip-bg: var(--surface-secondary, var(--surface-1, var(--surface, #ffffff)));
+          --org-chip-text: var(--text, #1f2937);
+          --org-chip-border: var(--border-light, var(--border, #cdd7e1));
+          --org-connector: var(--border, #3f3f46);
+        }
+
+        .org-card {
+          width: 100%;
+          height: 100%;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 10px;
+          padding: 20px 22px;
+          background: var(--org-card-bg);
+          border: 1px solid var(--org-card-border);
+          border-radius: 10px;
+        }
+
+        .org-card__content {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .org-card__title {
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--org-card-title);
+          line-height: 1.2;
+        }
+
+        .org-card__chips {
+          display: inline-flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .org-card__chip {
+          background: var(--org-chip-bg);
+          color: var(--org-chip-text);
+          border: 1px solid var(--org-chip-border);
+          border-radius: 10px;
+          padding: 6px 10px;
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1;
+        }
+
+        .chartContainer .link {
+          stroke: var(--org-connector);
+          stroke-width: 2.4px;
+        }
+
+        .chartContainer .node-icon-image,
+        .chartContainer .pattern-image {
+          display: none !important;
+        }
+
+        .chartContainer .node-button-circle {
+          fill: var(--pill-bg, #e7f0f0);
+          stroke: var(--connector-accent, #7ba1a7);
+          stroke-width: 2px;
+        }
+
+        .chartContainer .node-button-text {
+          fill: var(--pill-text, #617b80);
+          text-anchor: middle;
+          dominant-baseline: central;
+          font-size: 20px;
+          transform: translateY(1px);
+        }
+      `}</style>
     </>
   );
 }

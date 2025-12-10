@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
@@ -13,6 +13,7 @@ import styles from './page.module.css';
 export default function StrategyHouse({ toggleSlot = null }) {
   const mainTree = useMainTreeStore((state) => state.mainTree);
   const router = useRouter();
+  const [expandedTasks, setExpandedTasks] = useState(new Set());
 
   const strategyData = useMemo(() => {
     const emptyState = {
@@ -21,7 +22,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
       mission: 'Please create an Organisation type group to define your strategy',
       objectives: [],
       overallProgress: 0,
-      totalInitiatives: 0,
+      totalStrategicOkrs: 0,
     };
 
     if (!mainTree?.groups?.length) {
@@ -34,7 +35,97 @@ export default function StrategyHouse({ toggleSlot = null }) {
     }
 
     const strategicObjectiveIds = orgGroup.strategicObjectiveIds || [];
-    const allOKRTs = [...(mainTree.myOKRTs || []), ...(mainTree.sharedOKRTs || [])];
+    const allOKRTsRaw = [...(mainTree.myOKRTs || []), ...(mainTree.sharedOKRTs || [])];
+    const allOKRTs = allOKRTsRaw.reduce((acc, okrt) => {
+      const okrtId = okrt?.id;
+      if (!okrtId) {
+        acc.push(okrt);
+        return acc;
+      }
+      if (!acc.some((item) => item?.id === okrtId)) {
+        acc.push(okrt);
+      }
+      return acc;
+    }, []);
+
+    const normalizeType = (type) => (typeof type === 'string' ? type.toLowerCase() : '');
+    const isKeyResult = (okrt) => {
+      const type = normalizeType(okrt?.type);
+      return type === 'k' || type === 'keyresult';
+    };
+    const isTask = (okrt) => {
+      const type = normalizeType(okrt?.type);
+      return type === 't' || type === 'task';
+    };
+    const isObjective = (okrt) => {
+      const type = normalizeType(okrt?.type);
+      return type === 'o' || type === 'objective' || type === 'okr' || type === 'objectivenode' || type === '';
+    };
+
+    const mapTasks = (kr) =>
+      allOKRTs
+        .filter((okrt) => okrt.parent_id === kr.id && isTask(okrt))
+        .reduce((acc, task, idx) => {
+          const taskId = task.id || `${kr.id}-task-${idx}`;
+          if (acc.some((t) => t.id === taskId)) {
+            return acc;
+          }
+          acc.push({
+            id: taskId,
+            title: task.title || task.description,
+            progress: Math.round(task.progress || 0),
+          });
+          return acc;
+        }, []);
+
+    const mapKeyResults = (objective) => {
+      if (!objective) return [];
+
+      if (objective.keyResults && Array.isArray(objective.keyResults)) {
+        return objective.keyResults.map((kr, idx) => ({
+          id: kr.id ?? `${objective.id}-kr-${idx}`,
+          title: kr.description || kr.title,
+          progress: Math.round(kr.progress || 0),
+          tasks: mapTasks(kr),
+        }));
+      }
+
+      return allOKRTs
+        .filter((okrt) => okrt.parent_id === objective.id && isKeyResult(okrt))
+        .map((kr) => ({
+          id: kr.id,
+          title: kr.description || kr.title,
+          progress: Math.round(kr.progress || 0),
+          tasks: mapTasks(kr),
+        }));
+    };
+
+    const mapChildObjectives = (objectiveId) =>
+      allOKRTs
+        .filter(
+          (okrt) => okrt.parent_id === objectiveId && isObjective(okrt) && !isKeyResult(okrt)
+        )
+        .reduce((acc, child, idx) => {
+          const childId = child.id || `${objectiveId}-child-${idx}`;
+          if (acc.some((c) => c.id === childId)) {
+            return acc;
+          }
+
+          const childOwnerName =
+            child.owner_name ||
+            [child.owner_first_name, child.owner_last_name].filter(Boolean).join(' ') ||
+            'You';
+
+          acc.push({
+            id: childId,
+            title: child.title || child.description,
+            progress: Math.round(child.progress || 0),
+            ownerName: childOwnerName,
+            ownerAvatar: child.owner_avatar,
+            keyResults: mapKeyResults(child),
+          });
+          return acc;
+        }, []);
 
     const objectives = strategicObjectiveIds
       .map((objId) => {
@@ -46,26 +137,8 @@ export default function StrategyHouse({ toggleSlot = null }) {
           [objective.owner_first_name, objective.owner_last_name].filter(Boolean).join(' ') ||
           'You';
 
-        let keyResults = [];
-        if (objective.keyResults && Array.isArray(objective.keyResults)) {
-          keyResults = objective.keyResults.map((kr, idx) => ({
-            id: kr.id ?? `${objId}-kr-${idx}`,
-            title: kr.description || kr.title,
-            progress: Math.round(kr.progress || 0),
-          }));
-        } else {
-          keyResults = allOKRTs
-            .filter((okrt) => {
-              const isChild = okrt.parent_id === objId;
-              const isKR = okrt.type === 'K' || okrt.type === 'KeyResult';
-              return isChild && isKR;
-            })
-            .map((kr) => ({
-              id: kr.id,
-              title: kr.description || kr.title,
-              progress: Math.round(kr.progress || 0),
-            }));
-        }
+        const keyResults = mapKeyResults(objective);
+        const childObjectives = mapChildObjectives(objId);
 
         return {
           id: objective.id,
@@ -74,6 +147,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
           ownerName,
           ownerAvatar: objective.owner_avatar,
           keyResults,
+          childObjectives,
         };
       })
       .filter(Boolean);
@@ -83,7 +157,10 @@ export default function StrategyHouse({ toggleSlot = null }) {
         ? Math.round(objectives.reduce((sum, o) => sum + o.progress, 0) / objectives.length)
         : 0;
 
-    const totalInitiatives = objectives.reduce((sum, o) => sum + o.keyResults.length, 0);
+    const totalStrategicOkrs = objectives.reduce(
+      (sum, o) => sum + (o.childObjectives?.length || 0),
+      0
+    );
 
     return {
       groupName: orgGroup.name || '',
@@ -91,11 +168,12 @@ export default function StrategyHouse({ toggleSlot = null }) {
       mission: orgGroup.mission || 'Define your organisation mission',
       objectives,
       overallProgress,
-      totalInitiatives,
+      totalStrategicOkrs,
     };
   }, [mainTree]);
 
-  const { groupName, vision, mission, objectives, overallProgress, totalInitiatives } = strategyData;
+  const { groupName, vision, mission, objectives, overallProgress, totalStrategicOkrs } =
+    strategyData;
   const objectiveCount = objectives.length;
 
   const getInitials = (name) =>
@@ -113,6 +191,18 @@ export default function StrategyHouse({ toggleSlot = null }) {
     if (objectiveId) {
       router.push(`/shared/${objectiveId}`);
     }
+  };
+
+  const toggleTasks = (krId) => {
+    setExpandedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(krId)) {
+        next.delete(krId);
+      } else {
+        next.add(krId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -149,17 +239,17 @@ export default function StrategyHouse({ toggleSlot = null }) {
             <span className={styles.strategyMetricChipValue}>{objectiveCount}</span>
           </div>
           <div className={styles.strategyMetricChip}>
-            <span className={styles.strategyMetricChipLabel}>Initiatives</span>
-            <span className={styles.strategyMetricChipValue}>{totalInitiatives}</span>
+            <span className={styles.strategyMetricChipLabel}>Strategic OKRs</span>
+            <span className={styles.strategyMetricChipValue}>{totalStrategicOkrs}</span>
           </div>
         </div>
       </div>
 
       <section className={styles.strategySection}>
         <div className={styles.strategySectionHeader}>
-          <h2>Strategic objectives</h2>
+          <h2>Priorities</h2>
           <span className={styles.strategySectionCaption}>
-            High-level focus areas for this cycle.
+            Strategy Pillars
           </span>
         </div>
 
@@ -194,6 +284,9 @@ export default function StrategyHouse({ toggleSlot = null }) {
                 <div className={styles.strategyObjectiveTitle} title={o.title}>
                   {o.title}
                 </div>
+                <div className={styles.strategyObjectiveMeta}>
+                  {(o.childObjectives?.length || 0)} objective{o.childObjectives?.length === 1 ? '' : 's'} · {o.progress}% overall
+                </div>
                 <div
                   className={styles.strategyProgressBar}
                   style={{ '--bar-value': `${o.progress}%` }}
@@ -208,45 +301,118 @@ export default function StrategyHouse({ toggleSlot = null }) {
 
       <section className={styles.strategySection}>
         <div className={styles.strategySectionHeader}>
-          <h2>Initiatives</h2>
+          <h2>Strategic OKRs</h2>
           <span className={styles.strategySectionCaption}>
-            Each column tracks measurable outcomes under its strategic objective.
+            Strategic Objectives implementing the priorities.
           </span>
         </div>
 
         {objectives.length === 0 ? (
-          <div className={styles.strategyEmpty}>Add objectives to see key results.</div>
+          <div className={styles.strategyEmpty}>Add objectives to see Strategic OKRs.</div>
         ) : (
           <div className={styles.strategyKrGrid}>
             {objectives.map((o) => (
               <div key={o.id} className={styles.strategyKrColumn}>
-                <div className={styles.strategyKrColumnHeader}>
-                  <div className={styles.strategyKrColumnTitle}>{o.title}</div>
-                  <div className={styles.strategyKrColumnSub}>
-                    {o.keyResults.length} key result{o.keyResults.length === 1 ? '' : 's'} ·{' '}
-                    {o.progress}% overall
-                  </div>
-                </div>
                 <div className={styles.strategyKrColumnList}>
-                  {o.keyResults.length === 0 ? (
-                    <div className={styles.strategyEmpty}>No key results yet.</div>
+                  {o.childObjectives.length === 0 ? (
+                    <div className={styles.strategyEmpty}>No child objectives yet.</div>
                   ) : (
-                    o.keyResults.map((kr) => (
+                    o.childObjectives.map((child) => (
                       <div
-                        key={kr.id}
-                        className={styles.strategyKrCard}
-                        onClick={() => handleObjectiveClick(o.id)}
+                        key={child.id}
+                        className={styles.strategyChildObjectiveCard}
+                        onClick={() => handleObjectiveClick(child.id)}
                         role="button"
                       >
-                        <div className={styles.strategyKrTitle}>{kr.title}</div>
-                        <div className={styles.strategyKrMeta}>
-                          <span>{kr.progress}%</span>
-                          <div
-                            className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
-                            style={{ '--bar-value': `${kr.progress}%` }}
-                          >
-                            <div className={styles.strategyProgressBarFill} />
+                        <div className={styles.strategyChildHeader}>
+                          <div>
+                            <div className={styles.strategyChildTitle}>{child.title}</div>
+                            <div className={styles.strategyChildMeta}>
+                              {child.keyResults.length} key result
+                              {child.keyResults.length === 1 ? '' : 's'} · {child.progress}% overall
+                            </div>
                           </div>
+                          <span className={styles.strategyObjectiveProgressPill}>{child.progress}%</span>
+                        </div>
+                        <div className={styles.strategyChildKrList}>
+                          {child.keyResults.length === 0 ? (
+                            <div className={styles.strategyEmptyInline}>No key results yet.</div>
+                          ) : (
+                            child.keyResults.map((kr) => (
+                              <div
+                                key={kr.id}
+                                className={styles.strategyKrCard}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleObjectiveClick(child.id);
+                                }}
+                                role="button"
+                              >
+                                <div className={styles.strategyKrHeader}>
+                                  <div>
+                                    <div className={styles.strategyKrTitle}>{kr.title}</div>
+                                    <div className={styles.strategyKrMeta}>
+                                      <span>{kr.progress}%</span>
+                                      <div
+                                        className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
+                                        style={{ '--bar-value': `${kr.progress}%` }}
+                                      >
+                                        <div className={styles.strategyProgressBarFill} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {kr.tasks?.length > 0 && (
+                                    <button
+                                      className={styles.strategyKrToggle}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleTasks(kr.id);
+                                      }}
+                                      aria-label={
+                                        expandedTasks.has(kr.id)
+                                          ? 'Hide tasks'
+                                          : 'Show tasks'
+                                      }
+                                    >
+                                      <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className={`${styles.strategyKrToggleIcon} ${
+                                          expandedTasks.has(kr.id)
+                                            ? styles.strategyKrToggleIconOpen
+                                            : ''
+                                        }`}
+                                      >
+                                        <polyline points="9,18 15,12 9,6" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                </div>
+                                {expandedTasks.has(kr.id) && kr.tasks?.length > 0 && (
+                                  <div className={styles.strategyTaskList}>
+                                    {kr.tasks.map((task) => (
+                                      <div key={task.id} className={styles.strategyTaskItem}>
+                                        <div className={styles.strategyTaskTitle}>{task.title}</div>
+                                        <div className={styles.strategyTaskMeta}>
+                                          <span>{task.progress}%</span>
+                                          <div
+                                            className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
+                                            style={{ '--bar-value': `${task.progress}%` }}
+                                          >
+                                            <div className={styles.strategyProgressBarFill} />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     ))

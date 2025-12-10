@@ -13,6 +13,75 @@
   border-bottom: 1px solid var(--border);
 }
 
+.modeSwitcher {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 0;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  min-width: 230px;
+  overflow: hidden;
+}
+
+.modeSwitcherDisabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.modeThumb {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc(50% - 6px);
+  border-radius: 999px;
+  background: rgba(var(--brand-primary-rgb, 126, 88, 255), 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: left 0.2s ease;
+}
+
+.thumbHierarchy {
+  left: 50%;
+}
+
+.modeButton {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.25rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modeButton:hover {
+  color: var(--text-primary);
+}
+
+.modeButton:disabled {
+  cursor: not-allowed;
+  color: var(--text-tertiary);
+}
+
+.activeMode {
+  color: var(--brand-primary);
+}
+
+.modeIcon {
+  font-size: 1rem;
+}
+
 .titleSection {
   display: flex;
   align-items: center;
@@ -76,6 +145,18 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 1.5rem;
+  align-items: stretch;
+}
+
+.familyMarker {
+  position: absolute;
+  top: -6px;
+  left: 16px;
+  height: 6px;
+  width: 42px;
+  border-radius: 999px;
+  background: var(--family-color, var(--brand-primary));
+  opacity: 0.5;
 }
 
 .okrtCard {
@@ -83,9 +164,14 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
+  min-height: 320px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
 .okrtCard:hover {
@@ -124,9 +210,39 @@
   gap: 0.5rem;
 }
 
-.ownerIcon {
-  font-size: 0.875rem;
-  color: var(--text-tertiary);
+.ownerAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 50%,
+    var(--brand-accent) 100%
+  );
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
+}
+
+.ownerInitials {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 50%,
+    var(--brand-accent) 100%
+  );
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
 }
 
 .ownerName {
@@ -160,9 +276,17 @@
 
 .cardFooter {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.75rem;
   margin-bottom: 1rem;
+  margin-top: auto;
+}
+
+.footerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .progressSection {
@@ -170,6 +294,46 @@
   align-items: center;
   gap: 0.75rem;
   flex: 1;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.metaLabel {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.metaValue {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.groupPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.groupPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(var(--brand-primary-rgb, 126, 88, 255), 0.1);
+  color: var(--brand-primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  border: 1px solid rgba(var(--brand-primary-rgb, 126, 88, 255), 0.2);
 }
 
 .progressBar {
@@ -221,17 +385,197 @@
   font-weight: 500;
 }
 
+.hierarchyPlaceholder {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.hierarchyIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: rgba(var(--brand-primary-rgb, 126, 88, 255), 0.12);
+  color: var(--brand-primary);
+  margin-bottom: 0.75rem;
+}
+
+.hierarchyIcon {
+  font-size: 1.5rem;
+}
+
+.hierarchyStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.familyWrapper {
+  border: 2px solid var(--family-color, var(--border));
+  border-radius: 1rem;
+  padding: 1rem 1rem 1.25rem;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.familyHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.familyDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--family-color, var(--brand-primary));
+}
+
+.familyTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.familyChartContainer {
+  width: 100%;
+  min-height: 360px;
+}
+
+.hierarchyBlank {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-height: 400px;
+  background: var(--surface);
+  padding: 1rem;
+  overflow: auto;
+  color: var(--text-primary);
+}
+
+.orgChartWrapper {
+  width: 100%;
+  text-align: center;
+}
+
+.orgChart {
+  display: inline-block;
+}
+
+.orgChart :global(.p-organizationchart),
+.orgChart :global(.p-organizationchart-table) {
+  border: none;
+  background: transparent;
+}
+
+.orgChart :global(.p-organizationchart-table) {
+  border-spacing: 4px 0; /* reduced horizontal gap, tight vertical spacing */
+}
+
+.orgChart :global(.p-organizationchart-node) {
+  border: none;
+  background: transparent;
+}
+
+.orgChart :global(.p-organizationchart-line-down) {
+  margin: 0 auto;
+  background: var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+}
+
+.orgChart :global(.p-organizationchart-line-left),
+.orgChart :global(.p-organizationchart-line-top),
+.orgChart :global(.p-organizationchart-line-right) {
+  border-color: var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+}
+
+.orgChart :global(.p-organizationchart-node-content) {
+  position: relative;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.orgChart :global(.p-organizationchart-node-content .p-node-toggler) {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1.5px solid var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  padding: 0;
+}
+
+.orgChart :global(.p-organizationchart-node-content .p-node-toggler .p-node-toggler-icon) {
+  margin-top: 2px;
+  color: var(--text-primary);
+}
+
+.chartNode {
+  width: 220px;
+  height: 120px;
+  border: 1.5px solid var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.chartFlag {
+  width: 36px;
+  height: 24px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.chartLabel {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
   }
-  
+
   .okrtGrid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .modeSwitcher {
+    width: 100%;
+  }
+
   .okrtCard {
     padding: 1rem;
   }

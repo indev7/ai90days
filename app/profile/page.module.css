@@ -27,11 +27,8 @@
 }
 
 .card {
-  background: linear-gradient(135deg, 
-    var(--surface) 0%, 
-    rgba(255, 255, 255, 0.95) 100%
-  );
-  border: 1px solid rgba(248, 250, 252, 0.8);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: var(--space-10);
   box-shadow: var(--shadow-3);
@@ -46,11 +43,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, 
-    var(--brand-primary), 
-    var(--brand-secondary), 
-    var(--brand-accent)
-  );
+  background: var(--brand-primary);
 }
 
 .section {
@@ -98,11 +91,8 @@
   font-size: var(--text-base);
   color: var(--text);
   padding: var(--space-4);
-  background: linear-gradient(135deg, 
-    var(--bg-solid) 0%, 
-    rgba(248, 250, 252, 0.8) 100%
-  );
-  border: 1px solid rgba(248, 250, 252, 0.9);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   font-weight: 500;
   transition: all 0.3s ease;
@@ -114,7 +104,7 @@
 }
 
 .readonly {
-  background: rgba(248, 250, 252, 0.5);
+  background: var(--surface-1, var(--surface));
   color: var(--muted);
   cursor: not-allowed;
 }
@@ -156,7 +146,7 @@
   border-color: var(--brand-primary);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1), 0 2px 6px rgba(0, 0, 0, 0.1);
   outline: none;
-  background: white;
+  background: var(--surface);
 }
 
 .input::placeholder {
@@ -187,7 +177,7 @@
   justify-content: flex-start;
   margin-top: var(--space-8);
   padding-top: var(--space-6);
-  border-top: 1px solid rgba(248, 250, 252, 0.8);
+  border-top: 1px solid var(--border);
   flex-wrap: wrap;
 }
 

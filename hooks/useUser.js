@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Global cache for user data across all hook instances
@@ -109,7 +109,7 @@ export function useUser() {
   }, []);
 
   // Method to refresh user data
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/me');
@@ -138,7 +138,7 @@ export function useUser() {
       setIsLoading(false);
       return null;
     }
-  };
+  }, [router]);
 
   // Method to clear cache (useful for logout)
   const clearUserCache = () => {
@@ -146,6 +146,36 @@ export function useUser() {
     setUser(null);
     cacheListeners.forEach(listener => listener(null));
   };
+
+  // When auth changes in another tab (new login/logout), clear caches and refetch
+  useEffect(() => {
+    const handleAuthChange = () => {
+      globalUserCache = null;
+      globalFetchPromise = null;
+      globalFetchInProgress = false;
+      cacheListeners.forEach(listener => listener(null));
+      setUser(null);
+      setIsLoading(true);
+      hasFetchedRef.current = false;
+      refreshUser();
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === 'authChange') {
+        handleAuthChange();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorage);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage);
+      }
+    };
+  }, [refreshUser]);
 
   return {
     user,

@@ -1,69 +1,72 @@
-/* Nature Green Theme - Light and Dark variants */
+/* Nightfall Dark Theme (replaces Nature) */
 
 html[data-theme="nature"] {
-  /* Brand Colors (Nature Green palette) */
-  --brand-primary: #2d5016; /* Forest green primary */
-  --brand-secondary: #4a7c59; /* Medium green secondary */
-  --brand-accent: #6b9080; /* Sage green accent */
-  --brand-success: #52c41a; /* Bright success green */
+  /* Brand Colors (violet + cool accent) */
+  --brand-primary: #7a6bf6;
+  --brand-secondary: #b39bff;
+  --brand-accent: #5ad8ff;
+  --brand-success: #00d447; /* bright green for HUD elements */
 
   /* Extended Brand Palette */
-  --brand-50:  #f6f9f4;  /* Lightest green */
-  --brand-100: #e8f5e8;  /* Very light green */
-  --brand-200: #d4edda;  /* Light green */
-  --brand-500: #4a7c59;  /* Medium green */
-  --brand-600: #3d6b47;  /* Darker green */
-  --brand-700: #2d5016;  /* Dark forest green */
-  --brand-900: #1a3009;  /* Darkest green */
+  --brand-50:  #14151d;
+  --brand-100: #1b1d27;
+  --brand-200: #242736;
+  --brand-500: #7a6bf6;
+  --brand-600: #6859e0;
+  --brand-700: #5246c0;
+  --brand-900: #1f1a4a;
 
-  /* Strategy House Shade - Nature green tint for backgrounds */
-  --strategy-shade: #f6f9f4;  /* Light green shade for strategy house elements */
+  /* Strategy House Shades */
+  --strategy-shade: #181a22;
+  --strategy-column-bg: #1c1f29;
+  --strategy-band-bg: #1a1d26;
   
   /* Toggle Switch Background */
-  --toggle-bg: #e8f5e8;  /* Light green background for toggle pill */
+  --toggle-bg: #1f2430;
 
-  /* Surfaces (Natural, earthy feel) */
-  --bg:        linear-gradient(135deg, #f8fdf6 0%, #f0f8f0 100%);
-  --bg-solid:  #ffffff;
-  --surface:   #ffffff;
-  --surface-elevated: #ffffff;
-  --card:      #ffffff;
-  --border:    #d4e6d4;   /* Light green border */
-  --border-light: #e8f5e8;
+  /* Surfaces */
+  --bg:        linear-gradient(135deg, #1b1d23 0%, #101219 40%, #08090f 100%);
+  --bg-solid:  #0f1117;
+  --surface:   #131621;
+  --surface-elevated: #1a1e2a;
+  --card:      #161926;
+  --border:    #262b37;
+  --border-light: #2f3545;
 
-  /* Text (Natural neutrals) */
-  --text: #1a3009;              /* Dark forest text */
-  --text-secondary: #2d5016;    /* Secondary green text */
-  --muted: #5a7c5a;             /* Muted green */
-  --muted-light: #8fbc8f;       /* Light sage */
+  /* Text */
+  --text: #f4f6fb;
+  --text-secondary: #c2c6d4;
+  --muted: #9aa0b1;
+  --muted-light: #70778a;
 
-  /* Status Colors (Nature-inspired) */
-  --success: #52c41a;
-  --success-light: #f6ffed;
-  --warn: #faad14;         /* Natural amber */
-  --warn-light: #fffbe6;
-  --danger: #ff4d4f;       /* Natural red */
-  --danger-light: #fff2f0;
+  /* Status */
+  --success: #00d447;
+  --success-light: #0f2a17;
+  --warn: #f2c94c;
+  --warn-light: #2a2211;
+  --danger: #ff6b6b;
+  --danger-light: #33161a;
 
   /* Progress & Accents */
   --progress-obj: var(--brand-primary);
-  --progress-kr:  var(--brand-secondary);
+  --progress-kr:  var(--brand-accent);
 
   /* Theme-specific shadows */
-  --shadow-brand: 0 4px 16px rgba(45, 80, 22, 0.25);
-  --shadow-glow:  0 0 24px rgba(45, 80, 22, 0.18);
+  --shadow-brand: 0 6px 24px rgba(122, 107, 246, 0.25);
+  --shadow-glow:  0 0 24px rgba(90, 216, 255, 0.18);
 
   /* Semantic Aliases */
   --primary: var(--brand-primary);
   --primary-color: var(--brand-primary);
   --accent-color: var(--brand-primary);
   --accent-color-dark: var(--brand-600);
-  --accent-gradient: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
-  --highlight: var(--brand-accent); /* Menu & selection highlight */
+  --accent-gradient: linear-gradient(135deg, var(--brand-100) 0%, var(--brand-50) 70%);
+  --highlight: var(--brand-accent);
   --success-color: var(--brand-success);
   --error-color: var(--danger);
+  --error-light:var(--warn)
   --text-primary: var(--text);
-  --text-secondary: #2d5016;
+  --text-secondary: var(--text-secondary);
   --surface-0: var(--bg-solid);
   --surface-1: var(--surface);
   --surface-2: var(--surface-elevated);
@@ -71,11 +74,55 @@ html[data-theme="nature"] {
 
   /* Strategy Temple Colors */
   --strategy-temple-roof: var(--strategy-shade);
-  --strategy-temple-band: var(--strategy-shade);
-  --strategy-temple-column: var(--strategy-shade);
+  --strategy-temple-band: var(--strategy-band-bg);
+  --strategy-temple-column: var(--strategy-column-bg);
   --strategy-temple-stroke: var(--border);
   --strategy-temple-stroke-light: var(--border-light);
-  --strategy-temple-text: var(--brand-500);
-}
+  --strategy-temple-text: var(--text-secondary);
 
-/* Nature Green Light Theme - Only light mode supported */
+  /* Header overrides */
+  --header-bg: #050505;
+  --header-border: #050505;
+  --header-text: #e6e8f0;
+  --header-icon: #e6e8f0;
+  --header-logo: #e6e8f0;
+  --header-greeting: #c2c6d4;
+  --header-hover: rgba(255, 255, 255, 0.04);
+
+  /* Menu overrides for high contrast */
+  --menu-bg: linear-gradient(180deg, #14151d 0%, #0c0d12 35%, #050505 100%);
+  --menu-border: rgba(255, 255, 255, 0.08);
+  --menu-text: #f5f6ff;
+  --menu-muted: #c8ccde;
+  --menu-active-bg: rgba(122, 107, 246, 0.16);
+  --menu-active-text: #d9d2ff;
+  --menu-hover-text: #d9d2ff;
+  --menu-disabled: rgba(200, 204, 222, 0.6);
+
+  /* Strategy view overrides */
+  --strategy-text-main: #e8eaf5;
+  --strategy-text-subtle: #c2c6d4;
+  --strategy-surface-bg: linear-gradient(135deg, #080a0f 0%, #05060b 50%, #020305 100%);
+  --strategy-toggle-bg: rgba(122, 107, 246, 0.2);
+  --strategy-toggle-border: rgba(122, 107, 246, 0.35);
+  --strategy-toggle-text: #e8eaf5;
+  --strategy-toggle-active-bg: #131724;
+  --strategy-toggle-active-text: #f6f3ff;
+  --strategy-toggle-shadow: rgba(0, 0, 0, 0.55);
+  --strategy-toolbar-bg: rgba(14, 17, 27, 0.92);
+  --strategy-toolbar-border: rgba(255, 255, 255, 0.1);
+  --strategy-toolbar-shadow: rgba(0, 0, 0, 0.65);
+  --strategy-canvas-bg: radial-gradient(circle at 15% 20%, rgba(122, 107, 246, 0.12), transparent 38%), radial-gradient(circle at 85% 8%, rgba(90, 216, 255, 0.1), transparent 40%), #0a0c13;
+  --strategy-canvas-border: rgba(255, 255, 255, 0.08);
+  --strategy-canvas-shadow: rgba(0, 0, 0, 0.55);
+  --strategy-card-bg: linear-gradient(150deg, rgba(20, 23, 33, 0.98), rgba(12, 15, 24, 0.98));
+  --strategy-card-bg-depth0: linear-gradient(150deg, rgba(26, 30, 43, 0.98), rgba(16, 19, 29, 0.98));
+  --strategy-card-bg-depth1: linear-gradient(150deg, rgba(20, 23, 33, 0.95), rgba(12, 15, 24, 0.95));
+  --strategy-card-bg-depth2: linear-gradient(150deg, rgba(16, 18, 26, 0.94), rgba(10, 12, 18, 0.94));
+  --strategy-card-border: rgba(255, 255, 255, 0.12);
+  --strategy-card-border-strong: rgba(122, 107, 246, 0.75);
+  --strategy-card-shadow: rgba(0, 0, 0, 0.55);
+  --strategy-card-shadow-strong: rgba(90, 216, 255, 0.32);
+  --strategy-line: rgba(122, 107, 246, 0.6);
+  --strategy-vision-bg: rgba(12, 15, 24, 0.96);
+}

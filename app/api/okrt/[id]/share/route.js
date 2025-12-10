@@ -8,7 +8,7 @@ import {
   shareOKRTWithUser,
   unshareOKRT,
   getUserByEmail,
-  getAllGroups
+  getGroupById
 } from '@/lib/pgdb';
 
 export async function GET(request, { params }) {
@@ -91,7 +91,35 @@ export async function POST(request, { params }) {
 
     // Return updated sharing info
     const shares = await getOKRTShares(id);
-    return NextResponse.json({ shares, visibility });
+    const sharedGroups = await Promise.all(
+      shares
+        .filter((share) => share.share_type === 'G')
+        .map(async (share) => {
+          try {
+            return await getGroupById(share.group_or_user_id);
+          } catch (error) {
+            console.error('Error fetching group for share:', share.group_or_user_id, error);
+            return null;
+          }
+        })
+    );
+    const filteredSharedGroups = sharedGroups.filter((group) => group && group.name);
+
+    return NextResponse.json({
+      shares,
+      visibility,
+      shared_groups: filteredSharedGroups,
+      _cacheUpdate: {
+        action: 'updateMyOKRT',
+        data: {
+          id,
+          updates: {
+            visibility,
+            shared_groups: visibility === 'shared' ? filteredSharedGroups : []
+          }
+        }
+      }
+    });
   } catch (error) {
     console.error('Error updating OKRT shares:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
