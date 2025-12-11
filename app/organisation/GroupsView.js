@@ -78,6 +78,52 @@ function buildFlatNodes(tree, expandedGroupId) {
   return nodes;
 }
 
+function groupFlatNodesByRoot(nodes) {
+  if (!nodes || nodes.length === 0) return [];
+
+  const nodeMap = new Map(nodes.map((n) => [n.nodeId, n]));
+  const rootCache = new Map();
+
+  const findRootId = (node) => {
+    if (rootCache.has(node.nodeId)) return rootCache.get(node.nodeId);
+
+    let current = node;
+    const visited = new Set();
+
+    while (
+      current.parentNodeId &&
+      nodeMap.has(current.parentNodeId) &&
+      !visited.has(current.parentNodeId)
+    ) {
+      visited.add(current.parentNodeId);
+      current = nodeMap.get(current.parentNodeId);
+    }
+
+    const rootId = current.parentNodeId ? current.parentNodeId : current.nodeId;
+    rootCache.set(node.nodeId, rootId);
+    return rootId;
+  };
+
+  const groups = new Map();
+
+  nodes.forEach((node) => {
+    const rootId = node.parentNodeId ? findRootId(node) : node.nodeId;
+    if (!groups.has(rootId)) {
+      groups.set(rootId, []);
+    }
+    groups.get(rootId).push(node);
+  });
+
+  return Array.from(groups.entries()).map(([rootId, groupedNodes]) => ({
+    rootId,
+    nodes: groupedNodes,
+    rootNode:
+      nodeMap.get(rootId) ||
+      groupedNodes.find((n) => n.nodeId === rootId) ||
+      groupedNodes[0],
+  }));
+}
+
 function GroupDetailsPopover({
   group,
   details,
@@ -393,83 +439,97 @@ export default function GroupsView({
   onEditGroup,
   currentUserId,
 }) {
-  const containerRef = useRef(null);
-  const chartRef = useRef(null);
+  const containerRefs = useRef(new Map());
+  const chartRefs = useRef(new Map());
+  const latestGroupsRef = useRef([]);
 
   const flatNodes = useMemo(
     () => buildFlatNodes(orgValue, expandedGroupId),
     [orgValue, expandedGroupId]
   );
 
+  const groupedCharts = useMemo(() => groupFlatNodesByRoot(flatNodes), [flatNodes]);
+  latestGroupsRef.current = groupedCharts;
+
   useEffect(() => {
-    if (!containerRef.current) return;
-    const chart = new OrgChart();
-    chartRef.current = chart;
+    const activeRootIds = new Set(groupedCharts.map((g) => g.rootId));
 
-    const baseNode = chart.defaultNode();
-    chart
-      .container(containerRef.current)
-      .backgroundColor("transparent")
-      .initialZoom(0.75)
-      .duration(450)
-      .depth(260)
-      .template(NODE_TEMPLATE)
-      .replaceData(TEMPLATE_REPLACE)
-      .defaultNode({
-        ...baseNode,
-        width: 340,
-        height: 160,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: { red: 184, green: 210, blue: 210, alpha: 1 },
-        backgroundColor: { red: 255, green: 255, blue: 255, alpha: 1 },
-        connectorLineColor: { red: 64, green: 64, blue: 64, alpha: 1 },
-        connectorLineWidth: 2.4,
-        nodeImage: { ...baseNode.nodeImage, width: 0, height: 0, borderWidth: 0, shadow: false },
-        nodeIcon: { ...baseNode.nodeIcon, size: 0 },
+    // Clean up charts for roots that no longer exist
+    chartRefs.current.forEach((chart, rootId) => {
+      if (!activeRootIds.has(rootId)) {
+        chartRefs.current.delete(rootId);
+      }
+    });
+
+    if (!groupedCharts.length) {
+      containerRefs.current.forEach((el) => {
+        if (el) el.innerHTML = "";
       });
+      return;
+    }
 
-    const handleResize = () => {
-      if (!chartRef.current || !containerRef.current) {
-        return;
+    groupedCharts.forEach(({ rootId, nodes }) => {
+      const container = containerRefs.current.get(rootId);
+      if (!container) return;
+
+      let chart = chartRefs.current.get(rootId);
+
+      if (!chart) {
+        chart = new OrgChart();
+        chartRefs.current.set(rootId, chart);
+
+        const baseNode = chart.defaultNode();
+        chart
+          .container(container)
+          .backgroundColor("transparent")
+          .initialZoom(0.75)
+          .duration(450)
+          .depth(260)
+          .template(NODE_TEMPLATE)
+          .replaceData(TEMPLATE_REPLACE)
+          .defaultNode({
+            ...baseNode,
+            width: 340,
+            height: 160,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: { red: 184, green: 210, blue: 210, alpha: 1 },
+            backgroundColor: { red: 255, green: 255, blue: 255, alpha: 1 },
+            connectorLineColor: { red: 64, green: 64, blue: 64, alpha: 1 },
+            connectorLineWidth: 2.4,
+            nodeImage: { ...baseNode.nodeImage, width: 0, height: 0, borderWidth: 0, shadow: false },
+            nodeIcon: { ...baseNode.nodeIcon, size: 0 },
+          });
       }
 
-      chartRef.current
-        .svgWidth(containerRef.current.clientWidth || 900)
-        .render();
+      chart.onNodeClick((nodeId) => {
+        if (onNodeClick) {
+          onNodeClick(nodeId);
+        }
+      });
+
+      const width = container.clientWidth || 900;
+      const height = Math.max(520, nodes.length * 140);
+
+      chart.svgWidth(width).svgHeight(height).data(nodes).render();
+    });
+  }, [groupedCharts, onNodeClick]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      latestGroupsRef.current.forEach(({ rootId, nodes }) => {
+        const chart = chartRefs.current.get(rootId);
+        const container = containerRefs.current.get(rootId);
+        if (!chart || !container) return;
+        chart.svgWidth(container.clientWidth || 900).svgHeight(Math.max(520, nodes.length * 140)).render();
+      });
     };
 
     window.addEventListener("resize", handleResize);
-
     return () => {
       window.removeEventListener("resize", handleResize);
-      chartRef.current = null;
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-      }
     };
   }, []);
-
-  useEffect(() => {
-  const chart = chartRef.current;
-  if (!chart || !containerRef.current) return;
-
-  chart.onNodeClick((nodeId) => {
-    if (onNodeClick) {
-      onNodeClick(nodeId);
-    }
-  });
-
-  if (!flatNodes.length) {
-    containerRef.current.innerHTML = "";
-    return;
-  }
-
-    const width = containerRef.current.clientWidth || 900;
-    const height = Math.max(520, flatNodes.length * 140);
-
-    chart.svgWidth(width).svgHeight(height).data(flatNodes).render();
-  }, [flatNodes, onNodeClick]);
 
   if (mainTreeLoading || userLoading) {
     return <div className="loading">Loading group hierarchy...</div>;
@@ -490,11 +550,20 @@ export default function GroupsView({
   return (
     <>
       <div className="chartShell">
-        <div
-          ref={containerRef}
-          className="chartContainer"
-          aria-label="Group organization chart"
-        />
+        {groupedCharts.map(({ rootId, rootNode }) => (
+          <div
+            key={rootId}
+            ref={(el) => {
+              if (el) {
+                containerRefs.current.set(rootId, el);
+              } else {
+                containerRefs.current.delete(rootId);
+              }
+            }}
+            className="chartContainer"
+            aria-label={`Group organization chart for ${rootNode?.name || "organisation root"}`}
+          />
+        ))}
       </div>
       {expandedGroupId && groupDetails[expandedGroupId] && (
         <GroupDetailsPopover
@@ -530,6 +599,10 @@ export default function GroupsView({
           border-radius: 0;
           box-shadow: none;
           padding: 0;
+        }
+
+        .chartContainer + .chartContainer {
+          margin-top: 32px;
         }
 
         .loading,
@@ -627,6 +700,13 @@ export default function GroupsView({
           dominant-baseline: central;
           font-size: 20px;
           transform: translateY(1px);
+        }
+
+        .chartContainer .org-root-spacer {
+          width: 1px;
+          height: 1px;
+          opacity: 0;
+          pointer-events: none;
         }
       `}</style>
     </>
