@@ -14,7 +14,12 @@ import styles from './OKRTs.module.css';
 // Get colors from centralized source
 const PROTOTYPE_COLORS = getThemeColorPalette();
 
-const StyledTreeItem = styled(TreeItem)(({ theme, objectiveColor, objectiveIndex, isKR, isTask }) => ({
+const StyledTreeItem = styled(
+  TreeItem,
+  {
+    shouldForwardProp: (prop) => !['objectiveColor', 'objectiveIndex', 'isKR', 'isTask'].includes(prop),
+  },
+)(({ theme, objectiveColor, objectiveIndex, isKR, isTask }) => ({
   '& .MuiTreeItem-content': {
     padding: '8px 12px',
     borderRadius: '6px',
