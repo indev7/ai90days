@@ -366,6 +366,8 @@ export default function OKRTModal({
 
   if (!isOpen) return null;
 
+  const calendarAppendTarget = typeof window !== 'undefined' ? document.body : undefined;
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
@@ -511,6 +513,7 @@ export default function OKRTModal({
                 yearRange={`${new Date().getFullYear()}:${new Date().getFullYear() + 5}`}
                 showOtherMonths={false}
                 selectOtherMonths={false}
+                appendTo={calendarAppendTarget}
               />
               {errors.due_date && <span className={styles.errorText}>{errors.due_date}</span>}
             </div>

@@ -128,12 +128,12 @@ function ObjectiveHeader({ objective, onEditObjective, isExpanded, onToggleExpan
           </div>
         </div>
         <div className={styles.objectiveActions}>
-          <div className={styles.progressSection}>
-            <div className={styles.progressItem}>
-              <ProgressRing value={(objective.confidence || 30) / 100} size={64} color="var(--brand-secondary)" />
-              <div className={styles.progressLabel}>confidence</div>
-            </div>
-            <div className={styles.progressItem}>
+            <div className={styles.progressSection}>
+              <div className={styles.progressItem}>
+                <ProgressRing value={(objective.confidence ?? 0) / 100} size={64} color="var(--brand-secondary)" />
+                <div className={styles.progressLabel}>confidence</div>
+              </div>
+              <div className={styles.progressItem}>
               <ProgressRing value={objective.progress / 100} size={64} color="var(--brand-primary)" />
               <div className={styles.progressLabel}>progress</div>
             </div>

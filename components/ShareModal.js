@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './ShareModal.module.css';
 
 export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility = 'private' }) {
@@ -16,6 +17,7 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
   const [success, setSuccess] = useState('');
   const visibilityChangedRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
+  const { setSharedOKRTs } = useMainTreeStore();
 
   useEffect(() => {
     if (isOpen) {
@@ -97,6 +99,19 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
     setError('');
     setSuccess('');
 
+    const refreshSharedOKRTs = async () => {
+      try {
+        const res = await fetch('/api/shared');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.okrts) {
+          setSharedOKRTs(data.okrts);
+        }
+      } catch (err) {
+        console.error('Error refreshing shared OKRTs:', err);
+      }
+    };
+
     try {
       const response = await fetch(`/api/okrt/${okrtId}/share`, {
         method: 'POST',
@@ -113,9 +128,53 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
       const data = await response.json();
 
       if (response.ok) {
-        processCacheUpdateFromData(data);
-        setVisibility(data.visibility || visibility);
+        const cleanData = processCacheUpdateFromData(data);
+        const nextVisibility = cleanData.visibility || visibility;
+        setVisibility(nextVisibility);
         setSuccess('Sharing settings updated successfully!');
+
+        // Keep sharedOKRTs and groups in Zustand in sync immediately
+        const store = useMainTreeStore.getState();
+        const currentMainTree = store.mainTree || {};
+
+        // Update sharedOKRTs entry if this OKRT exists there
+        if (Array.isArray(currentMainTree.sharedOKRTs)) {
+          const updatedShared = currentMainTree.sharedOKRTs
+            .map((okr) =>
+              okr.id === okrtId
+                ? {
+                    ...okr,
+                    visibility: nextVisibility,
+                    shared_groups: cleanData.shared_groups || [],
+                  }
+                : okr
+            )
+            .filter((okr) =>
+              nextVisibility === 'private' && okr.id === okrtId ? false : true
+            );
+          store.setSharedOKRTs(updatedShared);
+        }
+
+        // Update group objectiveIds so Groups section reflects the change
+        if (Array.isArray(currentMainTree.groups)) {
+          const updatedGroups = currentMainTree.groups.map((group) => {
+            const ids = new Set(group.objectiveIds || []);
+            if (nextVisibility === 'shared' && selectedGroups.includes(group.id)) {
+              ids.add(okrtId);
+            } else {
+              ids.delete(okrtId);
+            }
+            const nextObjectiveIds = Array.from(ids);
+            return ids.size !== (group.objectiveIds || []).length ||
+              (group.objectiveIds || []).some((id, idx) => id !== nextObjectiveIds[idx])
+              ? { ...group, objectiveIds: nextObjectiveIds }
+              : group;
+          });
+          store.setGroups(updatedGroups);
+        }
+
+        // Ensure shared OKRs page reflects the change immediately (fallback to API)
+        await refreshSharedOKRTs();
         setTimeout(() => {
           onClose();
         }, 1500);

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useRouter } from 'next/navigation';
 import styles from '../../okrt/page.module.css';
 import CommentsSection from '../../../components/CommentsSection';
 import { ObjectiveHeader, KeyResultCard } from '@/components/OKRTCards';
 import { useMainTree } from '@/hooks/useMainTree';
 import { useUser } from '@/hooks/useUser';
+import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
 
 /* =========================
    Main Shared Detail Page Component
@@ -139,6 +140,14 @@ export default function SharedOKRTDetailPage() {
     return tasks.filter(task => task.parent_id === krId);
   };
 
+  const objectiveWithConfidence = useMemo(() => {
+    if (!objective) return null;
+    return {
+      ...objective,
+      confidence: computeObjectiveConfidence(objective, keyResults, tasks)
+    };
+  }, [objective, keyResults, tasks]);
+
   const handleFocusObjective = (objectiveId) => {
     if (focusedObjectiveId === objectiveId) {
       // Exit focus mode
@@ -205,15 +214,15 @@ export default function SharedOKRTDetailPage() {
     <div className={styles.container}>
       {/* Main Content */}
       <main className={styles.main}>
-        <div className={`${styles.objectiveSection} ${focusedObjectiveId === objective.id ? styles.focusedObjective : ''}`}>
+        <div className={`${styles.objectiveSection} ${focusedObjectiveId === objectiveWithConfidence.id ? styles.focusedObjective : ''}`}>
           <ObjectiveHeader
-            objective={objective}
+            objective={objectiveWithConfidence}
             isExpanded={isExpanded}
             onToggleExpanded={() => setIsExpanded(!isExpanded)}
             onFocusObjective={handleFocusObjective}
-            isFocused={focusedObjectiveId === objective.id}
+            isFocused={focusedObjectiveId === objectiveWithConfidence.id}
             readOnly={true}
-            comments={objective.comments || []}
+            comments={objectiveWithConfidence.comments || []}
           />
 
           {/* Key Results Grid - only show when expanded */}
@@ -235,11 +244,11 @@ export default function SharedOKRTDetailPage() {
               {user?.id && (
                 <div className={styles.objectiveCommentsSection}>
                   <CommentsSection
-                    okrtId={objective.id}
+                    okrtId={objectiveWithConfidence.id}
                     currentUserId={user.id}
-                    okrtOwnerId={objective.owner_id}
+                    okrtOwnerId={objectiveWithConfidence.owner_id}
                     isExpanded={commentsExpanded}
-                    comments={objective.comments || []}
+                    comments={objectiveWithConfidence.comments || []}
                     onRewardUpdate={handleRewardUpdate}
                   />
                 </div>
