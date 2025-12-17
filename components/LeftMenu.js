@@ -18,6 +18,7 @@ import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
+import { SiJira } from "react-icons/si";
 
 import TaskUpdateModal from './TaskUpdateModal';
 import OKRTModal from './OKRTModal';
@@ -69,6 +70,7 @@ const getTopMenuItems = (userRole) => {
 };
 
 const bottomMenuItems = [
+  { href: '/jira', label: 'Jira Tickets', icon: 'jira', disabled: false },
   { href: '/coach', label: 'Coach', icon: 'coach', disabled: false },
   { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: false },
 ];
@@ -85,6 +87,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     strategy: <GiGreekTemple size={iconSize} />,
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
+    jira: <SiJira size={iconSize} />,
     coach: <IoChatboxEllipsesOutline size={iconSize} />,
     notifications: (
       <div style={{ position: 'relative', display: 'inline-block' }}>
