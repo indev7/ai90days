@@ -48,71 +48,38 @@ export default function SharedOKRTDetailPage() {
     }
   };
 
-  // Fetch shared OKRT data from mainTree or API fallback
+  // Hydrate shared OKRT data from mainTree (avoid extra DB calls)
   useEffect(() => {
-    const fetchSharedOKRT = async () => {
-      if (!params.id) return;
+    if (!params.id) return;
+    if (mainTreeLoading || !mainTree?.sharedOKRTs) return;
 
-      // First try to get from mainTree
-      if (!mainTreeLoading && mainTree.sharedOKRTs) {
-        const sharedObj = mainTree.sharedOKRTs.find(okrt => okrt.id === params.id && okrt.type === 'O');
-        
-        if (sharedObj) {
-          // Found in mainTree - use it with comments already loaded
-          setObjective(sharedObj);
-          setLoading(false);
-          
-          // Fetch KRs and Tasks from API since they're not in mainTree
-          try {
-            const response = await fetch(`/api/okrt/shared?id=${params.id}`);
-            const data = await response.json();
-            
-            if (response.ok) {
-              const allItems = data.okrts || [];
-              const krs = allItems.filter(item => item.type === 'K' && item.parent_id === params.id);
-              const tsks = allItems.filter(item => item.type === 'T');
-              
-              setKeyResults(krs);
-              setTasks(tsks);
-            }
-          } catch (error) {
-            console.error('Error fetching KRs and tasks:', error);
-          }
-          return;
-        }
-      }
+    setLoading(true);
+    setObjective(null);
+    setKeyResults([]);
+    setTasks([]);
+    const sharedObj = mainTree?.sharedOKRTs?.find(
+      (okrt) => okrt.id === params.id && okrt.type === 'O'
+    );
 
-      // Fallback: fetch from API if not in mainTree
-      try {
-        const response = await fetch(`/api/okrt/shared?id=${params.id}`);
-        const data = await response.json();
-        
-        if (response.ok) {
-          const allItems = data.okrts || [];
-          const obj = allItems.find(item => item.type === 'O' && item.id === params.id);
-          const krs = allItems.filter(item => item.type === 'K' && item.parent_id === params.id);
-          const tsks = allItems.filter(item => item.type === 'T');
-          
-          if (obj) {
-            setObjective(obj);
-            setKeyResults(krs);
-            setTasks(tsks);
-          } else {
-            setError('Shared objective not found');
-          }
-        } else {
-          setError(data.error || 'Failed to fetch shared objective');
-        }
-      } catch (error) {
-        console.error('Error fetching shared OKRT:', error);
-        setError('Network error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (sharedObj) {
+      const krs = Array.isArray(sharedObj.keyResults) ? sharedObj.keyResults : [];
+      const flattenedTasks = krs.flatMap((kr) =>
+        (kr.tasks || []).map((task) => ({
+          ...task,
+          parent_id: task.parent_id || kr.id
+        }))
+      );
 
-    fetchSharedOKRT();
-  }, [params.id, mainTree, mainTreeLoading]);
+      setObjective(sharedObj);
+      setKeyResults(krs);
+      setTasks(flattenedTasks);
+      setError(null);
+      setLoading(false);
+    } else {
+      setError('Shared objective not found');
+      setLoading(false);
+    }
+  }, [params.id, mainTree?.sharedOKRTs, mainTreeLoading]);
 
   // Listen for left menu toggle events to collapse OKRTs when menu expands
   useEffect(() => {

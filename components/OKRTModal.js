@@ -35,6 +35,24 @@ const getCurrentQuarter = () => {
   return `${year}-Q${quarter}`;
 };
 
+// Normalize various date inputs (Date objects, ISO strings) to YYYY-MM-DD for the UI
+const normalizeDateInput = (value) => {
+  if (!value) return '';
+  try {
+    // If already a simple YYYY-MM-DD string
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    // Convert to local date to avoid timezone shifts
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().split('T')[0];
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function OKRTModal({
   isOpen,
   onClose,
@@ -58,7 +76,7 @@ export default function OKRTModal({
     weight: 1.0,
     task_status: 'todo',
     due_date: '',
-    progress: 0,
+    progress: '',
     parent_objective_id: '' // New field for parent objective
   });
   const [saving, setSaving] = useState(false);
@@ -93,8 +111,8 @@ export default function OKRTModal({
           kr_baseline_number: okrt.kr_baseline_number || '',
           weight: okrt.weight || 1.0,
           task_status: okrt.task_status || 'todo',
-          due_date: okrt.due_date || '',
-          progress: okrt.progress || 0,
+          due_date: normalizeDateInput(okrt.due_date),
+          progress: okrt.progress === 0 || okrt.progress ? okrt.progress : '',
           parent_objective_id: okrt.parent_id || ''
         });
       } else {
@@ -116,7 +134,7 @@ export default function OKRTModal({
           weight: 1.0,
           task_status: 'todo',
           due_date: '',
-          progress: 0,
+          progress: '',
           parent_objective_id: parentOkrt?.id || ''
         });
       }
@@ -186,6 +204,17 @@ export default function OKRTModal({
       // Ensure the date is in YYYY-MM-DD format
       if (value && typeof value === 'string' && value.includes('T')) {
         value = value.split('T')[0];
+      }
+    }
+
+    if (field === 'progress') {
+      // Allow clearing the field; store empty string for blank UI
+      if (value === '' || value === null || Number.isNaN(value)) {
+        setFormData(prev => ({ ...prev, [field]: '' }));
+        if (errors[field]) {
+          setErrors(prev => ({ ...prev, [field]: undefined }));
+        }
+        return;
       }
     }
     
@@ -263,7 +292,6 @@ export default function OKRTModal({
         delete saveData.kr_baseline_number;
         delete saveData.weight;
         delete saveData.task_status;
-        delete saveData.due_date;
         
         // Handle parent objective ID for objectives
         if (saveData.parent_objective_id) {
@@ -483,8 +511,11 @@ export default function OKRTModal({
               <input
                 type="number"
                 className={styles.input}
-                value={formData.progress}
-                onChange={e => handleInputChange('progress', Number(e.target.value))}
+                value={formData.progress === '' ? '' : formData.progress}
+                onChange={e => {
+                  const val = e.target.value;
+                  handleInputChange('progress', val === '' ? '' : Number(val));
+                }}
                 min={0}
                 max={100}
               />
