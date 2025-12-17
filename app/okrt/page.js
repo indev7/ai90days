@@ -7,6 +7,7 @@ import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
+import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
 import { useUser } from '@/hooks/useUser';
@@ -197,6 +198,13 @@ export default function OKRTPage() {
     return keyResults.filter(kr => kr.parent_id === objId);
   };
 
+  const objectivesWithConfidence = useMemo(() => {
+    return objectives.map((objective) => ({
+      ...objective,
+      confidence: computeObjectiveConfidence(objective, keyResults, tasks)
+    }));
+  }, [objectives, keyResults, tasks]);
+
   // Group tasks by their parent key result
   const getTasksForKeyResult = (krId) => {
     return tasks.filter(task => task.parent_id === krId);
@@ -204,7 +212,7 @@ export default function OKRTPage() {
 
   // Build ordered objectives grouped by top-level family to keep siblings together
   const { orderedObjectives, objectiveRootMap, familyColorMap } = useMemo(() => {
-    if (!objectives || objectives.length === 0) {
+    if (!objectivesWithConfidence || objectivesWithConfidence.length === 0) {
       return { orderedObjectives: [], objectiveRootMap: new Map(), familyColorMap: new Map() };
     }
 
@@ -219,9 +227,9 @@ export default function OKRTPage() {
     };
 
     const childrenMap = new Map();
-    const objectiveMap = new Map(objectives.map((o) => [o.id, o]));
+    const objectiveMap = new Map(objectivesWithConfidence.map((o) => [o.id, o]));
 
-    objectives.forEach((objective) => {
+    objectivesWithConfidence.forEach((objective) => {
       const parentKey = objective.parent_id || null;
       if (!childrenMap.has(parentKey)) {
         childrenMap.set(parentKey, []);
@@ -239,7 +247,7 @@ export default function OKRTPage() {
     childrenMap.forEach((list) => list.sort(sortObjectives));
 
     const roots = (childrenMap.get(null) || []).concat(
-      objectives.filter((o) => o.parent_id && !objectiveMap.has(o.parent_id))
+      objectivesWithConfidence.filter((o) => o.parent_id && !objectiveMap.has(o.parent_id))
     );
 
     const ordered = [];
@@ -260,7 +268,7 @@ export default function OKRTPage() {
     });
 
     return { orderedObjectives: ordered, objectiveRootMap: rootMap, familyColorMap: colorMap };
-  }, [objectives]);
+  }, [objectivesWithConfidence]);
 
   // Modal handlers
   const handleEditObjective = (objective) => {

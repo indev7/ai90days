@@ -77,10 +77,10 @@ export default function ObjectiveHeader({
             </div>
           </div>
         </div>
-        <div className={styles.objectiveActions}>
+          <div className={styles.objectiveActions}>
           <div className={styles.progressSection}>
             <div className={styles.progressItem}>
-              <ProgressRing value={(objective.confidence || 30) / 100} size={64} color="var(--brand-secondary)" />
+              <ProgressRing value={(objective.confidence ?? 0) / 100} size={64} color="var(--brand-secondary)" />
               <div className={styles.progressLabel}>confidence</div>
             </div>
             <div className={styles.progressItem}>

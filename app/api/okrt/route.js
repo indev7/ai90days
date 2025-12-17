@@ -75,7 +75,7 @@ export async function POST(request) {
       type, parent_id, title, description, area, cycle_qtr,
       visibility = 'private', objective_kind, kr_target_number,
       kr_unit, kr_baseline_number, weight = 1.0, task_status,
-      due_date, recurrence_json, blocked_by
+      due_date, recurrence_json, blocked_by, progress
     } = data;
 
     // Validate required fields based on type
@@ -94,6 +94,14 @@ export async function POST(request) {
     // Use provided id if exists, else generate new UUID
     const id = incomingId || uuidv4();
 
+    // Normalize progress (default 0, clamp to 0-100)
+    const parsedProgress = progress === '' || progress === undefined || progress === null
+      ? 0
+      : Number(progress);
+    const normalizedProgress = Number.isFinite(parsedProgress)
+      ? Math.max(0, Math.min(100, parsedProgress))
+      : 0;
+
     const okrtData = {
       id,
       type,
@@ -101,6 +109,7 @@ export async function POST(request) {
       parent_id: parent_id || null,
       title,
       description,
+      progress: normalizedProgress,
       area,
       cycle_qtr,
       visibility,
@@ -110,7 +119,7 @@ export async function POST(request) {
       kr_baseline_number: type === 'K' ? (kr_baseline_number !== '' && kr_baseline_number != null ? parseFloat(kr_baseline_number) : null) : null,
       weight: ['K', 'T'].includes(type) ? (weight !== '' && weight != null ? parseFloat(weight) : 1.0) : null,
       task_status: type === 'T' ? (task_status || 'todo') : null,
-      due_date: (type === 'T' || type === 'K') && due_date ? due_date : null,
+      due_date: due_date || null,
       recurrence_json: type === 'T' ? recurrence_json : null,
       blocked_by: type === 'T' ? blocked_by : null
     };
@@ -122,6 +131,7 @@ export async function POST(request) {
       owner_id: okrtData.owner_id || 'none',
       parent_id: okrtData.parent_id || 'none',
       due_date: okrtData.due_date || 'none',
+      progress: okrtData.progress ?? 'none',
       kr_target_number: okrtData.kr_target_number || 'none',
       kr_unit: okrtData.kr_unit || 'none',
       kr_baseline_number: okrtData.kr_baseline_number || 'none',

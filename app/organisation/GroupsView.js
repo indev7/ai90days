@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import OrgChart from "d3-org-chart";
 
 const NODE_TEMPLATE = `
@@ -130,6 +131,7 @@ function GroupDetailsPopover({
   onClose,
   onEditGroup,
   currentUserId,
+  onObjectiveClick,
 }) {
   const strategicIds = details.strategicObjectiveIds || [];
   const objectives = details.objectives || [];
@@ -167,7 +169,19 @@ function GroupDetailsPopover({
             <div className="popover__sectionTitle">Strategic Objectives</div>
             <ul className="popover__list">
               {strategicObjectives.map((obj) => (
-                <li key={obj.id} className="popover__item">
+                <li
+                  key={obj.id}
+                  className="popover__item"
+                  onClick={() => onObjectiveClick && onObjectiveClick(obj.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onObjectiveClick && onObjectiveClick(obj.id);
+                    }
+                  }}
+                >
                   <div className="popover__itemTitle">{obj.title}</div>
                   <div className="popover__progress">
                     <div
@@ -189,7 +203,19 @@ function GroupDetailsPopover({
             <div className="popover__sectionTitle">Shared Objectives</div>
             <ul className="popover__list">
               {otherObjectives.map((obj) => (
-                <li key={obj.id} className="popover__item">
+                <li
+                  key={obj.id}
+                  className="popover__item"
+                  onClick={() => onObjectiveClick && onObjectiveClick(obj.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onObjectiveClick && onObjectiveClick(obj.id);
+                    }
+                  }}
+                >
                   <div className="popover__itemTitle">{obj.title}</div>
                   <div className="popover__progress">
                     <div
@@ -326,6 +352,7 @@ function GroupDetailsPopover({
           border-radius: 10px;
           background: var(--brand-50);
           color: var(--text, #f4f6fb);
+          cursor: pointer;
         }
         .popover__itemTitle {
           font-size: 14px;
@@ -439,9 +466,15 @@ export default function GroupsView({
   onEditGroup,
   currentUserId,
 }) {
+  const router = useRouter();
   const containerRefs = useRef(new Map());
   const chartRefs = useRef(new Map());
   const latestGroupsRef = useRef([]);
+
+  const handleObjectiveClick = (objectiveId) => {
+    if (!objectiveId) return;
+    router.push(`/shared/${objectiveId}`);
+  };
 
   const flatNodes = useMemo(
     () => buildFlatNodes(orgValue, expandedGroupId),
@@ -578,6 +611,7 @@ export default function GroupsView({
           onClose={() => onNodeClick && onNodeClick(null)}
           onEditGroup={onEditGroup}
           currentUserId={currentUserId}
+          onObjectiveClick={handleObjectiveClick}
         />
       )}
       <style jsx>{`

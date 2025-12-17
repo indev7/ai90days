@@ -199,12 +199,15 @@ function useVoiceRecording(onTranscriptionComplete) {
   const analyserRef = useRef(null);
   const streamRef = useRef(null);
   const monitorIntervalRef = useRef(null);
+  const silenceTimeoutRef = useRef(null);
   const lastSoundTimeRef = useRef(0);
   const recordingStartTimeRef = useRef(0);
   const stopRequestedRef = useRef(false);
 
   const SILENCE_RMS_THRESHOLD = 0.015; // Normalized RMS threshold for silence
-  const SILENCE_DURATION_MS = 2000; // Stop after 2 seconds of silence
+  const SILENCE_DURATION_MS = 2000; // Minimum silence to start stop flow
+  const POST_SILENCE_GRACE_MS = 600; // Extra padding after silence before stopping
+  const POST_STOP_GRACE_MS = 300; // Let MediaRecorder flush the final chunk
   const MAX_RECORDING_MS = 60000; // Safety cap to stop very long recordings
 
   const playBing = () => {
@@ -247,9 +250,18 @@ function useVoiceRecording(onTranscriptionComplete) {
     const now = Date.now();
     if (rms > SILENCE_RMS_THRESHOLD) {
       lastSoundTimeRef.current = now;
+      // Cancel any pending silence stop if user speaks again
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
     } else if (now - lastSoundTimeRef.current >= SILENCE_DURATION_MS) {
-      stopRecording('silence');
-      return;
+      // Schedule a padded stop so trailing words are captured
+      if (!silenceTimeoutRef.current) {
+        silenceTimeoutRef.current = setTimeout(() => {
+          stopRecording('silence');
+        }, POST_SILENCE_GRACE_MS);
+      }
     }
 
     // Safety stop if recording somehow keeps running
@@ -294,6 +306,10 @@ function useVoiceRecording(onTranscriptionComplete) {
         }
 
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const blobSize = audioBlob.size;
+        if (blobSize === 0) {
+          console.warn('Recording produced empty blob');
+        }
         
         // Clean up
         if (streamRef.current) {
@@ -303,6 +319,10 @@ function useVoiceRecording(onTranscriptionComplete) {
         if (audioContextRef.current) {
           audioContextRef.current.close();
           audioContextRef.current = null;
+        }
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
         }
 
         // Send to API
@@ -353,8 +373,15 @@ function useVoiceRecording(onTranscriptionComplete) {
       if (reason !== 'manual') {
         playBing();
       }
-      recorder.stop();
-      setIsRecording(false);
+      // Give the recorder a short grace period so the final chunk flushes
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+      setTimeout(() => {
+        recorder.stop();
+        setIsRecording(false);
+      }, POST_STOP_GRACE_MS);
     }
   };
 
