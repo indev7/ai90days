@@ -81,7 +81,6 @@ export default function CalendarPage() {
     const [selectedTimeBlock, setSelectedTimeBlock] = useState(null);
     const [taskHierarchy, setTaskHierarchy] = useState([]);
     const [selectedTask, setSelectedTask] = useState('');
-    const [selectedTaskTitle, setSelectedTaskTitle] = useState('');
     const [selectedObjectiveId, setSelectedObjectiveId] = useState('');
     const [selectedDuration, setSelectedDuration] = useState(30);
     const [startHour, setStartHour] = useState(9); // Default to 9 AM
@@ -227,7 +226,7 @@ export default function CalendarPage() {
                             };
                         }).filter(kr => kr.tasks.length > 0)
                     };
-                }).filter(obj => obj.keyResults.length > 0);
+                });
 
             setTaskHierarchy(hierarchy);
 
@@ -256,8 +255,17 @@ export default function CalendarPage() {
         setShowScheduleModal(true);
     };
 
+    const normalizeIdValue = (value) => {
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? value : parsed;
+    };
+
+    const selectedObjective = useMemo(() => {
+        return taskHierarchy.find((objective) => String(objective.id) === String(selectedObjectiveId));
+    }, [selectedObjectiveId, taskHierarchy]);
+
     const handleSchedule = async () => {
-        if (!selectedTask || !selectedTimeSlot) return;
+        if (!selectedTask || !selectedTimeSlot || !selectedObjectiveId) return;
 
         const [dayIndex] = selectedTimeSlot.split('-').map(Number);
         const selectedDay = daysOfWeek[dayIndex];
@@ -379,17 +387,30 @@ export default function CalendarPage() {
         return `${displayHour}:${minuteStr} ${period}`;
     };
 
-    const handleTaskSelect = (taskId, taskTitle, objectiveId) => {
-        setSelectedTask(taskId);
-        setSelectedTaskTitle(taskTitle);
-        setSelectedObjectiveId(objectiveId);
+    const handleObjectiveChange = (value) => {
+        if (!value) {
+            setSelectedObjectiveId('');
+            setSelectedTask('');
+            return;
+        }
+
+        setSelectedObjectiveId(normalizeIdValue(value));
+        setSelectedTask('');
+    };
+
+    const handleTaskChange = (value) => {
+        if (!value) {
+            setSelectedTask('');
+            return;
+        }
+
+        setSelectedTask(normalizeIdValue(value));
     };
 
     const resetModal = () => {
         setShowScheduleModal(false);
         setSelectedTimeSlot(null);
         setSelectedTask('');
-        setSelectedTaskTitle('');
         setSelectedObjectiveId('');
         setSelectedDuration(30);
         setStartHour(9);
@@ -801,47 +822,52 @@ export default function CalendarPage() {
                         </div>
 
                         <div className={styles.formGroup}>
-                            <label className={styles.formLabel}>Select Task</label>
-                            <div className={styles.taskListContainer}>
+                            <label className={styles.formLabel}>Select Objective</label>
+                            <select
+                                className={styles.formSelect}
+                                value={selectedObjectiveId}
+                                onChange={(e) => handleObjectiveChange(e.target.value)}
+                            >
+                                <option value="">Choose an objective</option>
                                 {taskHierarchy.map((objective) => (
-                                    <div key={objective.id} className={styles.objectiveSection}>
-                                        <div className={`${styles.hierarchyItem} ${styles.objective}`}>
-                                            {objective.title}
-                                        </div>
-                                        {objective.keyResults.map((keyResult) => (
-                                            <div key={keyResult.id}>
-                                                <div className={`${styles.hierarchyItem} ${styles.keyResult}`}>
-                                                    {keyResult.title}
-                                                </div>
-                                                {keyResult.tasks.map((task) => (
-                                                    <div
-                                                        key={task.id}
-                                                        className={`${styles.hierarchyItem} ${styles.taskItem}`}
-                                                        onClick={() => handleTaskSelect(task.id, task.title, objective.id)}
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name="selectedTask"
-                                                            checked={selectedTask === task.id}
-                                                            onChange={() => handleTaskSelect(task.id, task.title, objective.id)}
-                                                            className={styles.radioButton}
-                                                        />
-                                                        <span className={styles.taskTitle}>{task.title}</span>
-                                                        <span className={styles.taskStatus}>
-                                                            ({task.task_status})
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <option key={objective.id} value={objective.id}>
+                                        {objective.title}
+                                    </option>
                                 ))}
-                                {taskHierarchy.length === 0 && (
-                                    <div className={styles.noTasks}>
-                                        No tasks available
-                                    </div>
-                                )}
-                            </div>
+                            </select>
+                            {taskHierarchy.length === 0 && (
+                                <div className={styles.fieldNote}>
+                                    No objectives with tasks are available.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Select Task</label>
+                            <select
+                                className={styles.formSelect}
+                                value={selectedTask}
+                                onChange={(e) => handleTaskChange(e.target.value)}
+                                disabled={!selectedObjective || (selectedObjective?.keyResults?.length || 0) === 0}
+                            >
+                                <option value="">
+                                    {selectedObjectiveId ? 'Choose a task' : 'Select an objective first'}
+                                </option>
+                                {selectedObjective?.keyResults?.map((keyResult) => (
+                                    <optgroup key={keyResult.id} label={keyResult.title}>
+                                        {keyResult.tasks.map((task) => (
+                                            <option key={task.id} value={task.id}>
+                                                {task.title} {task.task_status ? `(${task.task_status})` : ''}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                            </select>
+                            {selectedObjectiveId && (selectedObjective?.keyResults?.length || 0) === 0 && (
+                                <div className={styles.fieldNote}>
+                                    No tasks available under this objective.
+                                </div>
+                            )}
                         </div>
 
                         <div className={styles.formGroup}>
@@ -897,7 +923,7 @@ export default function CalendarPage() {
                             <button
                                 className={`${styles.modalButton} ${styles.modalButtonCreate}`}
                                 onClick={handleSchedule}
-                                disabled={!selectedTask || loading}
+                                disabled={!selectedTask || !selectedObjectiveId || loading}
                             >
                                 {loading ? 'Scheduling...' : 'Schedule'}
                             </button>

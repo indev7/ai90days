@@ -531,94 +531,10 @@
     line-height: 1.5;
 }
 
-/* Task List Container */
-.taskListContainer {
-    max-height: 350px;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--bg-solid);
-    padding: 8px;
-}
-
-.objectiveSection {
-    margin-bottom: 8px;
-}
-
-.objectiveSection:last-child {
-    margin-bottom: 0;
-}
-
-.hierarchyItem {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.hierarchyItem:last-child {
-    border-bottom: none;
-}
-
-.hierarchyItem.objective {
-    background: var(--brand-50);
-    font-weight: 600;
-    color: var(--text);
-    cursor: default;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: var(--radius-sm);
-}
-
-.hierarchyItem.keyResult {
-    background: var(--brand-100);
-    padding-left: 24px;
-    font-weight: 500;
-    color: var(--text);
-    cursor: default;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: var(--radius-sm);
-}
-
-.hierarchyItem.taskItem {
-    padding-left: 36px;
-    color: var(--text);
-    transition: background-color 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-}
-
-.hierarchyItem.taskItem:hover {
-    background: var(--brand-100);
-}
-
-.radioButton {
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-    accent-color: var(--primary);
-}
-
-.taskTitle {
-    flex: 1;
-}
-
-.taskStatus {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-left: auto;
-}
-
-.noTasks {
-    padding: 16px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 14px;
+.fieldNote {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 /* Responsive Design */
