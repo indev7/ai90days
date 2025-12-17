@@ -120,6 +120,87 @@ textarea:focus {
   box-shadow: 0 2px 6px rgba(124, 58, 237, 0.15);
 }
 
+/* PrimeReact datepicker overlay overrides (rendered outside modules) */
+.p-datepicker {
+  z-index: 12000 !important;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  background: var(--surface-0);
+  overflow: hidden;
+}
+
+.p-datepicker-header {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border: none;
+  padding: 0.75rem 1rem;
+}
+
+.p-datepicker-title select {
+  background: var(--surface-0);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  font-weight: 500;
+  appearance: none;
+}
+
+.p-datepicker-prev,
+.p-datepicker-next {
+  color: var(--text-primary);
+}
+
+.p-datepicker-calendar-container {
+  padding: 0 1rem 1rem;
+}
+
+.p-datepicker table th {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.p-datepicker .p-highlight {
+  background: var(--accent-color);
+  color: white;
+}
+
+.p-datepicker-buttonbar {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.p-datepicker-buttonbar .p-button {
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  box-shadow: none;
+  padding: 0.6rem 1rem;
+}
+
+.p-datepicker-buttonbar .p-button:not(:disabled):hover {
+  background: var(--surface-2);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.p-datepicker-buttonbar .p-button.p-button-text {
+  background: var(--surface-0);
+  border: 1px solid transparent;
+}
+
+.p-datepicker-buttonbar .p-button:last-of-type {
+  background: var(--accent-gradient);
+  border: none;
+  color: white;
+}
+
+.p-datepicker-buttonbar .p-button:last-of-type:hover {
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
 /* Utility classes */
 .visually-hidden {
   position: absolute !important;
