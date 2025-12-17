@@ -153,6 +153,34 @@
   color: var(--muted-light);
 }
 
+.passwordField {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toggleButton {
+  position: absolute;
+  right: var(--space-3);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggleButton:hover {
+  color: var(--text);
+}
+
+.toggleIcon {
+  width: 20px;
+  height: 20px;
+}
+
 .error {
   background: var(--danger-light);
   color: var(--danger);

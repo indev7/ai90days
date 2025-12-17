@@ -203,25 +203,61 @@ export async function GET(request) {
                 WHERE c.okrt_id = ?
                 ORDER BY c.created_at ASC
               `, [okrt.id]);
-              
-              // Fetch KRs (Key Results) for this objective
+
+              // Fetch KRs (Key Results) for this objective with minimal fields for rendering
               const keyResults = await all(`
-                SELECT o.id, o.description, o.progress
+                SELECT o.id, o.parent_id, o.description, o.progress, o.due_date, o.task_status, o.order_index
                 FROM okrt o
                 WHERE o.parent_id = ? AND o.type = 'K'
                 ORDER BY o.order_index ASC
               `, [okrt.id]);
-              
-              // Transform KRs to simple array with only description and progress
-              const krs = keyResults.map(kr => ({
+
+              const krIds = keyResults.map((kr) => kr.id);
+              const tasksByKr = new Map();
+
+              if (krIds.length > 0) {
+                const placeholders = krIds.map(() => '?').join(', ');
+                const tasks = await all(
+                  `
+                  SELECT t.id, t.parent_id, t.title, t.description, t.progress, t.due_date, t.task_status, t.order_index
+                  FROM okrt t
+                  WHERE t.parent_id IN (${placeholders}) AND t.type = 'T'
+                  ORDER BY t.order_index ASC
+                `,
+                  krIds
+                );
+
+                tasks.forEach((task) => {
+                  const existing = tasksByKr.get(task.parent_id) || [];
+                  existing.push({
+                    id: task.id,
+                    parent_id: task.parent_id,
+                    title: task.title,
+                    description: task.description,
+                    progress: Math.round(task.progress || 0),
+                    due_date: task.due_date,
+                    task_status: task.task_status,
+                    order_index: task.order_index,
+                  });
+                  tasksByKr.set(task.parent_id, existing);
+                });
+              }
+
+              const krs = keyResults.map((kr) => ({
+                id: kr.id,
+                parent_id: kr.parent_id,
                 description: kr.description,
-                progress: Math.round(kr.progress || 0)
+                progress: Math.round(kr.progress || 0),
+                due_date: kr.due_date,
+                task_status: kr.task_status,
+                order_index: kr.order_index,
+                tasks: tasksByKr.get(kr.id) || [],
               }));
-              
+
               return {
                 ...okrt,
                 comments,
-                keyResults: krs
+                keyResults: krs,
               };
             })
           );

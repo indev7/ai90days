@@ -139,6 +139,85 @@
   color: var(--text-primary);
 }
 
+:global(.p-datepicker) {
+  z-index: 12000 !important;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  background: var(--surface-0);
+  overflow: hidden;
+}
+
+:global(.p-datepicker-header) {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border: none;
+  padding: 0.75rem 1rem;
+}
+
+:global(.p-datepicker-title select) {
+  background: var(--surface-0);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  font-weight: 500;
+  appearance: none;
+}
+
+:global(.p-datepicker-prev),
+:global(.p-datepicker-next) {
+  color: var(--text-primary);
+}
+
+:global(.p-datepicker-calendar-container) {
+  padding: 0 1rem 1rem;
+}
+
+:global(.p-datepicker table th) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:global(.p-datepicker .p-highlight) {
+  background: var(--accent-color);
+  color: white;
+}
+
+:global(.p-datepicker-buttonbar) {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border-light);
+}
+
+:global(.p-datepicker-buttonbar .p-button) {
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  box-shadow: none;
+  padding: 0.6rem 1rem;
+}
+
+:global(.p-datepicker-buttonbar .p-button:not(:disabled):hover) {
+  background: var(--surface-2);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+:global(.p-datepicker-buttonbar .p-button.p-button-text) {
+  background: var(--surface-0);
+  border: 1px solid transparent;
+}
+
+:global(.p-datepicker-buttonbar .p-button:last-of-type) {
+  background: var(--accent-gradient);
+  border: none;
+  color: white;
+}
+
+:global(.p-datepicker-buttonbar .p-button:last-of-type:hover) {
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
 .formRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -172,6 +251,22 @@
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23838fa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  cursor: pointer;
+}
+
+.select::-ms-expand {
+  display: none;
 }
 
 .inputError {

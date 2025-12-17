@@ -106,7 +106,8 @@
   font-weight: 400;
 }
 
-.loading, .error {
+.loading,
+.error {
   text-align: center;
   padding: 3rem;
   color: var(--text-secondary);
@@ -216,10 +217,9 @@
   border-radius: 50%;
   object-fit: cover;
   background: linear-gradient(135deg,
-    var(--brand-primary) 0%,
-    var(--brand-secondary) 50%,
-    var(--brand-accent) 100%
-  );
+      var(--brand-primary) 0%,
+      var(--brand-secondary) 50%,
+      var(--brand-accent) 100%);
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
@@ -230,10 +230,9 @@
   height: 34px;
   border-radius: 50%;
   background: linear-gradient(135deg,
-    var(--brand-primary) 0%,
-    var(--brand-secondary) 50%,
-    var(--brand-accent) 100%
-  );
+      var(--brand-primary) 0%,
+      var(--brand-secondary) 50%,
+      var(--brand-accent) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -461,11 +460,32 @@
 
 .orgChartWrapper {
   width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
   text-align: center;
+  cursor: grab;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  position: relative;
+
+  /* Hide scrollbars */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.orgChartWrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.orgChartWrapper.dragging {
+  cursor: grabbing;
 }
 
 .orgChart {
   display: inline-block;
+  min-width: min-content;
 }
 
 .orgChart :global(.p-organizationchart),
@@ -475,7 +495,8 @@
 }
 
 .orgChart :global(.p-organizationchart-table) {
-  border-spacing: 4px 0; /* reduced horizontal gap, tight vertical spacing */
+  border-spacing: 4px 0;
+  /* reduced horizontal gap, tight vertical spacing */
 }
 
 .orgChart :global(.p-organizationchart-node) {
@@ -579,19 +600,19 @@
   .okrtCard {
     padding: 1rem;
   }
-  
+
   .cardHeader {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .titleSection {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .titleSection h1 {
     font-size: 1.5rem;
   }
@@ -666,8 +687,13 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Update card header for mobile */
@@ -676,16 +702,16 @@
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .followButton {
     padding: 0.4rem 0.8rem;
     font-size: 0.8rem;
   }
-  
+
   .followText {
     display: none;
   }
-  
+
   .cardHeader {
     align-items: flex-start;
   }
