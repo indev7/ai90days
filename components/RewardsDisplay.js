@@ -31,56 +31,33 @@ const RewardsDisplay = ({ comments = [] }) => {
       cookie: '🍪'
     };
 
-    // If total is less than 7, display individual emojis
-    if (totalCount < 7) {
-      const emojis = [];
-      
-      // Add individual medal emojis
-      for (let i = 0; i < medal; i++) {
-        emojis.push(<span key={`medal-${i}`} className={styles.rewardEmoji}>{rewardIcons.medal}</span>);
-      }
-      
-      // Add individual star emojis
-      for (let i = 0; i < star; i++) {
-        emojis.push(<span key={`star-${i}`} className={styles.rewardEmoji}>{rewardIcons.star}</span>);
-      }
-      
-      // Add individual cookie emojis
-      for (let i = 0; i < cookie; i++) {
-        emojis.push(<span key={`cookie-${i}`} className={styles.rewardEmoji}>{rewardIcons.cookie}</span>);
-      }
-      
-      return emojis;
-    } else {
-      // Summarize with emoji and count
-      const summary = [];
-      
-      if (medal > 0) {
-        summary.push(
-          <span key="medal-summary" className={styles.rewardSummary}>
-            {rewardIcons.medal} {medal}
-          </span>
-        );
-      }
-      
-      if (star > 0) {
-        summary.push(
-          <span key="star-summary" className={styles.rewardSummary}>
-            {rewardIcons.star} {star}
-          </span>
-        );
-      }
-      
-      if (cookie > 0) {
-        summary.push(
-          <span key="cookie-summary" className={styles.rewardSummary}>
-            {rewardIcons.cookie} {cookie}
-          </span>
-        );
-      }
-      
-      return summary;
+    const summary = [];
+    
+    if (medal > 0) {
+      summary.push(
+        <span key="medal-summary" className={styles.rewardSummary}>
+          {rewardIcons.medal} {medal}
+        </span>
+      );
     }
+    
+    if (star > 0) {
+      summary.push(
+        <span key="star-summary" className={styles.rewardSummary}>
+          {rewardIcons.star} {star}
+        </span>
+      );
+    }
+    
+    if (cookie > 0) {
+      summary.push(
+        <span key="cookie-summary" className={styles.rewardSummary}>
+          {rewardIcons.cookie} {cookie}
+        </span>
+      );
+    }
+    
+    return summary;
   };
 
   const rewardElements = getRewardEmojis();
