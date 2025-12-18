@@ -97,10 +97,11 @@ export default function ObjectiveHeader({
     <div className={`${styles.objectiveHeader} ${!isExpanded ? styles.collapsed : ''}`}>
       <div className={styles.objectiveMainContent}>
         <div className={styles.objectiveInfo}>
-          <div className={styles.objectiveIcon}>
-            <GrTrophy size={20} />
-          </div>
+            <div className={styles.objectiveIcon}>
+              <GrTrophy size={20} />
+            </div>
           <div>
+     
             <h1
               className={styles.objectiveTitle}
               onClick={readOnly ? undefined : () => onEditObjective(objective)}
