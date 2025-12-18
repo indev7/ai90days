@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { GrTrophy } from 'react-icons/gr';
 import { MdFilterCenterFocus } from "react-icons/md";
 import Chip from './Chip';
 import ProgressRing from './ProgressRing';
 import RewardsDisplay from '../RewardsDisplay';
 import styles from '../../app/okrt/page.module.css';
+import useMainTreeStore from '@/store/mainTreeStore';
 
 export default function ObjectiveHeader({
   objective,
@@ -16,6 +18,63 @@ export default function ObjectiveHeader({
   readOnly = false,
   comments = []
 }) {
+  // Pull groups from mainTree so we can infer sharing membership across pages
+  const groups = useMainTreeStore((state) => state.mainTree?.groups || []);
+
+  const rewardSummary = useMemo(() => {
+    const counts = { medal: 0, star: 0, cookie: 0 };
+    comments.forEach(comment => {
+      if (comment.type !== 'text' && comment.count && counts.hasOwnProperty(comment.type)) {
+        counts[comment.type] += comment.count;
+      }
+    });
+    const total = counts.medal + counts.star + counts.cookie;
+    return { counts, hasRewards: total > 0 };
+  }, [comments]);
+
+  const sharedGroups = useMemo(() => {
+    const rawGroups = objective.shared_groups || objective.sharedGroups || [];
+    const normalizedFromObjective = rawGroups
+      .map((group, idx) => {
+        if (!group) return null;
+        if (typeof group === 'string') return { id: group, name: group };
+        if (typeof group === 'number') return { id: group, name: String(group) };
+        const name = group.name || group.group_name || group.title || group.label || group.display_name;
+        const id = group.id || group.group_or_user_id || group.group_id || idx;
+        if (!name) return null;
+        return { id, name };
+      })
+      .filter(Boolean);
+
+    const inferredFromGroups = groups
+      .filter(
+        (group) =>
+          group &&
+          Array.isArray(group.objectiveIds) &&
+          group.objectiveIds.includes(objective.id)
+      )
+      .map((group) => ({
+        id: group.id,
+        name: group.name || group.title || `Group ${group.id}`
+      }));
+
+    // Deduplicate by id, fallback to name when id missing
+    const deduped = new Map();
+    [...normalizedFromObjective, ...inferredFromGroups].forEach((g, idx) => {
+      const key = g.id ?? `${g.name}-${idx}`;
+      if (!deduped.has(key)) {
+        deduped.set(key, g);
+      }
+    });
+
+    return Array.from(deduped.values());
+  }, [objective.id, objective.shared_groups, objective.sharedGroups, groups]);
+
+  const isShared = useMemo(() => {
+    const vis = (objective.visibility || '').toString().toLowerCase();
+    return vis === 'shared' || sharedGroups.length > 0;
+  }, [objective.visibility, sharedGroups.length]);
+
   const getStatusVariant = (status) => {
     switch (status) {
       case 'A': return 'active';
@@ -59,26 +118,33 @@ export default function ObjectiveHeader({
               <div className={styles.chipGroup} title={`Status: ${getStatusLabel(objective.status)}`}>
                 <Chip text={getStatusLabel(objective.status)} variant={getStatusVariant(objective.status)} />
               </div>
-              <div className={styles.chipGroup} title={`Visibility: ${objective.visibility === 'shared' ? 'Shared' : 'Private'}`}>
-                <Chip text={objective.visibility === 'shared' ? 'Shared' : 'Private'} variant={objective.visibility === 'shared' ? 'shared' : 'private'} />
-              </div>
               {objective.owner_name && (
                 <div className={styles.chipGroup} title={`Owner: ${objective.owner_name}`}>
                   <Chip text={objective.owner_name} variant="owner" />
                 </div>
               )}
-              {objective.shared_groups && objective.shared_groups.length > 0 && objective.shared_groups
-                .filter(group => group && group.name)
-                .map((group) => (
+              <div className={styles.chipGroup} title={`Visibility: ${isShared ? 'Shared' : 'Private'}`}>
+                <Chip text={isShared ? 'Shared' : 'Private'} variant={isShared ? 'shared' : 'private'} />
+              </div>
+              {sharedGroups.length > 0 &&
+                sharedGroups.map((group) => (
                   <div key={group.id} className={styles.chipGroup} title={`Shared with group: ${group.name}`}>
                     <Chip text={group.name} variant="group" />
                   </div>
                 ))}
-            </div>
+              {rewardSummary.hasRewards && (
+                <div className={styles.objectiveRewardsRow}>
+                  <div className={`${styles.chip} ${styles.rewardsLabel}`} title="Rewards received">
+                    Rewards
+                </div>
+                <RewardsDisplay comments={comments} />
+              </div>
+            )}
           </div>
         </div>
-          <div className={styles.objectiveActions}>
-          <div className={styles.progressSection}>
+      </div>
+      <div className={styles.objectiveActions}>
+        <div className={styles.progressSection}>
             <div className={styles.progressItem}>
               <ProgressRing value={(objective.confidence ?? 0) / 100} size={64} color="var(--brand-secondary)" />
               <div className={styles.progressLabel}>confidence</div>
@@ -129,9 +195,6 @@ export default function ObjectiveHeader({
                   <polyline points="6,9 12,15 18,9"/>
                 </svg>
               </button>
-            </div>
-            <div className={styles.objectiveRewards}>
-              <RewardsDisplay comments={comments} />
             </div>
           </div>
         </div>

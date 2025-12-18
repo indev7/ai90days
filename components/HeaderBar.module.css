@@ -125,15 +125,15 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--header-logo, var(--brand-700));
+  text-align: left;
 }
 
 .center {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex: 1;
 }
-
 
 
 .right {
@@ -221,6 +221,19 @@
 
 /* Mobile adjustments */
 @media (max-width: 767px) {
+  .header {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+
+  .left {
+    gap: var(--space-2);
+  }
+
+  .mobileHamburger {
+    padding: var(--space-1);
+  }
+
   .logoNumber {
     font-size: 1.75rem;
   }
