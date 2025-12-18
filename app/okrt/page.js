@@ -517,7 +517,10 @@ export default function OKRTPage() {
     return groups;
   }, [filteredObjectives, objectiveRootMap]);
 
-  const showFamilyBorders = filteredObjectives.length > 1;
+  const showFamilyBorders = useMemo(() => {
+    // Only show colored grouping when at least one family has a hierarchy
+    return familyGroups.some((group) => group.objectives.length > 1);
+  }, [familyGroups]);
 
   if (loading) {
     return (

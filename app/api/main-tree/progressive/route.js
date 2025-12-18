@@ -74,6 +74,91 @@ export async function GET(request) {
           sendSection('preferences', preferences);
           console.log('[Progressive] ✅ preferences sent');
 
+          // Preload groups so we can map shared objectives without extra queries
+          console.log('[Progressive] Loading groups (preload)...');
+          const allGroups = await all(`
+            SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url,
+                   g.vision, g.mission, g.created_at, g.updated_at
+            FROM groups g
+            ORDER BY g.name ASC
+          `);
+
+          const userMemberships = await all(`
+            SELECT group_id, is_admin
+            FROM user_group
+            WHERE user_id = ?
+          `, [userId]);
+
+          const membershipMap = new Map();
+          userMemberships.forEach(membership => {
+            membershipMap.set(membership.group_id, {
+              is_member: true,
+              is_admin: membership.is_admin
+            });
+          });
+
+          const groupsWithDetails = await Promise.all(
+            allGroups.map(async (group) => {
+              const membership = membershipMap.get(group.id) || { is_member: false, is_admin: false };
+              
+              const members = await all(`
+                SELECT u.id, u.display_name, u.email, u.first_name, u.last_name,
+                       u.profile_picture_url, ug.is_admin
+                FROM users u
+                JOIN user_group ug ON u.id = ug.user_id
+                WHERE ug.group_id = ?
+                ORDER BY ug.is_admin DESC, u.display_name ASC
+              `, [group.id]);
+
+              let objectiveIds = [];
+              let strategicObjectiveIds = [];
+              
+              if (membership.is_member) {
+                const objectiveIdsResult = await all(`
+                  SELECT DISTINCT s.okrt_id, o.updated_at
+                  FROM share s
+                  JOIN okrt o ON s.okrt_id = o.id
+                  WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared'
+                  ORDER BY o.updated_at DESC
+                `, [group.id]);
+                objectiveIds = objectiveIdsResult.map(obj => obj.okrt_id);
+                
+                // Fetch strategic objectives for this group
+                const strategicObjectivesResult = await all(`
+                  SELECT so.okrt_id
+                  FROM strategic_objectives so
+                  WHERE so.group_id = ?
+                  ORDER BY so.created_at ASC
+                `, [group.id]);
+                strategicObjectiveIds = strategicObjectivesResult.map(obj => obj.okrt_id);
+              }
+
+              return {
+                ...group,
+                is_member: membership.is_member,
+                is_admin: membership.is_admin,
+                members,
+                objectiveIds,
+                strategicObjectiveIds
+              };
+            })
+          );
+
+          // Build lookup of shared groups per objective from the preloaded group data
+          const sharedGroupsByObjective = new Map();
+          groupsWithDetails.forEach((group) => {
+            if (!Array.isArray(group.objectiveIds)) return;
+            group.objectiveIds.forEach((objId) => {
+              if (!sharedGroupsByObjective.has(objId)) {
+                sharedGroupsByObjective.set(objId, []);
+              }
+              sharedGroupsByObjective.get(objId).push({
+                id: group.id,
+                name: group.name || `Group ${group.id}`
+              });
+            });
+          });
+
           // 1. Load MyOKRTs
           console.log('[Progressive] Loading myOKRTs...');
           const myOKRTs = await all(`
@@ -93,7 +178,7 @@ export async function GET(request) {
             ORDER BY CASE WHEN o.parent_id IS NULL THEN 0 ELSE 1 END, o.order_index ASC
           `, [userId]);
 
-          // Fetch comments for objectives
+          // Fetch comments for objectives and attach sharing metadata
           const myOKRTsWithComments = await Promise.all(
             myOKRTs.map(async (okrt) => {
               if (okrt.type === 'O') {
@@ -111,7 +196,12 @@ export async function GET(request) {
                   WHERE c.okrt_id = ?
                   ORDER BY c.created_at ASC
                 `, [okrt.id]);
-                return { ...okrt, comments };
+
+                return {
+                  ...okrt,
+                  comments,
+                  shared_groups: sharedGroupsByObjective.get(okrt.id) || []
+                };
               }
               return okrt;
             })
@@ -265,76 +355,8 @@ export async function GET(request) {
           sendSection('sharedOKRTs', sharedOKRTs);
           console.log('[Progressive] ✅ sharedOKRTs sent');
 
-          // 5. Load Groups
-          console.log('[Progressive] Loading groups...');
-          const allGroups = await all(`
-            SELECT g.id, g.name, g.type, g.parent_group_id, g.thumbnail_url,
-                   g.vision, g.mission, g.created_at, g.updated_at
-            FROM groups g
-            ORDER BY g.name ASC
-          `);
-
-          const userMemberships = await all(`
-            SELECT group_id, is_admin
-            FROM user_group
-            WHERE user_id = ?
-          `, [userId]);
-
-          const membershipMap = new Map();
-          userMemberships.forEach(membership => {
-            membershipMap.set(membership.group_id, {
-              is_member: true,
-              is_admin: membership.is_admin
-            });
-          });
-
-          const groupsWithDetails = await Promise.all(
-            allGroups.map(async (group) => {
-              const membership = membershipMap.get(group.id) || { is_member: false, is_admin: false };
-              
-              const members = await all(`
-                SELECT u.id, u.display_name, u.email, u.first_name, u.last_name,
-                       u.profile_picture_url, ug.is_admin
-                FROM users u
-                JOIN user_group ug ON u.id = ug.user_id
-                WHERE ug.group_id = ?
-                ORDER BY ug.is_admin DESC, u.display_name ASC
-              `, [group.id]);
-
-              let objectiveIds = [];
-              let strategicObjectiveIds = [];
-              
-              if (membership.is_member) {
-                const objectiveIdsResult = await all(`
-                  SELECT DISTINCT s.okrt_id, o.updated_at
-                  FROM share s
-                  JOIN okrt o ON s.okrt_id = o.id
-                  WHERE s.group_or_user_id = ? AND s.share_type = 'G' AND o.visibility = 'shared'
-                  ORDER BY o.updated_at DESC
-                `, [group.id]);
-                objectiveIds = objectiveIdsResult.map(obj => obj.okrt_id);
-                
-                // Fetch strategic objectives for this group
-                const strategicObjectivesResult = await all(`
-                  SELECT so.okrt_id
-                  FROM strategic_objectives so
-                  WHERE so.group_id = ?
-                  ORDER BY so.created_at ASC
-                `, [group.id]);
-                strategicObjectiveIds = strategicObjectivesResult.map(obj => obj.okrt_id);
-              }
-
-              return {
-                ...group,
-                is_member: membership.is_member,
-                is_admin: membership.is_admin,
-                members,
-                objectiveIds,
-                strategicObjectiveIds
-              };
-            })
-          );
-          
+          // 5. Load Groups (send preloaded data)
+          console.log('[Progressive] Sending groups...');
           sendSection('groups', groupsWithDetails);
           console.log('[Progressive] ✅ groups sent');
 
