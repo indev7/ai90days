@@ -800,18 +800,6 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
 
         {error && <div className={styles.error}>{error}</div>}
 
-        {isLeaveProject && (
-          <div className={styles.pendingCountBanner}>
-            {loadingPending ? (
-              <span>Loading pending leaves...</span>
-            ) : (
-              <span>
-                📋 Pending {formData.leaveType ? formData.leaveType : 'Leave'} Requests: <strong>{pendingCount}</strong>
-              </span>
-            )}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className={styles.createForm}>
           <div className={styles.formGroup}>
             <label>Project *</label>
@@ -836,6 +824,15 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
               ))}
             </select>
           </div>
+
+          {isLeaveProject && formData.parentIssue && (
+            <div className={styles.formGroup}>
+              <label>Pending Leaves</label>
+              <div className={styles.infoField}>
+                {loadingPending ? 'Loading...' : `${pendingCount} days remaining`}
+              </div>
+            </div>
+          )}
 
           <div className={styles.formGroup}>
             <label>Issue Type *</label>

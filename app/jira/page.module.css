@@ -846,20 +846,13 @@
   font-weight: 600;
 }
 
-.pendingCountBanner {
-  background: linear-gradient(135deg, #7dd71d 0%, #60a5fa 100%);
-  padding: 1rem 1.5rem;
-  border-radius: 0.75rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  font-size: 1rem;
-  color: white;
-  box-shadow: var(--shadow-1);
-}
-
-.pendingCountBanner strong {
-  font-size: 1.25rem;
-  font-weight: 700;
+.infoField {
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
 }
 
 .createForm {
