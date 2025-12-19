@@ -15,9 +15,71 @@ export default function ProfilePage() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+  const EyeIcon = ({ isVisible }) => (
+    <svg
+      className={styles.toggleIcon}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      {isVisible ? (
+        <>
+          <path
+            d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="3"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M3 3l18 18"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M9.88 9.88A3 3 0 0 0 12 15a3 3 0 0 0 2.12-.88M9.88 9.88 6.5 6.5m7.62 7.62 3.38 3.38m-1.64-4.96A7.8 7.8 0 0 1 21 12s-3.5-6-9-6a8.1 8.1 0 0 0-3.16.63m-2.3 1.32C4.3 9.54 3 12 3 12s1.3 2.46 3.54 3.54"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </svg>
+  );
+  const getCurrentNameParts = (userData) => ({
+    first: userData?.firstName || userData?.displayName?.split(' ')[0] || '',
+    last: userData?.lastName || userData?.displayName?.split(' ').slice(1).join(' ') || '',
+  });
+  const hasChanges = (() => {
+    if (!user) return false;
+    const { first: currentFirstName, last: currentLastName } = getCurrentNameParts(user);
+    const nameChanged =
+      formData.firstName.trim() !== currentFirstName || formData.lastName.trim() !== currentLastName;
+    const passwordChanged =
+      formData.currentPassword || formData.newPassword || formData.confirmPassword;
+    return nameChanged || passwordChanged;
+  })();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -28,10 +90,11 @@ export default function ProfilePage() {
           setUser(data.user);
           
           // Use actual first/last names if available, otherwise split display name
+          const { first, last } = getCurrentNameParts(data.user);
           setFormData(prev => ({
             ...prev,
-            firstName: data.user.firstName || data.user.displayName.split(' ')[0] || '',
-            lastName: data.user.lastName || data.user.displayName.split(' ').slice(1).join(' ') || '',
+            firstName: first,
+            lastName: last,
           }));
         } else {
           router.push('/login');
@@ -57,15 +120,31 @@ export default function ProfilePage() {
     setSuccess('');
   };
 
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
     try {
+      const trimmedFirstName = formData.firstName.trim();
+      const trimmedLastName = formData.lastName.trim();
+      const { first: currentFirstName, last: currentLastName } = getCurrentNameParts(user);
+      const hasNameChange =
+        trimmedFirstName !== currentFirstName || trimmedLastName !== currentLastName;
+      const hasPasswordChange =
+        formData.currentPassword || formData.newPassword || formData.confirmPassword;
+
+      if (!hasNameChange && !hasPasswordChange) {
+        return;
+      }
+
       const updateData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
       };
 
       // Only include password if provided
@@ -109,10 +188,11 @@ export default function ProfilePage() {
           const userData = await userResponse.json();
           setUser(userData.user);
           // Update form data with new values
+          const { first, last } = getCurrentNameParts(userData.user);
           setFormData(prev => ({
             ...prev,
-            firstName: userData.user.firstName || userData.user.displayName.split(' ')[0] || '',
-            lastName: userData.user.lastName || userData.user.displayName.split(' ').slice(1).join(' ') || '',
+            firstName: first,
+            lastName: last,
           }));
         }
       } else {
@@ -135,9 +215,10 @@ export default function ProfilePage() {
     setSuccess('');
     
     // Reset form data
+    const { first, last } = getCurrentNameParts(user);
     setFormData({
-      firstName: user.firstName || user.displayName.split(' ')[0] || '',
-      lastName: user.lastName || user.displayName.split(' ').slice(1).join(' ') || '',
+      firstName: first,
+      lastName: last,
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
@@ -229,42 +310,72 @@ export default function ProfilePage() {
                 <div className={styles.info}>
                   <div className={styles.field}>
                     <label htmlFor="currentPassword" className={styles.label}>Current Password</label>
-                    <input
-                      type="password"
-                      id="currentPassword"
-                      name="currentPassword"
-                      value={formData.currentPassword}
-                      onChange={handleInputChange}
-                      className={styles.input}
-                      autoComplete="current-password"
-                    />
+                    <div className={styles.passwordField}>
+                      <input
+                        type={showPasswords.current ? 'text' : 'password'}
+                        id="currentPassword"
+                        name="currentPassword"
+                        value={formData.currentPassword}
+                        onChange={handleInputChange}
+                        className={styles.input}
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        className={styles.toggleButton}
+                        onClick={() => togglePasswordVisibility('current')}
+                        aria-label={showPasswords.current ? 'Hide current password' : 'Show current password'}
+                      >
+                        <EyeIcon isVisible={showPasswords.current} />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className={styles.field}>
                     <label htmlFor="newPassword" className={styles.label}>New Password</label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      name="newPassword"
-                      value={formData.newPassword}
-                      onChange={handleInputChange}
-                      className={styles.input}
-                      autoComplete="new-password"
-                      placeholder="8+ characters with letters and numbers"
-                    />
+                    <div className={styles.passwordField}>
+                      <input
+                        type={showPasswords.new ? 'text' : 'password'}
+                        id="newPassword"
+                        name="newPassword"
+                        value={formData.newPassword}
+                        onChange={handleInputChange}
+                        className={styles.input}
+                        autoComplete="new-password"
+                        placeholder="8+ characters with letters and numbers"
+                      />
+                      <button
+                        type="button"
+                        className={styles.toggleButton}
+                        onClick={() => togglePasswordVisibility('new')}
+                        aria-label={showPasswords.new ? 'Hide new password' : 'Show new password'}
+                      >
+                        <EyeIcon isVisible={showPasswords.new} />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className={styles.field}>
                     <label htmlFor="confirmPassword" className={styles.label}>Confirm New Password</label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className={styles.input}
-                      autoComplete="new-password"
-                    />
+                    <div className={styles.passwordField}>
+                      <input
+                        type={showPasswords.confirm ? 'text' : 'password'}
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        className={styles.input}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className={styles.toggleButton}
+                        onClick={() => togglePasswordVisibility('confirm')}
+                        aria-label={showPasswords.confirm ? 'Hide confirm password' : 'Show confirm password'}
+                      >
+                        <EyeIcon isVisible={showPasswords.confirm} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -273,7 +384,7 @@ export default function ProfilePage() {
             <div className={styles.actions}>
               {isEditing ? (
                 <>
-                  <button type="submit" className="btn btn-primary">
+                  <button type="submit" className="btn btn-primary" disabled={!hasChanges}>
                     Save Changes
                   </button>
                   <button type="button" onClick={handleCancel} className="btn btn-secondary">

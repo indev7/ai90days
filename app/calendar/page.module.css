@@ -425,18 +425,32 @@
 
 .formSelect {
     width: 100%;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-solid);
-    color: var(--text);
-    font-size: 14px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background-color: var(--surface-0);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23838fa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.formSelect:hover {
+    border-color: var(--accent-color);
 }
 
 .formSelect:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--brand-100);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .timePickerContainer {
@@ -447,19 +461,28 @@
 
 .timeSelect {
     flex: 1;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-solid);
-    color: var(--text);
-    font-size: 14px;
+    padding: 0.75rem;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background-color: var(--surface-0);
+    color: var(--text-primary);
+    font-size: 0.95rem;
     text-align: center;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23838fa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .timeSelect:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--brand-100);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
 .timeSeparator {
@@ -531,94 +554,10 @@
     line-height: 1.5;
 }
 
-/* Task List Container */
-.taskListContainer {
-    max-height: 350px;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--bg-solid);
-    padding: 8px;
-}
-
-.objectiveSection {
-    margin-bottom: 8px;
-}
-
-.objectiveSection:last-child {
-    margin-bottom: 0;
-}
-
-.hierarchyItem {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.hierarchyItem:last-child {
-    border-bottom: none;
-}
-
-.hierarchyItem.objective {
-    background: var(--brand-50);
-    font-weight: 600;
-    color: var(--text);
-    cursor: default;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: var(--radius-sm);
-}
-
-.hierarchyItem.keyResult {
-    background: var(--brand-100);
-    padding-left: 24px;
-    font-weight: 500;
-    color: var(--text);
-    cursor: default;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: var(--radius-sm);
-}
-
-.hierarchyItem.taskItem {
-    padding-left: 36px;
-    color: var(--text);
-    transition: background-color 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-}
-
-.hierarchyItem.taskItem:hover {
-    background: var(--brand-100);
-}
-
-.radioButton {
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
-    accent-color: var(--primary);
-}
-
-.taskTitle {
-    flex: 1;
-}
-
-.taskStatus {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-left: auto;
-}
-
-.noTasks {
-    padding: 16px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 14px;
+.fieldNote {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 /* Responsive Design */

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { formatNotificationTime } from '@/lib/dateUtils';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 import styles from './CommentsSection.module.css';
 
 const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, isExpanded: externalExpanded, comments: initialComments = [] }) => {
@@ -69,21 +70,37 @@ const CommentsSection = ({ okrtId, currentUserId, okrtOwnerId, onRewardUpdate, i
       });
 
       const data = await response.json();
+      const processedData = processCacheUpdateFromData(data);
 
       if (response.ok) {
+        const savedComment = processedData.comment;
+
         // Reset form
         setNewComment('');
         setRewardType('text');
         setRewardCount(1);
         setReplyingTo(null);
         setShowCommentForm(false);
+
+        // Optimistically update local comments while cache updates propagate
+        if (savedComment) {
+          const normalizedComment = {
+            sender_name: savedComment.sender_name || 'You',
+            ...savedComment
+          };
+          setComments((prev) => {
+            const filtered = prev.filter((comment) => comment.id !== normalizedComment.id);
+            const updated = [...filtered, normalizedComment];
+            return updated.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+          });
+        }
         
         // Trigger reward update callback to refresh mainTree
         if (onRewardUpdate) {
           onRewardUpdate();
         }
       } else {
-        alert(data.error || 'Failed to post comment');
+        alert(processedData.error || 'Failed to post comment');
       }
     } catch (error) {
       console.error('Error posting comment:', error);
