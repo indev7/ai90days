@@ -1,12 +1,42 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { SiJira } from 'react-icons/si';
+import { HiOutlineRefresh } from 'react-icons/hi';
 import Pagination from '@/components/Pagination';
+import { getThemeColorPalette } from '@/lib/clockUtils';
 import styles from './page.module.css';
 
+// Generate consistent color for each project using dashboard clock colors
+function getProjectColor(projectIndex) {
+  const colors = getThemeColorPalette();
+  return colors[projectIndex % colors.length];
+}
+
+// Get status category class based on status text
+function getStatusClass(status) {
+  const statusLower = status?.toLowerCase() || '';
+
+  // Cancelled/Canceled
+  if (statusLower.includes('cancel')) {
+    return 'cancelled';
+  }
+
+  // Done/Complete
+  if (statusLower.includes('done') || statusLower.includes('complete') || statusLower.includes('closed') || statusLower.includes('resolved')) {
+    return 'done';
+  }
+
+  // In Progress
+  if (statusLower.includes('progress') || statusLower.includes('development') || statusLower.includes('review')) {
+    return 'inprogress';
+  }
+
+  // Default (New/Todo)
+  return 'todo';
+}
+
 export default function JiraPage() {
-  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
@@ -130,6 +160,32 @@ export default function JiraPage() {
     }
   }, [isAuthenticated, loadTickets]);
 
+  // Group tickets by project
+  const groupedTickets = useMemo(() => {
+    const groups = {};
+    const projectKeys = [];
+
+    // First pass: collect unique project keys in order of appearance
+    tickets.forEach(ticket => {
+      const projectKey = ticket.project?.key || ticket.key.split('-')[0];
+      if (!groups[projectKey]) {
+        projectKeys.push(projectKey);
+        groups[projectKey] = {
+          projectKey,
+          projectName: ticket.project?.name || projectKey,
+          tickets: []
+        };
+      }
+      groups[projectKey].tickets.push(ticket);
+    });
+
+    // Second pass: assign colors sequentially
+    return projectKeys.map((projectKey, index) => ({
+      ...groups[projectKey],
+      color: getProjectColor(index)
+    }));
+  }, [tickets]);
+
   const handleRefresh = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
     loadTickets();
@@ -226,7 +282,7 @@ export default function JiraPage() {
       <div className={styles.main}>
         <div className={styles.header}>
           <div className={styles.titleSection}>
-            <span className={styles.pageIcon}>🎫</span>
+            <SiJira className={styles.pageIcon} />
             <h1>Jira Tickets</h1>
           </div>
           <div className={styles.headerActions}>
@@ -236,7 +292,7 @@ export default function JiraPage() {
               disabled={loadingTickets}
               title="Refresh tickets"
             >
-              {loadingTickets ? <span className={styles.spinner}></span> : '🔄'}
+              {loadingTickets ? <span className={styles.spinner}></span> : <HiOutlineRefresh />}
             </button>
             <button onClick={() => setShowCreateModal(true)} className={styles.createButton}>
               Create Ticket
@@ -292,36 +348,51 @@ export default function JiraPage() {
 
         <div className={styles.content}>
           <div className={styles.ticketListWrapper}>
-            <div className={styles.ticketList}>
+            <div className={styles.ticketGroups}>
               {loadingTickets ? (
                 <LoadingSkeleton />
               ) : tickets.length === 0 ? (
                 <div className={styles.emptyState}>No tickets found</div>
               ) : (
-                tickets.map(ticket => (
-                  <div
-                    key={ticket.key}
-                    className={styles.ticketCard}
-                    onClick={() => handleTicketClick(ticket)}
-                  >
-                    <div className={styles.ticketHeader}>
-                      <span
-                        className={styles.ticketKey}
-                        onClick={(e) => handleTicketKeyClick(ticket.key, e)}
-                        title="Click to open in Jira"
-                      >
-                        {ticket.key}
-                      </span>
-                      <span className={`${styles.ticketStatus} ${styles[ticket.statusCategory?.toLowerCase()]}`}>
-                        {ticket.status}
-                      </span>
+                groupedTickets.map(group => (
+                  <div key={group.projectKey} className={styles.projectGroup}>
+                    <div className={styles.projectHeader} style={{ borderLeftColor: group.color }}>
+                      <div className={styles.projectInfo}>
+                        <div className={styles.projectColor} style={{ backgroundColor: group.color }}></div>
+                        <h2 className={styles.projectName}>{group.projectName}</h2>
+                        <span className={styles.projectCount}>({group.tickets.length})</span>
+                      </div>
                     </div>
-                    <h3 className={styles.ticketSummary} title={ticket.summary}>
-                      {ticket.summary}
-                    </h3>
-                    <div className={styles.ticketMeta}>
-                      <span className={styles.ticketType}>{ticket.issueType}</span>
-                      <span className={styles.ticketPriority}>{ticket.priority}</span>
+                    <div className={styles.ticketList}>
+                      {group.tickets.map(ticket => (
+                        <div
+                          key={ticket.key}
+                          className={styles.ticketCard}
+                          style={{ borderColor: group.color, '--project-color': group.color }}
+                          onClick={() => handleTicketClick(ticket)}
+                        >
+                          <span className={styles.projectMarker} aria-hidden="true" />
+                          <div className={styles.ticketHeader}>
+                            <span
+                              className={styles.ticketKey}
+                              onClick={(e) => handleTicketKeyClick(ticket.key, e)}
+                              title="Click to open in Jira"
+                            >
+                              {ticket.key}
+                            </span>
+                          </div>
+                          <h3 className={styles.ticketSummary}>
+                            {ticket.summary}
+                          </h3>
+                          <div className={styles.ticketMeta}>
+                            <span className={`${styles.ticketStatus} ${styles[getStatusClass(ticket.status)]}`}>
+                              {ticket.status}
+                            </span>
+                            <span className={styles.ticketType}>{ticket.issueType}</span>
+                            <span className={styles.ticketPriority}>{ticket.priority}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))
@@ -377,6 +448,28 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
     summary: ticket.summary,
     description: ticket.description,
   });
+  const [availableTransitions, setAvailableTransitions] = useState([]);
+  const [loadingTransitions, setLoadingTransitions] = useState(false);
+
+  // Fetch available transitions when component mounts
+  useEffect(() => {
+    const fetchTransitions = async () => {
+      setLoadingTransitions(true);
+      try {
+        const response = await fetch(`/api/jira/tickets/${ticket.key}/transitions`);
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableTransitions(data.transitions || []);
+        }
+      } catch (err) {
+        console.error('Failed to load transitions:', err);
+      } finally {
+        setLoadingTransitions(false);
+      }
+    };
+
+    fetchTransitions();
+  }, [ticket.key]);
 
   const handleSave = () => {
     onUpdate(ticket.key, editData);
@@ -460,11 +553,16 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
               onChange={(e) => onTransition(ticket.key, e.target.value)}
               className={styles.transitionSelect}
               defaultValue=""
+              disabled={loadingTransitions || availableTransitions.length === 0}
             >
-              <option value="" disabled>Change Status</option>
-              <option value="To Do">To Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
+              <option value="" disabled>
+                {loadingTransitions ? 'Loading...' : availableTransitions.length === 0 ? 'No transitions available' : 'Change Status'}
+              </option>
+              {availableTransitions.map(transition => (
+                <option key={transition.id} value={transition.to.name}>
+                  {transition.to.name}
+                </option>
+              ))}
             </select>
           </div>
         </>
@@ -480,9 +578,119 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
     description: '',
     issueType: 'Task',
     priority: 'Medium',
+    leaveType: `Medical Leave ${new Date().getFullYear()}`,
+    startDate: new Date().toISOString().split('T')[0],
+    days: 1,
+    allocation: 1,
+    parentIssue: '',
   });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [projectFields, setProjectFields] = useState(null);
+  const [loadingFields, setLoadingFields] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [parentIssues, setParentIssues] = useState([]);
+  const [loadingParents, setLoadingParents] = useState(false);
+
+  // Check if selected project is a leave project
+  const selectedProject = projects.find(p => p.key === formData.project);
+  const isLeaveProject = selectedProject?.name?.toLowerCase().includes('leave');
+
+  // Fetch custom fields when leave project is selected
+  useEffect(() => {
+    if (isLeaveProject && formData.project) {
+      setLoadingFields(true);
+      // Use Leave-Request for leave projects
+      fetch(`/api/jira/projects/${formData.project}/fields?issueType=Leave-Request`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error && data.availableTypes) {
+            // Task doesn't exist, try available types in order
+            // Try "Entitlement" first (more likely to have create permission than "Leave Summary")
+            const typesToTry = ['Entitlement', 'Leave Summary'];
+            const typeToUse = typesToTry.find(t => data.availableTypes.includes(t)) || data.availableTypes[0];
+
+            if (typeToUse) {
+              // Fetch again with correct issue type
+              return fetch(`/api/jira/projects/${formData.project}/fields?issueType=${encodeURIComponent(typeToUse)}`)
+                .then(res => res.json());
+            }
+          }
+          return data;
+        })
+        .then(data => {
+          setProjectFields(data);
+          // Update form data with correct issue type (including subtasks for leave requests)
+          if (data.issueType) {
+            setFormData(prev => ({ ...prev, issueType: data.issueType }));
+          }
+          setLoadingFields(false);
+        })
+        .catch(err => {
+          console.error('Failed to load project fields:', err);
+          setLoadingFields(false);
+        });
+    }
+  }, [formData.project, isLeaveProject]);
+
+  // Fetch parent issues (leave type issues like "Casual Leave 2025") when leave project is selected
+  useEffect(() => {
+    if (isLeaveProject && formData.project) {
+      setLoadingParents(true);
+      // Fetch issues that can be parents (Entitlement type with leave options)
+      fetch(`/api/jira/tickets?project=${formData.project}&type=Entitlement`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            setParentIssues([]);
+            setLoadingParents(false);
+            return;
+          }
+          // Filter for parent leave type issues (Entitlement type)
+          // API returns 'issues' not 'tickets'
+          const allIssues = data.issues || data.tickets || [];
+          const currentYear = new Date().getFullYear();
+
+          const parents = allIssues.filter(ticket => {
+            // Only show Entitlement type with current year in summary
+            if (ticket.issueType !== 'Entitlement') {
+              return false;
+            }
+            const summary = ticket.summary || '';
+            // Exclude "create" entries and only show current year
+            return summary.includes(String(currentYear)) &&
+              !summary.toLowerCase().includes('create');
+          });
+          setParentIssues(parents);
+          setLoadingParents(false);
+        })
+        .catch(err => {
+          console.error('Failed to load parent issues:', err);
+          setLoadingParents(false);
+        });
+    }
+  }, [formData.project, isLeaveProject]);
+
+  // Fetch pending leave count when leave project or parent issue is selected
+  useEffect(() => {
+    if (isLeaveProject && formData.project && formData.parentIssue) {
+      setLoadingPending(true);
+      // Use parent issue key to get accurate count
+      fetch(`/api/jira/leaves/pending?projectKey=${formData.project}&parentKey=${formData.parentIssue}`)
+        .then(res => res.json())
+        .then(data => {
+          setPendingCount(data.count || 0);
+          setLoadingPending(false);
+        })
+        .catch(err => {
+          console.error('Failed to load pending count:', err);
+          setLoadingPending(false);
+        });
+    } else {
+      setPendingCount(0);
+    }
+  }, [formData.project, formData.parentIssue, isLeaveProject]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -490,10 +698,83 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
     setError('');
 
     try {
+      // Prepare request body
+      const requestBody = { ...formData };
+
+      // If leave project, map form data to custom fields
+      if (isLeaveProject && projectFields?.customFields) {
+        const customFields = {};
+
+        // Find custom field IDs from projectFields
+        // Look for Work Type field (field with allowedValues containing leave options)
+        const leaveOptionField = Object.entries(projectFields.customFields).find(([id, field]) => {
+          const fieldName = field.name?.toLowerCase() || '';
+          // Check if this field has allowedValues with "Leave" in them
+          if (field.allowedValues && field.allowedValues.length > 0) {
+            const hasLeaveValues = field.allowedValues.some(val =>
+              val.value?.toLowerCase().includes('leave')
+            );
+            return hasLeaveValues;
+          }
+          return false;
+        });
+
+        const startDateField = Object.entries(projectFields.customFields).find(([id, field]) =>
+          field.name?.toLowerCase().includes('start') &&
+          (field.schema?.type === 'date' || field.schema?.type === 'string')
+        );
+
+        const daysField = Object.entries(projectFields.customFields).find(([id, field]) =>
+          (field.name?.toLowerCase().includes('day') || field.name?.toLowerCase().includes('duration')) &&
+          field.schema?.type === 'number'
+        );
+
+
+
+        // Map form data to custom field IDs
+        if (leaveOptionField && formData.leaveType) {
+          customFields[leaveOptionField[0]] = { value: formData.leaveType };
+        }
+
+        if (startDateField && formData.startDate) {
+          customFields[startDateField[0]] = formData.startDate;
+        }
+
+        if (daysField && formData.days) {
+          customFields[daysField[0]] = formData.days;
+        }
+
+        // Find allocation field (for Entitlement type)
+        const allocationField = Object.entries(projectFields.customFields).find(([id, field]) =>
+          field.name?.toLowerCase().includes('allocation')
+        );
+
+        if (allocationField && (formData.allocation || formData.allocation === 0)) {
+          // Use allocation if set, otherwise use days value
+          const allocationValue = formData.allocation > 0 ? formData.allocation : formData.days;
+          customFields[allocationField[0]] = allocationValue;
+        }
+
+        requestBody.customFields = customFields;
+
+        // Add parent issue for subtasks
+        if (formData.parentIssue) {
+          requestBody.parent = formData.parentIssue;
+        }
+
+        // Add duedate if Entitlement type (calculate from start date + days)
+        if (formData.issueType === 'Entitlement' && formData.startDate && formData.days) {
+          const startDate = new Date(formData.startDate);
+          const dueDate = new Date(startDate);
+          dueDate.setDate(dueDate.getDate() + parseInt(formData.days) - 1);
+          requestBody.duedate = dueDate.toISOString().split('T')[0];
+        }
+      }
+
       const response = await fetch('/api/jira/tickets/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -519,12 +800,33 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
 
         {error && <div className={styles.error}>{error}</div>}
 
+        {isLeaveProject && (
+          <div className={styles.pendingCountBanner}>
+            {loadingPending ? (
+              <span>Loading pending leaves...</span>
+            ) : (
+              <span>
+                📋 Pending {formData.leaveType ? formData.leaveType : 'Leave'} Requests: <strong>{pendingCount}</strong>
+              </span>
+            )}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className={styles.createForm}>
           <div className={styles.formGroup}>
             <label>Project *</label>
             <select
               value={formData.project}
-              onChange={(e) => setFormData({ ...formData, project: e.target.value })}
+              onChange={(e) => {
+                const newProject = e.target.value;
+                const project = projects.find(p => p.key === newProject);
+                const isLeave = project?.name?.toLowerCase().includes('leave');
+                setFormData({
+                  ...formData,
+                  project: newProject,
+                  issueType: 'Task'
+                });
+              }}
               required
             >
               {projects.map(project => (
@@ -542,12 +844,91 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
               onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
               required
             >
-              <option value="Task">Task</option>
-              <option value="Story">Story</option>
-              <option value="Bug">Bug</option>
-              <option value="Epic">Epic</option>
+              {isLeaveProject ? (
+                <option value="Leave Request">Leave Request</option>
+              ) : (
+                <>
+                  <option value="Task">Task</option>
+                  <option value="Story">Story</option>
+                  <option value="Bug">Bug</option>
+                  <option value="Epic">Epic</option>
+                </>
+              )}
             </select>
           </div>
+
+          {isLeaveProject && (
+            <>
+              {loadingFields ? (
+                <div className={styles.formGroup}>
+                  <label>Loading leave options...</label>
+                </div>
+              ) : (
+                <>
+                  <div className={styles.formGroup}>
+                    <label>Leave Option *</label>
+                    <select
+                      value={formData.parentIssue}
+                      onChange={(e) => {
+                        const selectedParent = parentIssues.find(p => p.key === e.target.value);
+                        setFormData({
+                          ...formData,
+                          parentIssue: e.target.value,
+                          leaveType: selectedParent?.summary || ''
+                        });
+                      }}
+                      required
+                      disabled={loadingParents}
+                    >
+                      <option value="">{loadingParents ? 'Loading...' : 'Select leave type...'}</option>
+                      {parentIssues.map(issue => (
+                        <option key={issue.key} value={issue.key}>
+                          {issue.summary}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Start Date *</label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      required
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Days *</label>
+                    <input
+                      type="number"
+                      value={formData.days}
+                      onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) || 1 })}
+                      required
+                      min="1"
+                      max="365"
+                    />
+                  </div>
+
+                  {formData.issueType === 'Entitlement' && (
+                    <div className={styles.formGroup}>
+                      <label>Allocation (Days) *</label>
+                      <input
+                        type="number"
+                        value={formData.allocation || formData.days}
+                        onChange={(e) => setFormData({ ...formData, allocation: parseFloat(e.target.value) || 0 })}
+                        required
+                        min="0"
+                        step="0.5"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
 
           <div className={styles.formGroup}>
             <label>Summary *</label>
@@ -556,7 +937,7 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
               value={formData.summary}
               onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
               required
-              placeholder="Brief description of the issue"
+              placeholder={isLeaveProject ? "e.g., Leave Request - [Your Name]" : "Brief description of the issue"}
             />
           </div>
 
@@ -599,19 +980,36 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
 }
 
 function LoadingSkeleton() {
+  const colors = getThemeColorPalette();
+
   return (
     <>
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className={styles.skeletonCard}>
-          <div className={styles.skeletonHeader}>
-            <div className={styles.skeletonKey}></div>
-            <div className={styles.skeletonStatus}></div>
+      {[0, 1].map((groupIndex) => (
+        <div key={groupIndex} className={styles.projectGroup}>
+          <div className={styles.projectHeader} style={{ borderLeftColor: colors[groupIndex % colors.length] }}>
+            <div className={styles.projectInfo}>
+              <div className={styles.projectColor} style={{ backgroundColor: colors[groupIndex % colors.length] }}></div>
+              <div className={styles.skeletonProjectName}></div>
+              <div className={styles.skeletonProjectCount}></div>
+            </div>
           </div>
-          <div className={styles.skeletonTitle}></div>
-          <div className={styles.skeletonTitle} style={{ width: '70%' }}></div>
-          <div className={styles.skeletonMeta}>
-            <div className={styles.skeletonMetaItem}></div>
-            <div className={styles.skeletonMetaItem}></div>
+          <div className={styles.ticketList}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className={styles.skeletonCard} style={{ borderColor: colors[groupIndex % colors.length] }}>
+                <span className={styles.projectMarker} style={{ background: colors[groupIndex % colors.length], opacity: 0.5 }} aria-hidden="true" />
+                <div className={styles.skeletonHeader}>
+                  <div className={styles.skeletonKey}></div>
+                </div>
+                <div className={styles.skeletonTitle}></div>
+                <div className={styles.skeletonTitle} style={{ width: '70%' }}></div>
+                <div className={styles.skeletonTitle} style={{ width: '40%' }}></div>
+                <div className={styles.skeletonMeta}>
+                  <div className={styles.skeletonPill}></div>
+                  <div className={styles.skeletonPill}></div>
+                  <div className={styles.skeletonPill}></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ))}

@@ -18,13 +18,18 @@ export async function GET(request) {
     const response = await jiraFetchWithRetry('/rest/api/3/project/search');
     const data = await response.json();
 
-    const projects = data.values.map(project => ({
-      id: project.id,
-      key: project.key,
-      name: project.name,
-      projectTypeKey: project.projectTypeKey,
-      avatarUrls: project.avatarUrls,
-    }));
+    // Filter out spaces and only include actual projects
+    // projectTypeKey: 'software', 'business', 'service_desk' are projects
+    // projectTypeKey: 'product_discovery' are spaces (Jira Product Discovery)
+    const projects = data.values
+      .filter(project => project.projectTypeKey !== 'product_discovery')
+      .map(project => ({
+        id: project.id,
+        key: project.key,
+        name: project.name,
+        projectTypeKey: project.projectTypeKey,
+        avatarUrls: project.avatarUrls,
+      }));
 
     return NextResponse.json({ projects });
   } catch (error) {
