@@ -17,6 +17,7 @@ import { SlArrowUpCircle } from "react-icons/sl";
 function useTextToSpeech(preferredVoice) {
   const [isTTSEnabled, setIsTTSEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [needsUserGesture, setNeedsUserGesture] = useState(false);
   const audioRef = useRef(null);
   const audioQueueRef = useRef([]);
   const textQueueRef = useRef([]);
@@ -24,9 +25,16 @@ function useTextToSpeech(preferredVoice) {
   const isFetchingRef = useRef(false);
 
   const toggleTTS = () => {
-    setIsTTSEnabled(prev => !prev);
-    // Stop any current playback when disabling
-    if (isTTSEnabled && audioRef.current) {
+    if (isTTSEnabled && needsUserGesture) {
+      primeAudio();
+      return;
+    }
+    const nextEnabled = !isTTSEnabled;
+    setIsTTSEnabled(nextEnabled);
+    if (nextEnabled) {
+      primeAudio();
+    } else if (audioRef.current) {
+      // Stop any current playback when disabling
       audioRef.current.pause();
       audioRef.current = null;
       audioQueueRef.current.forEach((item) => {
@@ -37,6 +45,42 @@ function useTextToSpeech(preferredVoice) {
       isPlayingRef.current = false;
       isFetchingRef.current = false;
       setIsSpeaking(false);
+    }
+  };
+
+  const SILENT_MP3_DATA_URL =
+    'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA' +
+    'AWGluZwAAAA8AAAACAAACcQCA/////wAAACwAAAAAAABxAAACcQCAAWGluZwAAAA8AAAACAAAC' +
+    'cQCA/////wAAACwAAAAAAABxAAACcQCA';
+
+  const ensureAudioElement = () => {
+    if (!audioRef.current) {
+      const audio = new Audio();
+      audio.preload = 'auto';
+      audio.playsInline = true;
+      audioRef.current = audio;
+    }
+    return audioRef.current;
+  };
+
+  const primeAudio = async () => {
+    try {
+      const audio = ensureAudioElement();
+      audio.muted = true;
+      audio.src = SILENT_MP3_DATA_URL;
+      await audio.play();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+      setNeedsUserGesture(false);
+    } catch (error) {
+      console.warn('[TTS] Audio unlock failed:', error);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.muted = false;
+      }
+      setNeedsUserGesture(true);
     }
   };
 
@@ -77,26 +121,46 @@ function useTextToSpeech(preferredVoice) {
 
     isPlayingRef.current = true;
     setIsSpeaking(true);
-    audioRef.current = next.audio;
+    const audio = ensureAudioElement();
+    audio.muted = false;
+    audio.src = next.url;
 
     const handleDone = () => {
       URL.revokeObjectURL(next.url);
-      audioRef.current = null;
       isPlayingRef.current = false;
       // Continue with the next item in the queue
       processQueue();
     };
 
-    next.audio.onended = handleDone;
-    next.audio.onerror = (e) => {
-      console.error('[TTS] Audio playback error:', e);
+    audio.onended = handleDone;
+    audio.onerror = () => {
+      const mediaError = audio.error;
+      console.error('[TTS] Audio playback error:', {
+        code: mediaError?.code,
+        message: mediaError?.message,
+        src: audio.src,
+        readyState: audio.readyState,
+        networkState: audio.networkState
+      });
       handleDone();
     };
 
-    next.audio.play().catch((err) => {
-      console.error('[TTS] Audio play() failed:', err);
-      handleDone();
-    });
+    audio.oncanplaythrough = () => {
+      audio.play().catch((err) => {
+        console.error('[TTS] Audio play() failed:', err);
+        if (err?.name === 'NotAllowedError') {
+          setNeedsUserGesture(true);
+          audio.pause();
+          audio.currentTime = 0;
+          audioQueueRef.current.unshift(next);
+          isPlayingRef.current = false;
+          setIsSpeaking(false);
+          return;
+        }
+        handleDone();
+      });
+    };
+    audio.load();
   };
 
   const speak = async (text) => {
@@ -155,8 +219,7 @@ function useTextToSpeech(preferredVoice) {
         const audioUrl = URL.createObjectURL(audioBlob);
         console.log('[TTS] Audio URL created:', audioUrl);
         
-        const audio = new Audio(audioUrl);
-        audioQueueRef.current.push({ audio, url: audioUrl });
+        audioQueueRef.current.push({ url: audioUrl });
         console.log('[TTS] Enqueued audio. Queue length:', audioQueueRef.current.length);
         processQueue();
       } catch (error) {
@@ -184,6 +247,7 @@ function useTextToSpeech(preferredVoice) {
   return {
     isTTSEnabled,
     isSpeaking,
+    needsUserGesture,
     toggleTTS,
     speak
   };
@@ -650,7 +714,7 @@ export default function CoachPage() {
   const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
-  const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech(preferredVoice);
+  const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
   
   // Voice recording hook with callback
   const handleTranscription = (text) => {
@@ -994,7 +1058,13 @@ export default function CoachPage() {
             className={`${styles.speakerButton} ${isTTSEnabled ? styles.speakerButtonEnabled : ''} ${isSpeaking ? styles.speakerButtonSpeaking : ''}`}
             onClick={toggleTTS}
             disabled={isLoading}
-            title={isTTSEnabled ? 'Disable text-to-speech' : 'Enable text-to-speech'}
+            title={
+              needsUserGesture
+                ? 'Tap to enable audio playback'
+                : isTTSEnabled
+                  ? 'Disable text-to-speech'
+                  : 'Enable text-to-speech'
+            }
           >
             {isSpeaking ? (
               <PiSpeakerHighBold className={styles.speakerSpeaking} size={24} />
