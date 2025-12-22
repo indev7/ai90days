@@ -123,12 +123,12 @@ export default function LeftMenu({
   const pathname = usePathname();
   const router = useRouter();
   const [expandedItems, setExpandedItems] = useState(new Set());
-  const [adminGroups, setAdminGroups] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [objectives, setObjectives] = useState([]);
   const [expandedObjectives, setExpandedObjectives] = useState(new Set());
   const [scheduledTasks, setScheduledTasks] = useState([]);
+  const [isGroupsListExpanded, setIsGroupsListExpanded] = useState(false);
   const [taskUpdateModalState, setTaskUpdateModalState] = useState({
     isOpen: false,
     task: null
@@ -152,17 +152,19 @@ export default function LeftMenu({
   // Get top menu items based on user role
   const topMenuItems = getTopMenuItems(currentUser?.role);
 
+  const memberGroups = useMemo(() => {
+    const groups = mainTree.groups || [];
+    return groups
+      .filter((group) => group.is_admin || group.is_member)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [mainTree.groups]);
+
   // Process data from mainTree store
   useEffect(() => {
     // Extract objectives from mainTree
     const myOKRTs = mainTree.myOKRTs || [];
     const objs = myOKRTs.filter(item => item.type === 'O');
     setObjectives(objs);
-
-    // Extract admin groups from mainTree
-    const groups = mainTree.groups || [];
-    const adminGroupsList = groups.filter(group => group.is_admin);
-    setAdminGroups(adminGroupsList);
 
     // Process scheduled tasks from mainTree
     const timeBlocks = mainTree.timeBlocks || [];
@@ -288,6 +290,7 @@ export default function LeftMenu({
     e?.stopPropagation();
     console.log('Add OKR clicked! pathname:', pathname);
     
+    setIsGroupsListExpanded(false);
     // Close all expanded items when clicking New
     setExpandedItems(new Set());
     // Open the OKRT modal directly
@@ -307,6 +310,7 @@ export default function LeftMenu({
 
   const handleAddGroupClick = (e) => {
     e.preventDefault();
+    setIsGroupsListExpanded(false);
     // Always dispatch the event to show modal
     if (pathname === '/organisation') {
       window.dispatchEvent(new CustomEvent('createGroup'));
@@ -336,8 +340,20 @@ export default function LeftMenu({
     }
   };
 
+  const handleGroupDetailsClick = (groupId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/organisation?view=groups&groupId=${encodeURIComponent(groupId)}`);
+    
+    // Close mobile menu
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
+  };
+
   const handleObjectiveClick = (objectiveId, e) => {
     e.preventDefault();
+    setIsGroupsListExpanded(false);
     // Navigate to OKRT page with specific objective
     router.push(`/okrt?objective=${objectiveId}`);
     
@@ -381,6 +397,7 @@ export default function LeftMenu({
   // Handle scheduled task click
   const handleScheduledTaskClick = (task, e) => {
     e.preventDefault();
+    setIsGroupsListExpanded(false);
     setTaskUpdateModalState({
       isOpen: true,
       task: task
@@ -523,6 +540,10 @@ export default function LeftMenu({
   const handleMenuItemClick = (href, hasChildren) => {
     if (hasChildren && !isDesktopCollapsed && !isCollapsed) {
       toggleExpanded(href);
+    }
+
+    if (href !== '/organisation') {
+      setIsGroupsListExpanded(false);
     }
     
     // Close mobile menu when navigating
@@ -701,6 +722,7 @@ export default function LeftMenu({
                           const isChildActiveLink = pathname === child.href;
                           const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
+                          const isGroupsLink = child.href === '/organisation?view=groups';
                           
                           // Only show Add Group for Admin, Owner, or Leader roles
                           if (isAddGroup && currentUser?.role && !['Admin', 'Owner', 'Leader'].includes(currentUser.role)) {
@@ -736,12 +758,35 @@ export default function LeftMenu({
                                   href={child.href}
                                   className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
                                   aria-current={isChildActiveLink ? 'page' : undefined}
+                                  onClick={() => {
+                                    if (isGroupsLink) {
+                                      setIsGroupsListExpanded(true);
+                                    } else {
+                                      setIsGroupsListExpanded(false);
+                                    }
+                                  }}
                                 >
                                   <span className={styles.icon}>
                                     {getIcon(child.icon, false)}
                                   </span>
                                   <span className={styles.label}>{child.label}</span>
                                 </Link>
+                              )}
+                              {isGroupsLink && isGroupsListExpanded && memberGroups.length > 0 && (
+                                <ul className={styles.groupSubList}>
+                                  {memberGroups.map((group) => (
+                                    <li key={`group-${group.id}`} className={styles.groupSubItem}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleGroupDetailsClick(group.id, e)}
+                                        className={`${styles.childMenuLink} ${styles.groupLink}`}
+                                        title={group.name || 'Group'}
+                                      >
+                                        <span className={styles.label}>{group.name || 'Untitled Group'}</span>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
                               )}
                             </li>
                           );

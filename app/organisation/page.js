@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { RiDeleteBin6Line } from 'react-icons/ri';
 import "primereact/resources/themes/lara-light-blue/theme.css";
 import "primereact/resources/primereact.min.css";
@@ -12,7 +12,7 @@ import StrategyHouse from './StrategyHouse';
 import GroupsView from './GroupsView';
 import ObjectivesView from './ObjectivesView';
 import styles from './page.module.css';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 /*************************
  * Helpers
@@ -83,8 +83,10 @@ export default function IntervestOrgChart() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const closeGuardRef = useRef(null);
 
   // Use hooks for user and mainTree data
+  const router = useRouter();
   const { user: currentUser, isLoading: userLoading } = useUser();
   const { isLoading: mainTreeLoading } = useMainTree();
   const mainTree = useMainTreeStore((state) => state.mainTree);
@@ -253,10 +255,20 @@ export default function IntervestOrgChart() {
     if (groupId === expandedGroupId) {
       setExpandedGroupId(null);
     } else if (groupId) {
+      closeGuardRef.current = null;
       setExpandedGroupId(groupId);
       fetchGroupDetails(groupId);
     } else {
+      const currentGroupId = expandedGroupId || searchParams?.get('groupId');
+      closeGuardRef.current = currentGroupId || null;
       setExpandedGroupId(null);
+    }
+
+    if (!groupId && searchParams?.get('groupId')) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete('groupId');
+      const query = nextParams.toString();
+      router.replace(query ? `/organisation?${query}` : '/organisation');
     }
   };
 
@@ -367,6 +379,26 @@ export default function IntervestOrgChart() {
       buildObjectivesHierarchy();
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const groupIdParam = searchParams?.get('groupId');
+    if (!groupIdParam || !mainTree?.groups?.length) {
+      if (!groupIdParam) {
+        closeGuardRef.current = null;
+      }
+      return;
+    }
+
+    if (closeGuardRef.current && closeGuardRef.current === groupIdParam) {
+      return;
+    }
+
+    setViewType('groups');
+    if (groupIdParam !== expandedGroupId) {
+      setExpandedGroupId(groupIdParam);
+      fetchGroupDetails(groupIdParam);
+    }
+  }, [searchParams, expandedGroupId, mainTree]);
 
   return (
     <div className={styles.container}>
