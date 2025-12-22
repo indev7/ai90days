@@ -97,6 +97,35 @@
   margin: 0;
 }
 
+.groupSubList {
+  list-style: none;
+  margin: 0;
+  padding: 0px 0 0px calc(var(--space-1) + var(--space-1));
+  margin-left: var(--space-6);
+  position: relative;
+}
+
+.groupSubItem {
+  margin: 0;
+}
+
+.groupLink {
+  padding-left: var(--space-3);
+  font-size: 11px;
+  color: var(--menu-muted, var(--muted));
+}
+
+.groupSubList::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--brand-primary);
+  border-radius: 999px;
+}
+
 .objectiveRow {
   display: flex;
   align-items: center;
