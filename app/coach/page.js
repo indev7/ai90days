@@ -557,9 +557,23 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
   const isUser = message.role === 'user';
 
   const htmlMatch = message.content?.match(/<ACTION_HTML>([\s\S]*?)<\/ACTION_HTML>/);
-  const textOnly = htmlMatch
-    ? message.content.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '').trim()
-    : message.content;
+  
+  // Strip both ACTION_HTML tags and ACTIONS_JSON blocks from display
+  let textOnly = message.content || '';
+  
+  // Remove ACTION_HTML blocks
+  textOnly = textOnly.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '');
+  
+  // Remove ACTIONS_JSON marker and everything after it
+  const actionsJsonIndex = textOnly.indexOf('ACTIONS_JSON:');
+  if (actionsJsonIndex !== -1) {
+    textOnly = textOnly.substring(0, actionsJsonIndex);
+  }
+  
+  // Also remove any remaining JSON blocks (just in case)
+  textOnly = textOnly.replace(/\{[\s\S]*?"actions"[\s\S]*?\}/g, '');
+  
+  textOnly = textOnly.trim();
   const htmlContent = htmlMatch ? htmlMatch[1] : null;
 
   return (

@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getDatabase, get, all } from '@/lib/pgdb';
 
+// Increase route timeout for LLM responses (Next.js 15 route segment config)
+export const maxDuration = 300; // 5 minutes (Vercel limit)
+export const dynamic = 'force-dynamic'; // Disable caching for LLM responses
+
 /* =========================
    Utility functions
    ========================= */
@@ -223,6 +227,192 @@ ${timeBlock}${contextBlock}`;
 }
 
 /* =========================
+   Ollama-specific prompt matching OpenAI structure
+   Uses same prompt content but adapted for inline JSON output (no tool calling API)
+   ========================= */
+function getCoachSystemPromptForOllama(okrtContext) {
+  const timeCtx = getTimeContext();
+  const displayName = okrtContext?.user?.displayName || 'User';
+  const objectives = okrtContext?.objectives || [];
+  const krCount = objectives.reduce((sum, o) => sum + (Array.isArray(o.krs) ? o.krs.length : 0), 0);
+  const taskCount = objectives.reduce((sum, o) => 
+    sum + (o.krs || []).reduce((kSum, kr) => kSum + (kr.tasks || []).length, 0), 0);
+
+  // Send compact list of OKRTs with IDs for UPDATE/DELETE operations
+  const contextBlock = objectives.length > 0
+    ? `
+EXISTING USER OKRTS:
+User: ${displayName}
+${objectives.map(o => {
+  const krs = o.krs || [];
+  return `- [${o.id}] Objective: "${o.title}"
+${krs.map(kr => `  - [${kr.id}] KR: "${kr.description}"`).join('\n')}`;
+}).join('\n')}
+
+IMPORTANT: For UPDATE or DELETE, use the EXACT IDs shown in brackets [id] above!`
+    : `
+EXISTING USER OKRTS:
+User: ${displayName} has no OKRTs yet.`;
+
+  const timeBlock = `
+TIME: Quarter ${timeCtx.currentQuarter} (${timeCtx.quarterStart} to ${timeCtx.quarterEnd})`;
+
+  // DETAILED prompt for qwen2.5:7b - keeps full instructions but minimal context
+  return `You are an OKRT coach. Address user as "${displayName}".
+
+${timeBlock}
+${contextBlock}
+
+CRITICAL: When user wants to create/update/delete OKRTs, you MUST output EXACTLY this format:
+
+[1-2 sentence coaching message]
+
+ACTIONS_JSON:
+{"actions":[{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{...fields...}}]}
+
+DATA MODEL:
+O (Objective) → K (Key Result) → T (Task) linked by parent_id
+
+⚠️ CRITICAL ID RULES:
+- CREATE: Generate NEW random IDs like gen-k3x7m9p2
+- UPDATE/DELETE: Use EXACT IDs from "EXISTING USER OKRTS" list above (shown in [brackets])
+
+⚠️ ENDPOINT RULES:
+- CREATE uses: "/api/okrt" 
+- UPDATE uses: "/api/okrt/ACTUAL-ID" (ID must be in URL!)
+- DELETE uses: "/api/okrt/ACTUAL-ID" (ID must be in URL!)
+
+ACTION TYPES:
+
+1. CREATE_OKRT - Create new OKRT
+{
+  "intent": "CREATE_OKRT",
+  "endpoint": "/api/okrt",
+  "method": "POST",
+  "payload": {
+    "id": "gen-XXXXXXXX",
+    "type": "O" or "K" or "T",
+    ...fields...
+  }
+}
+
+2. UPDATE_OKRT - Update existing OKRT
+{
+  "intent": "UPDATE_OKRT",
+  "endpoint": "/api/okrt/ACTUAL-ID-HERE",
+  "method": "PUT",
+  "payload": {
+    "id": "ACTUAL-ID-HERE",
+    ...ONLY the fields you want to change...
+  }
+}
+⚠️ CRITICAL FOR UPDATE:
+- Endpoint MUST be "/api/okrt/" + the actual OKRT id (e.g., "/api/okrt/gen-u3v4w5x6")
+- Payload MUST include "id" field with same id
+- Payload should ONLY include fields being changed (not all fields!)
+- Example: To change kr_target_number to 300:
+  endpoint: "/api/okrt/gen-u3v4w5x6"
+  payload: {"id": "gen-u3v4w5x6", "kr_target_number": 300}
+
+3. DELETE_OKRT - Delete existing OKRT
+{
+  "intent": "DELETE_OKRT",
+  "endpoint": "/api/okrt/{id}",
+  "method": "DELETE",
+  "payload": {
+    "id": "{id}"
+  }
+}
+CRITICAL: For DELETE, endpoint MUST include the ID: "/api/okrt/gen-abc12345"
+Also include "id" in payload (same ID as in endpoint)
+
+REQUIRED PAYLOAD FIELDS:
+
+Objective (type:"O"):
+- id, type, title, description, area, status, visibility, objective_kind, cycle_qtr, progress
+
+Key Result (type:"K"):
+- id, type, parent_id, description, kr_target_number, kr_unit, kr_baseline_number, weight, progress
+
+Task (type:"T"):
+- id, type, parent_id, description, task_status, weight, progress
+
+FIELD VALUES:
+- area: "Life", "Work", or "Health"
+- status: "D"
+- visibility: "private"
+- objective_kind: "committed"
+- cycle_qtr: "${timeCtx.currentQuarter}"
+- kr_unit: "count", "%", "$", or "hrs"
+- task_status: "todo", "in_progress", or "done"
+- kr_target_number: NUMBER (not string!)
+- kr_baseline_number: NUMBER (not string!)
+- progress: NUMBER 0
+- weight: NUMBER 1.0 or 0.5
+
+IDs: CRITICAL - Generate UNIQUE random IDs as "gen-" + 8 random chars
+Examples: gen-x7m9k2p4, gen-w3n8q5r1, gen-t6y2h9v3
+NEVER reuse IDs from examples! Generate NEW random ones EVERY time!
+
+EXAMPLES (STRUCTURE ONLY - GENERATE NEW IDS):
+
+Example 1 - CREATE:
+User: "Create fitness objective with 2 key results"
+
+Your response:
+Let's track your fitness!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-x7m9k2p4","type":"O","title":"Improve Fitness","description":"Get healthier","area":"Life","status":"D","visibility":"private","objective_kind":"committed","cycle_qtr":"${timeCtx.currentQuarter}","progress":0}},{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-w3n8q5r1","type":"K","parent_id":"gen-x7m9k2p4","description":"Run 5km 3 times/week","kr_target_number":3,"kr_unit":"count","kr_baseline_number":0,"weight":0.5,"progress":0}},{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{"id":"gen-t6y2h9v3","type":"K","parent_id":"gen-x7m9k2p4","description":"Lose 5kg","kr_target_number":5,"kr_unit":"count","kr_baseline_number":0,"weight":0.5,"progress":0}}]}
+
+Example 2 - UPDATE:
+User: "Change the subscriber key result to 500"
+(Assuming [gen-u3v4w5x6] is the ID from EXISTING USER OKRTS list)
+
+Your response:
+I'll update that target for you!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"UPDATE_OKRT","endpoint":"/api/okrt/gen-u3v4w5x6","method":"PUT","payload":{"id":"gen-u3v4w5x6","kr_target_number":500}}]}
+
+NOTE: ID gen-u3v4w5x6 comes from the EXISTING USER OKRTS list, NOT from examples!
+
+Example 3 - DELETE:
+User: "Delete the fitness objective"
+(Assuming [acdc55dd-dc11-486f-bbaf-73da24612a90] is the ID from EXISTING USER OKRTS list)
+
+Your response:
+I'll remove that objective and its children.
+
+ACTIONS_JSON:
+{"actions":[{"intent":"DELETE_OKRT","endpoint":"/api/okrt/acdc55dd-dc11-486f-bbaf-73da24612a90","method":"DELETE","payload":{"id":"acdc55dd-dc11-486f-bbaf-73da24612a90"}}]}
+
+NOTE: ID comes from the EXISTING USER OKRTS list, NOT from examples!
+
+IMPORTANT: IDs in examples are gen-x7m9k2p4, gen-w3n8q5r1, gen-t6y2h9v3, gen-abc12345
+YOUR IDs must be DIFFERENT! Generate random combinations like: gen-j4k8m1n7, gen-p9r2s5t8, etc.
+
+CRITICAL RULES:
+1. NO markdown fences (no \`\`\`json)
+2. NO extra text after JSON
+3. ACTIONS_JSON: must be on its own line
+4. JSON must be ONE LINE (no newlines in JSON)
+5. All numbers WITHOUT quotes
+6. Each action needs intent + endpoint + method + payload
+7. Payload must have ALL required fields for that type
+
+WRONG (DO NOT DO THIS):
+\`\`\`json
+{"actions":[{"action":"some text"...}]}
+\`\`\`
+
+RIGHT (DO THIS):
+ACTIONS_JSON:
+{"actions":[{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{...}}]}`;
+
+}
+
+/* =========================
    Tool (Responses API shape)
    ========================= */
 function getActionsTool() {
@@ -350,51 +540,486 @@ export async function POST(request) {
       okrtContext.user = { displayName: user?.display_name || 'User' };
     }
     
-    const systemPrompt = getCoachSystemPrompt(okrtContext);
+    // Determine provider early
+    const provider = process.env.LLM_PROVIDER || 'ollama';
+
+    // Build system prompt (provider-specific for Ollama)
+    let systemPrompt = provider === 'ollama'
+      ? getCoachSystemPromptForOllama(okrtContext)
+      : getCoachSystemPrompt(okrtContext);
+
+    // (OpenAI path retains original prompt intact; modifications only for Ollama)
 
     const llmMessages = [
       { role: 'system', content: systemPrompt },
       ...messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
     ];
 
-    const provider = process.env.LLM_PROVIDER || 'ollama';
-
     /* ===== OLLAMA (chat API + streaming) ===== */
-    if (provider === 'ollama') {
+  if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
 
       const ollamaPayload = { model, messages: llmMessages, stream: true };
-      logHumanReadable('OLLAMA API PAYLOAD', ollamaPayload);
+      
+      // Add format reminder to user message for better compliance
+      const lastUserMsg = llmMessages[llmMessages.length - 1];
+      if (lastUserMsg?.role === 'user') {
+        const needsActions = /create|add|update|change|delete|remove|set/i.test(lastUserMsg.content);
+        if (needsActions) {
+          lastUserMsg.content += '\n\n[Remember: If creating OKRTs, output: coaching text, blank line, ACTIONS_JSON:, then {"actions":[...]} with all required fields]';
+        }
+      }
 
-      const response = await fetch(`${ollamaUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ollamaPayload)
-      });
-      if (!response.ok) throw new Error(`Ollama API error: ${response.status}`);
+      console.log('\n' + '━'.repeat(80));
+      console.log('📤 SENDING TO OLLAMA (llama3)');
+      console.log('━'.repeat(80));
+      console.log('Model:', model);
+      console.log('System Prompt Length:', llmMessages[0]?.content?.length || 0, 'chars');
+      console.log('System Prompt Preview (first 500 chars):');
+      console.log(llmMessages[0]?.content?.substring(0, 500) + '...');
+      console.log('User Message:', llmMessages[llmMessages.length - 1]?.content);
+      console.log('━'.repeat(80) + '\n');
+
+      // Configure Ollama with performance optimizations
+      const ollamaRequestBody = {
+        ...ollamaPayload,
+        keep_alive: '15m',  // Keep model loaded for 15 minutes
+        options: {
+          temperature: 0.1,        // More deterministic (less creative)
+          top_p: 0.9,              // Nucleus sampling
+          num_predict: 3000,       // Increased to allow full JSON completion
+          // No stop sequences - let it complete the JSON fully
+          num_ctx: 8192,           // Larger context window for qwen2.5
+          num_thread: 8,           // Use more CPU threads
+          repeat_penalty: 1.1,     // Avoid repetition
+        }
+      };
+
+      console.log('⏱️  Requesting from Ollama (this may take 30-90 seconds)...\n');
+
+      // WORKAROUND: Node.js fetch has 300s timeout hardcoded in undici
+      // We need to wrap the fetch with a timeout handler that allows longer waits
+      let response;
+      try {
+        // Create a promise that resolves with the fetch
+        const fetchPromise = fetch(`${ollamaUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(ollamaRequestBody),
+        });
+        
+        // Wait for response - if Ollama doesn't respond, fetch will handle its own timeout
+        // The key is we're not adding an external timeout that would cancel it
+        response = await fetchPromise;
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
+        }
+      } catch (error) {
+        // Check if it's the dreaded headers timeout
+        if (error.cause?.code === 'UND_ERR_HEADERS_TIMEOUT') {
+          throw new Error(`Ollama is taking too long to respond (>5 min). This usually means:
+1. Model is too large for your hardware (try: ollama pull llama3.2:latest)
+2. Ollama service is overloaded or crashed (restart: sudo systemctl restart ollama)
+3. First request is loading model into memory (wait 2-3 minutes and try again)
+
+Current model: ${model}
+Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
+        }
+        throw error;
+      }
 
       const encoder = new TextEncoder();
+      // Helper to convert incorrect nested format to actions array
+      function convertNestedToActions(obj) {
+        const actions = [];
+        const currentQuarter = getCurrentQuarter();
+        
+        // Handle objective
+        if (obj.objective) {
+          const o = obj.objective;
+          actions.push({
+            intent: 'CREATE_OKRT',
+            endpoint: '/api/okrt',
+            method: 'POST',
+            payload: {
+              id: o.id || `gen-${Math.random().toString(36).slice(2, 10)}`,
+              type: 'O',
+              title: o.title || o.description || 'Untitled Objective',  // title is REQUIRED
+              description: o.description || o.title || '',
+              area: o.area || 'Work',
+              status: o.status === 'Draft' ? 'D' : (o.status === 'Active' ? 'A' : (o.status === 'Complete' ? 'C' : 'D')),
+              visibility: (o.visibility || 'private').toLowerCase(),
+              objective_kind: (o.objective_kind || 'committed').toLowerCase(),
+              cycle_qtr: o.cycle_qtr || currentQuarter,
+              progress: typeof o.progress === 'number' ? o.progress : 0
+            }
+          });
+        }
+        
+        // Handle key result
+        if (obj.kr) {
+          const kr = obj.kr;
+          const parentId = obj.objective?.id || kr.parent_id;
+          
+          // Ensure required fields for KR
+          const krTargetNumber = kr.kr_target_number !== undefined ? parseFloat(kr.kr_target_number) : 100;
+          const krUnit = kr.kr_unit || 'count';
+          
+          actions.push({
+            intent: 'CREATE_OKRT',
+            endpoint: '/api/okrt',
+            method: 'POST',
+            payload: {
+              id: kr.id || `gen-${Math.random().toString(36).slice(2, 10)}`,
+              type: 'K',
+              parent_id: parentId,
+              description: kr.description || kr.title || 'Untitled Key Result',  // description is REQUIRED
+              kr_target_number: krTargetNumber,  // REQUIRED
+              kr_unit: krUnit,  // REQUIRED
+              kr_baseline_number: kr.kr_baseline_number !== undefined ? parseFloat(kr.kr_baseline_number) : 0,
+              weight: kr.weight !== undefined ? parseFloat(kr.weight) : 1.0,
+              progress: typeof kr.progress === 'number' ? kr.progress : 0
+            }
+          });
+        }
+        
+        // Handle task
+        if (obj.task) {
+          const t = obj.task;
+          const parentId = obj.kr?.id || t.parent_id;
+          
+          // Normalize task_status
+          let taskStatus = (t.task_status || t.status || 'todo').toLowerCase().replace(/\s+/g, '_');
+          if (!['todo', 'in_progress', 'done', 'blocked'].includes(taskStatus)) {
+            taskStatus = 'todo';
+          }
+          
+          actions.push({
+            intent: 'CREATE_OKRT',
+            endpoint: '/api/okrt',
+            method: 'POST',
+            payload: {
+              id: t.id || `gen-${Math.random().toString(36).slice(2, 10)}`,
+              type: 'T',
+              parent_id: parentId,
+              description: t.description || t.title || 'Untitled Task',  // description is REQUIRED
+              task_status: taskStatus,  // REQUIRED
+              progress: typeof t.progress === 'number' ? t.progress : 0,
+              weight: t.weight !== undefined ? parseFloat(t.weight) : 1.0,
+              due_date: t.due_date || null
+            }
+          });
+        }
+        
+        return actions.length > 0 ? actions : null;
+      }
+
+      // Helper to extract actions JSON from accumulated text output
+      function tryExtractActions(raw) {
+        if (!raw) return null;
+        
+        console.log('\n🔍 EXTRACTION DEBUG:');
+        console.log('Raw text length:', raw.length);
+        console.log('Contains ACTIONS_JSON:', raw.includes('ACTIONS_JSON:'));
+        console.log('Contains ```json:', raw.includes('```json'));
+        console.log('Contains "actions":', raw.includes('"actions"'));
+        
+        // Priority 1: ACTIONS_JSON marker with correct format
+        const markerIndex = raw.indexOf('ACTIONS_JSON:');
+        if (markerIndex !== -1) {
+          console.log('✓ Found ACTIONS_JSON marker at position', markerIndex);
+          let after = raw.slice(markerIndex + 'ACTIONS_JSON:'.length).trim();
+          
+          // Remove markdown code fences (qwen2.5 loves to add these)
+          after = after.replace(/^```json\s*/i, '').replace(/^```\s*/i, '');
+          after = after.replace(/```\s*$/i, '');
+          console.log('After cleaning fences, first 200 chars:', after.substring(0, 200));
+          
+          // Find first '{' 
+          const braceStart = after.indexOf('{');
+          if (braceStart !== -1) {
+            console.log('✓ Found opening brace at position', braceStart);
+            let depth = 0;
+            let jsonEnd = -1;
+            for (let i = braceStart; i < after.length; i++) {
+              const ch = after[i];
+              if (ch === '{') depth++;
+              else if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                  jsonEnd = i;
+                  break;
+                }
+              }
+            }
+            
+            if (jsonEnd !== -1) {
+              const candidate = after.slice(braceStart, jsonEnd + 1).trim();
+              console.log('Extracted JSON candidate length:', candidate.length);
+              console.log('JSON preview:', candidate.substring(0, 150) + '...');
+              
+              try {
+                const parsed = JSON.parse(candidate);
+                console.log('✓ JSON parsed successfully');
+                console.log('Parsed keys:', Object.keys(parsed));
+                
+                // Check if it has correct actions array format
+                if (parsed && Array.isArray(parsed.actions)) {
+                  console.log('✅ Found correct actions array with', parsed.actions.length, 'items');
+                  
+                  // Validate each action has required structure
+                  const validActions = parsed.actions.filter(a => {
+                    const hasStructure = a.intent && a.endpoint && a.method && a.payload;
+                    if (!hasStructure) {
+                      console.warn('⚠️  Action missing required fields:', Object.keys(a));
+                    }
+                    return hasStructure;
+                  });
+                  
+                  if (validActions.length > 0) {
+                    console.log('✅ Returning', validActions.length, 'valid action(s)');
+                    return validActions;
+                  } else {
+                    console.log('❌ No valid actions found (missing intent/endpoint/method/payload)');
+                  }
+                }
+                
+                // Check if it's the incorrect nested format
+                if (parsed && (parsed.objective || parsed.kr || parsed.task)) {
+                  console.log('⚠️  Found incorrect nested format, converting...');
+                  const converted = convertNestedToActions(parsed);
+                  if (converted) return converted;
+                }
+                
+                console.log('❌ Parsed JSON has unexpected structure:', Object.keys(parsed));
+              } catch (e) {
+                console.error('❌ JSON parse error:', e.message);
+                console.error('Failed candidate first 300 chars:', candidate.substring(0, 300));
+              }
+            } else {
+              console.log('❌ Could not find closing brace for JSON');
+            }
+          } else {
+            console.log('❌ Could not find opening brace after ACTIONS_JSON:');
+          }
+        } else {
+          console.log('❌ ACTIONS_JSON: marker not found');
+        }
+        
+        // Fallback 1: Search for correct actions array format
+        if (raw.indexOf('"actions"') !== -1) {
+          const idx = raw.lastIndexOf('"actions"');
+          let start = idx;
+          while (start > 0 && raw[start] !== '{') start--;
+          if (raw[start] === '{') {
+            let depth = 0;
+            for (let i = start; i < raw.length; i++) {
+              const ch = raw[i];
+              if (ch === '{') depth++;
+              else if (ch === '}') depth--;
+              if (depth === 0) {
+                const candidate = raw.slice(start, i + 1).trim();
+                try {
+                  const parsed = JSON.parse(candidate);
+                  if (parsed && Array.isArray(parsed.actions)) {
+                    console.log('✅ Found actions array via fallback search');
+                    return parsed.actions;
+                  }
+                } catch (_) {}
+                break;
+              }
+            }
+          }
+        }
+        
+        // Fallback 2: Search for nested format anywhere in text
+        const objMatch = raw.match(/\{[\s\S]*?"objective"[\s\S]*?\}/);
+        if (objMatch) {
+          try {
+            // Find the complete balanced object
+            const startIdx = raw.indexOf(objMatch[0]);
+            let depth = 0;
+            let endIdx = startIdx;
+            for (let i = startIdx; i < raw.length; i++) {
+              const ch = raw[i];
+              if (ch === '{') depth++;
+              else if (ch === '}') {
+                depth--;
+                if (depth === 0) {
+                  endIdx = i + 1;
+                  break;
+                }
+              }
+            }
+            const candidate = raw.slice(startIdx, endIdx);
+            const parsed = JSON.parse(candidate);
+            if (parsed && (parsed.objective || parsed.kr || parsed.task)) {
+              console.log('⚠️  Found nested format via fallback, converting...');
+              const converted = convertNestedToActions(parsed);
+              if (converted) return converted;
+            }
+          } catch (e) {
+            console.error('Failed to parse nested format:', e);
+          }
+        }
+        
+        return null;
+      }
+
       const stream = new ReadableStream({
         async start(controller) {
           const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumText = '';
+          let actionsSent = false;
           try {
             while (true) {
               const { done, value } = await reader.read();
               if (done) {
+                // Log complete accumulated text for debugging
+                console.log('\n' + '='.repeat(80));
+                console.log('OLLAMA COMPLETE RESPONSE TEXT:');
+                console.log('='.repeat(80));
+                console.log(accumText);
+                console.log('='.repeat(80));
+                console.log('Checking for ACTIONS_JSON marker...');
+                console.log('Contains "ACTIONS_JSON:":', accumText.includes('ACTIONS_JSON:'));
+                console.log('Contains "actions":', accumText.includes('"actions"'));
+                console.log('='.repeat(80) + '\n');
+                
+                // Final attempt at extracting actions
+                if (!actionsSent) {
+                  let actions = tryExtractActions(accumText);
+                  if (actions && actions.length) {
+                    // FIX: Regenerate IDs if model used example IDs
+                    const exampleIds = [
+                      'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2', 
+                      'gen-x7m9k2p4', 'gen-w3n8q5r1', 'gen-t6y2h9v3',
+                      'gen-abc12345', 'gen-u3v4w5x6', 'gen-j4k8m1n7', 'gen-p9r2s5t8'
+                    ];
+                    const usedIds = new Set();
+                    
+                    actions = actions.map(action => {
+                      // ONLY regenerate IDs for CREATE actions, not UPDATE/DELETE
+                      if (action.intent === 'CREATE_OKRT' && action.payload && action.payload.id) {
+                        const originalId = action.payload.id;
+                        // Check if ID is from examples or duplicate
+                        if (exampleIds.includes(originalId) || usedIds.has(originalId)) {
+                          const newId = `gen-${Math.random().toString(36).substring(2, 10)}`;
+                          console.log(`⚠️  Replaced duplicate/example ID ${originalId} → ${newId}`);
+                          action.payload.id = newId;
+                          
+                          // Update parent_id references in other actions
+                          actions.forEach(a => {
+                            if (a.payload && a.payload.parent_id === originalId) {
+                              a.payload.parent_id = newId;
+                            }
+                          });
+                        }
+                        usedIds.add(action.payload.id);
+                      }
+                      
+                      // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
+                      if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && 
+                          action.payload?.id && 
+                          action.endpoint === '/api/okrt') {
+                        action.endpoint = `/api/okrt/${action.payload.id}`;
+                        console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
+                      }
+                      
+                      return action;
+                    });
+                    
+                    console.log('✅ SUCCESS: Extracted', actions.length, 'action(s)');
+                    console.log(JSON.stringify(actions, null, 2));
+                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actions }) + '\n'));
+                  } else {
+                    console.log('❌ FAILED: No actions could be extracted');
+                    console.log('This usually means:');
+                    console.log('1. Model did not output ACTIONS_JSON: marker');
+                    console.log('2. JSON was malformed');
+                    console.log('3. Model used wrong format');
+                  }
+                }
                 controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
                 controller.close();
                 break;
               }
-              const chunk = new TextDecoder().decode(value);
+              const chunk = decoder.decode(value);
               const lines = chunk.split('\n').filter(l => l.trim());
               for (const line of lines) {
                 try {
                   const data = JSON.parse(line);
                   if (data.message?.content) {
-                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: data.message.content }) + '\n'));
+                    const content = data.message.content;
+                    accumText += content;
+                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: content }) + '\n'));
+                    if (!actionsSent) {
+                      let actions = tryExtractActions(accumText);
+                      if (actions && actions.length) {
+                        // FIX: Regenerate IDs if model used example IDs
+                        const exampleIds = [
+                          'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2', 
+                          'gen-x7m9k2p4', 'gen-w3n8q5r1', 'gen-t6y2h9v3',
+                          'gen-abc12345', 'gen-u3v4w5x6', 'gen-j4k8m1n7', 'gen-p9r2s5t8'
+                        ];
+                        const usedIds = new Set();
+                        
+                        actions = actions.map(action => {
+                          // ONLY regenerate IDs for CREATE actions, not UPDATE/DELETE
+                          if (action.intent === 'CREATE_OKRT' && action.payload && action.payload.id) {
+                            const originalId = action.payload.id;
+                            if (exampleIds.includes(originalId) || usedIds.has(originalId)) {
+                              const newId = `gen-${Math.random().toString(36).substring(2, 10)}`;
+                              console.log(`⚠️  Replaced duplicate/example ID ${originalId} → ${newId}`);
+                              action.payload.id = newId;
+                              
+                              // Update parent_id references
+                              actions.forEach(a => {
+                                if (a.payload && a.payload.parent_id === originalId) {
+                                  a.payload.parent_id = newId;
+                                }
+                              });
+                            }
+                            usedIds.add(action.payload.id);
+                          }
+                          
+                          // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
+                          if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && 
+                              action.payload?.id && 
+                              action.endpoint === '/api/okrt') {
+                            action.endpoint = `/api/okrt/${action.payload.id}`;
+                            console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
+                          }
+                          
+                          return action;
+                        });
+                        
+                        console.log('=== OLLAMA EXTRACTED ACTIONS (STREAMING) ===');
+                        console.log(JSON.stringify(actions, null, 2));
+                        console.log('=== END OLLAMA ACTIONS ===');
+                        actionsSent = true;
+                        controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actions }) + '\n'));
+                      }
+                    }
                   }
                   if (data.done) {
+                    // Attempt again if not sent
+                    if (!actionsSent) {
+                      const actions = tryExtractActions(accumText);
+                      if (actions && actions.length) {
+                        console.log('=== OLLAMA EXTRACTED ACTIONS (FINAL) ===');
+                        console.log(JSON.stringify(actions, null, 2));
+                        console.log('=== END OLLAMA ACTIONS ===');
+                        actionsSent = true;
+                        controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actions }) + '\n'));
+                      }
+                    }
                     controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
                   }
                 } catch (e) {
