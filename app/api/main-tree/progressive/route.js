@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { all, get } from '@/lib/pgdb';
+import { jiraFetchWithRetry, parseJiraIssue } from '@/lib/jiraAuth';
 
 /**
  * GET /api/main-tree/progressive
@@ -248,6 +249,48 @@ export async function GET(request) {
           
           sendSection('notifications', notifications);
           console.log('[Progressive] ✅ notifications sent');
+
+          // 4a. Load Jira tickets for the authenticated user (if Jira connected)
+          try {
+            console.log('[Progressive] Loading jiraTickets...');
+            // Fetch ALL tickets assigned to current user (batch fetch up to 1000)
+            const jql = 'assignee = currentUser() ORDER BY updated DESC';
+            let allIssues = [];
+            let fetchedAll = false;
+            let currentStart = 0;
+            const batchSize = 100;
+            
+            while (!fetchedAll && currentStart < 1000) {
+              const params = new URLSearchParams({
+                jql: jql,
+                startAt: currentStart.toString(),
+                maxResults: batchSize.toString(),
+                fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description'
+              });
+              
+              const jiraResp = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params}`);
+              const jiraJson = await jiraResp.json();
+              const batch = jiraJson.issues || jiraJson.values || [];
+              
+              if (batch.length === 0) {
+                fetchedAll = true;
+              } else {
+                allIssues = allIssues.concat(batch);
+                currentStart += batch.length;
+                
+                if (batch.length < batchSize) {
+                  fetchedAll = true;
+                }
+              }
+            }
+            
+            const parsed = allIssues.map(parseJiraIssue).filter(i => i !== null);
+            sendSection('jiraTickets', parsed);
+            console.log(`[Progressive] ✅ jiraTickets sent (${parsed.length} tickets)`);
+          } catch (e) {
+            console.warn('[Progressive] Failed to load jiraTickets (user may not be connected):', e?.message || e);
+            sendSection('jiraTickets', []);
+          }
 
           // 4. Load SharedOKRTs - Only Objectives, with KRs nested inside
           console.log('[Progressive] Loading sharedOKRTs...');

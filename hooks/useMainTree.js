@@ -106,6 +106,7 @@ export function useMainTree() {
         setSectionLoading('notifications', true);
         setSectionLoading('sharedOKRTs', true);
         setSectionLoading('groups', true);
+        setSectionLoading('jiraTickets', true);
         setSectionLoading('preferences', true);
         
         console.log('Loading mainTree data progressively...');
@@ -168,6 +169,9 @@ export function useMainTree() {
                       break;
                     case 'sharedOKRTs':
                       store.setSharedOKRTs(data);
+                      break;
+                    case 'jiraTickets':
+                      store.setJiraTickets(data);
                       break;
                     case 'groups':
                       store.setGroups(data);

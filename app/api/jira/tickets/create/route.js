@@ -15,9 +15,12 @@ export async function POST(request) {
     }
 
     const body = await request.json();
+    
+    console.log('Received Jira create request body:', JSON.stringify(body, null, 2));
 
     // Validate required fields
     if (!body.project || !body.summary || !body.issueType) {
+      console.log('Validation failed - project:', body.project, 'summary:', body.summary, 'issueType:', body.issueType);
       return NextResponse.json(
         { error: 'Project, summary, and issue type are required' },
         { status: 400 }
@@ -36,6 +39,8 @@ export async function POST(request) {
         },
       },
     };
+    
+    console.log('Sending to Jira API - issueData:', JSON.stringify(issueData, null, 2));
 
     // Add parent issue for subtasks
     if (body.parent) {

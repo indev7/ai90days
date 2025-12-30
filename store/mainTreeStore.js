@@ -55,6 +55,7 @@ const useMainTreeStore = create(
     notifications: [],
     timeBlocks: [],
     groups: [],
+    jiraTickets: [],
     calendar: {
       events: [],
       quarter: null
@@ -70,6 +71,7 @@ const useMainTreeStore = create(
     timeBlocks: { loading: false, loaded: false, lastUpdated: null },
     groups: { loading: false, loaded: false, lastUpdated: null },
     calendar: { loading: false, loaded: false, lastUpdated: null }
+    ,jiraTickets: { loading: false, loaded: false, lastUpdated: null }
   },
   
   // Loading states
@@ -90,7 +92,8 @@ const useMainTreeStore = create(
       notifications: { loading: false, loaded: true, lastUpdated: now },
       timeBlocks: { loading: false, loaded: true, lastUpdated: now },
       groups: { loading: false, loaded: true, lastUpdated: now },
-      calendar: { loading: false, loaded: true, lastUpdated: now }
+      calendar: { loading: false, loaded: true, lastUpdated: now },
+      jiraTickets: { loading: false, loaded: true, lastUpdated: now }
     };
     return {
       mainTree: tree,
@@ -134,6 +137,21 @@ const useMainTreeStore = create(
       sectionStates: {
         ...state.sectionStates,
         myOKRTs: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
+
+  setJiraTickets: (tickets) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        jiraTickets: tickets
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        jiraTickets: { loading: false, loaded: true, lastUpdated: now }
       }
     };
   }),
@@ -350,6 +368,7 @@ const useMainTreeStore = create(
       notifications: [],
       timeBlocks: [],
       groups: [],
+      jiraTickets: [],
       calendar: {
         events: [],
         quarter: null
@@ -362,7 +381,8 @@ const useMainTreeStore = create(
       notifications: { loading: false, loaded: false, lastUpdated: null },
       timeBlocks: { loading: false, loaded: false, lastUpdated: null },
       groups: { loading: false, loaded: false, lastUpdated: null },
-      calendar: { loading: false, loaded: false, lastUpdated: null }
+      calendar: { loading: false, loaded: false, lastUpdated: null },
+      jiraTickets: { loading: false, loaded: false, lastUpdated: null }
     },
     lastUpdated: null,
     error: null,

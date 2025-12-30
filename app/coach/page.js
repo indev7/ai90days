@@ -397,6 +397,14 @@ function useVoiceRecording(onTranscriptionComplete) {
 
 function labelForAction(action) {
   const { intent, method, payload = {} } = action || {};
+  
+  // Handle Jira intents
+  if (intent === 'CREATE_JIRA') return `Create Jira Ticket: ${payload?.summary || 'New Ticket'}`;
+  if (intent === 'UPDATE_JIRA') return `Update Jira Ticket`;
+  if (intent === 'COMMENT_JIRA') return `Add Comment to Jira`;
+  if (intent === 'TRANSITION_JIRA') return `Change Jira Status`;
+  
+  // Handle OKRT intents
   const noun =
     payload?.type === 'O' ? 'Objective' :
     payload?.type === 'K' ? 'Key Result' :
@@ -828,17 +836,94 @@ export default function CoachPage() {
   const handleActionClick = async (action) => {
     setLoading(true);
     try {
-      const payload = { ...action.body };
-      const res = await fetch(action.endpoint, {
+      let payload = { ...action.body };
+      let endpoint = action.endpoint;
+      
+      // Fix incorrect Jira endpoints from LLM
+      if (action.intent === 'CREATE_JIRA' && endpoint === '/api/jira/tickets') {
+        endpoint = '/api/jira/tickets/create';
+      }
+      
+      // Transform Jira action payloads to match API expectations
+      if (action.intent === 'CREATE_JIRA') {
+        // Transform CREATE_JIRA payload from LLM format to API format
+        // LLM sends: {project, summary, issueType, description?}
+        // API expects: {project, summary, issueType, description?}
+        let projectKey = payload.project || payload.fields?.project?.key;
+        
+        // ALWAYS fetch available projects to validate/correct the project key
+        try {
+          console.log('Fetching available Jira projects...');
+          const projResp = await fetch('/api/jira/projects');
+          const projData = await projResp.json();
+          const availableProjects = projData.projects || [];
+          
+          console.log('Available projects:', availableProjects.map(p => `${p.key}: ${p.name}`).join(', '));
+          
+          // Check if provided project key exists
+          const projectExists = availableProjects.find(p => p.key === projectKey);
+          
+          if (!projectExists) {
+            console.log(`Project key "${projectKey}" not found, searching for alternative...`);
+            // Find "90 Days" project or use first available
+            const ninetyDaysProj = availableProjects.find(p => 
+              p.name?.includes('90 Days') || 
+              p.name?.includes('90Days') ||
+              p.name?.toLowerCase().includes('90 days')
+            );
+            projectKey = ninetyDaysProj?.key || availableProjects[0]?.key;
+            console.log('Using project key:', projectKey, ninetyDaysProj ? `(found: ${ninetyDaysProj.name})` : '(first available)');
+          } else {
+            console.log('Project key verified:', projectKey);
+          }
+        } catch (e) {
+          console.error('Failed to fetch projects:', e);
+        }
+        
+        payload = {
+          project: projectKey,
+          summary: payload.summary || payload.fields?.summary,
+          issueType: payload.issueType || payload.fields?.issuetype?.name || 'Task',
+          description: payload.description || payload.fields?.description || ''
+        };
+        
+        // Validate required fields
+        if (!payload.project || !payload.summary) {
+          throw new Error('Project and summary are required for Jira ticket creation');
+        }
+        
+        console.log('CREATE_JIRA payload:', JSON.stringify(payload, null, 2));
+      } else if (action.intent === 'UPDATE_JIRA') {
+        // For UPDATE_JIRA, ensure we have fields object
+        if (!payload.fields && payload.summary) {
+          payload = { fields: payload };
+        }
+      } else if (action.intent === 'COMMENT_JIRA') {
+        // Ensure comment is in correct format
+        if (!payload.comment && payload.text) {
+          payload = { comment: payload.text };
+        }
+      } else if (action.intent === 'TRANSITION_JIRA') {
+        // Ensure transitionName is present
+        if (!payload.transitionName && payload.transition) {
+          payload = { transitionName: payload.transition };
+        }
+      }
+      
+      const res = await fetch(endpoint, {
         method: action.method,
         headers: { 'Content-Type': 'application/json' },
         body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `API error: ${res.status}`);
+      }
       
       const result = await res.json();
       
-      // Handle cache update if provided by the API
+      // Handle cache update if provided by the API (for OKRTs)
       if (result._cacheUpdate) {
         const { action: cacheAction, data } = result._cacheUpdate;
         
@@ -851,7 +936,13 @@ export default function CoachPage() {
         }
       }
       
-      addMessage({ id: Date.now(), role: 'assistant', content: `✅ ${action.label} completed successfully!`, timestamp: new Date() });
+      // For Jira actions, show the created ticket key if available
+      let successMsg = `✅ ${action.label} completed successfully!`;
+      if (action.intent === 'CREATE_JIRA' && result.issue?.key) {
+        successMsg = `✅ Jira ticket ${result.issue.key} created successfully!`;
+      }
+      
+      addMessage({ id: Date.now(), role: 'assistant', content: successMsg, timestamp: new Date() });
     } catch (err) {
       console.error('Action error:', err);
       addMessage({ id: Date.now(), role: 'assistant', content: `❌ Failed to execute "${action.label}". ${err.message}`, error: true, timestamp: new Date() });
@@ -864,17 +955,49 @@ export default function CoachPage() {
     setLoading(true);
     try {
       for (const action of actions) {
-        const payload = { ...action.body };
-        const res = await fetch(action.endpoint, {
+        let payload = { ...action.body };
+        let endpoint = action.endpoint;
+        
+        // Fix incorrect Jira endpoints from LLM
+        if (action.intent === 'CREATE_JIRA' && endpoint === '/api/jira/tickets') {
+          endpoint = '/api/jira/tickets/create';
+        }
+        
+        // Transform Jira action payloads
+        if (action.intent === 'CREATE_JIRA') {
+          payload = {
+            project: payload.project || payload.fields?.project?.key || '90D', // Default to 90D key if missing
+            summary: payload.summary || payload.fields?.summary,
+            issueType: payload.issueType || payload.fields?.issuetype?.name || 'Task',
+            description: payload.description || payload.fields?.description || ''
+          };
+          
+          // Validate required fields
+          if (!payload.project || !payload.summary) {
+            throw new Error('Project and summary are required for Jira ticket creation');
+          }
+        } else if (action.intent === 'UPDATE_JIRA' && !payload.fields && payload.summary) {
+          payload = { fields: payload };
+        } else if (action.intent === 'COMMENT_JIRA' && !payload.comment && payload.text) {
+          payload = { comment: payload.text };
+        } else if (action.intent === 'TRANSITION_JIRA' && !payload.transitionName && payload.transition) {
+          payload = { transitionName: payload.transition };
+        }
+        
+        const res = await fetch(endpoint, {
           method: action.method,
           headers: { 'Content-Type': 'application/json' },
           body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
+        
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `API error: ${res.status} on "${action.label}"`);
+        }
         
         const result = await res.json();
         
-        // Handle cache update if provided by the API
+        // Handle cache update if provided by the API (for OKRTs)
         if (result._cacheUpdate) {
           const { action: cacheAction, data } = result._cacheUpdate;
           

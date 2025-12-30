@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getDatabase, get, all } from '@/lib/pgdb';
+import { jiraFetchWithRetry, parseJiraIssue } from '@/lib/jiraAuth';
 
 // Increase route timeout for LLM responses (Next.js 15 route segment config)
 export const maxDuration = 300; // 5 minutes (Vercel limit)
@@ -144,10 +145,53 @@ async function getOKRTContext(userId) {
       context.objectives.push(objData);
     }
 
+    // Attempt to load Jira tickets for this user (best-effort). If Jira not connected, leave empty.
+    try {
+      const jql = 'assignee = currentUser() ORDER BY updated DESC';
+      let allIssues = [];
+      let fetchedAll = false;
+      let currentStart = 0;
+      const batchSize = 100;
+      
+      while (!fetchedAll && currentStart < 1000) {
+        const params = new URLSearchParams({
+          jql: jql,
+          startAt: currentStart.toString(),
+          maxResults: batchSize.toString(),
+          fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description'
+        });
+        
+        const jiraResp = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params}`);
+        const jiraJson = await jiraResp.json();
+        const batch = jiraJson.issues || jiraJson.values || [];
+        
+        if (batch.length === 0) {
+          fetchedAll = true;
+        } else {
+          allIssues = allIssues.concat(batch);
+          currentStart += batch.length;
+          
+          if (batch.length < batchSize) {
+            fetchedAll = true;
+          }
+        }
+      }
+      
+      const parsed = allIssues.map(parseJiraIssue).filter(i => i !== null);
+      context.jiraTickets = parsed;
+      
+      // Log available projects for debugging
+      const uniqueProjects = [...new Set(parsed.map(t => t.project?.key).filter(Boolean))];
+      console.log('[LLM Context] Available Jira project keys:', uniqueProjects);
+    } catch (e) {
+      // Ignore Jira errors - not all users are connected
+      context.jiraTickets = [];
+    }
+
     return cleanObject(context);
   } catch (error) {
     console.error('Error fetching OKRT context:', error);
-    return { user: { displayName: 'User' }, objectives: [] };
+    return { user: { displayName: 'User' }, objectives: [], jiraTickets: [] };
   }
 }
 
@@ -173,6 +217,12 @@ CONTEXT - Current User's Information and OKRTs:
 User Display Name: ${displayName}
 Number of Objectives: 0
 No OKRTs found for this user in the current quarter.`;
+
+  // Include Jira tickets summary if available
+  const jiraList = okrtContext?.jiraTickets || [];
+  const jiraBlock = jiraList.length > 0
+    ? `\nJIRA - User's connected Jira tickets (assigned to user): ${jiraList.length}\nJSON: ${JSON.stringify(jiraList)}`
+    : `\nJIRA - No connected Jira tickets or user not connected.`;
 
   const timeBlock = `
 TIME CONTEXT:
@@ -208,6 +258,35 @@ OUTPUT CONTRACT
 1) Stream a short paragraph of coaching text.
 2) If changes are requested, call "emit_actions" once with an ordered "actions" array.
 
+JIRA SUPPORT
+- This coach can also manage Jira tickets in addition to OKRTs. When recommending or taking actions on Jira tickets, use these intents and endpoints:
+  * CREATE_JIRA: endpoint '/api/jira/tickets/create', payload: {project, summary, issueType, description?}
+  * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', payload: {fields}
+  * COMMENT_JIRA: endpoint '/api/jira/tickets/{key}/comments', payload: {comment}
+  * TRANSITION_JIRA: endpoint '/api/jira/tickets/{key}/transition', payload: {transitionName}
+
+⚠️ CRITICAL: PROJECT EXTRACTION FOR JIRA
+When user wants to create a Jira ticket, you MUST extract the project KEY (not name) from their message:
+- Look at existing Jira tickets in JIRA section above - each ticket has a "project" object with a "key" field
+- Extract that project KEY (short code like "90D", "IRIS", "PROJ") from existing tickets
+- If user mentions "90 days" in their message, look for a project in existing tickets whose name contains "90" and use its KEY
+- The project field in the payload should be the KEY (e.g., "90D"), NOT the full name ("90 Days")
+- If NO existing tickets, use "90D" as fallback
+
+EXAMPLES:
+Existing tickets show: {"key":"90D-123", "project":{"key":"90D","name":"90 Days"}}
+User: "create a ticket in 90 days project for testing"
+→ {project: "90D", summary: "testing", issueType: "Task"}
+
+Existing tickets show: {"key":"IRIS-45", "project":{"key":"IRIS","name":"IRIS Project"}}
+User: "add ticket for IRIS to track bug"
+→ {project: "IRIS", summary: "track bug", issueType: "Task"}
+
+User: "create jira ticket called fix login"
+→ Look at existing tickets' project.key field, use that (e.g., {project: "90D", summary: "fix login", issueType: "Task"})
+
+Jira actions follow ACTIONS_JSON format but use these specific Jira endpoints and payload structures.
+
 ID SAFETY (MANDATORY)
 - Use IDs only inside emit_actions; never surface them in user-facing text.
 - IDs/UUIDs (id, parent_id, owner_id, gen-* tokens) must not appear in the coaching paragraph. If a sentence would contain an ID, rewrite it without the ID. Before sending text, scan and remove any token matching a UUID (\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b) or gen-[a-z0-9]{8}. Do not remove numeric values like weights or progress percentages.
@@ -223,7 +302,7 @@ ID SAFETY (MANDATORY)
 - Output the entire tool_call arguments JSON in a single contiguous block (do not split keys/values across deltas).
 
 
-${timeBlock}${contextBlock}`;
+${timeBlock}${contextBlock}${jiraBlock}`;
 }
 
 /* =========================
@@ -254,6 +333,12 @@ IMPORTANT: For UPDATE or DELETE, use the EXACT IDs shown in brackets [id] above!
 EXISTING USER OKRTS:
 User: ${displayName} has no OKRTs yet.`;
 
+  // Include compact Jira tickets list if present
+  const jiraList = okrtContext?.jiraTickets || [];
+  const jiraBlock = jiraList.length > 0
+    ? `\nEXISTING JIRA TICKETS:\n${jiraList.slice(0,10).map(j => `- [${j.key}] ${j.summary} (${j.status})`).join('\n')}\n` 
+    : `\nEXISTING JIRA TICKETS: none or not connected\n`;
+
   const timeBlock = `
 TIME: Quarter ${timeCtx.currentQuarter} (${timeCtx.quarterStart} to ${timeCtx.quarterEnd})`;
 
@@ -262,6 +347,7 @@ TIME: Quarter ${timeCtx.currentQuarter} (${timeCtx.quarterStart} to ${timeCtx.qu
 
 ${timeBlock}
 ${contextBlock}
+${jiraBlock}
 
 CRITICAL: When user wants to create/update/delete OKRTs, you MUST output EXACTLY this format:
 
@@ -272,6 +358,22 @@ ACTIONS_JSON:
 
 DATA MODEL:
 O (Objective) → K (Key Result) → T (Task) linked by parent_id
+
+JIRA SUPPORT:
+- This coach can also propose and emit actions for Jira tickets. Use these intents:
+  * CREATE_JIRA: endpoint '/api/jira/tickets/create', payload must have: project (string), summary (string), issueType (string like 'Task'), description (optional string)
+  * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', payload: {fields: {...}}
+  * COMMENT_JIRA: endpoint '/api/jira/tickets/{key}/comments', payload: {comment: 'text'}
+  * TRANSITION_JIRA: endpoint '/api/jira/tickets/{key}/transition', payload: {transitionName: 'Done'}
+
+⚠️ PROJECT EXTRACTION:
+- Extract project KEY from existing Jira tickets above (look for project.key field, e.g., "90D", "IRIS")
+- Use the KEY (short code), NOT the project name
+- If user says "90 days", look at existing tickets and use their project.key
+- If no existing tickets, use "90D" as fallback
+- ALWAYS include project field in CREATE_JIRA payload!
+
+Follow ACTIONS_JSON format.
 
 ⚠️ CRITICAL ID RULES:
 - CREATE: Generate NEW random IDs like gen-k3x7m9p2
@@ -433,8 +535,8 @@ function getActionsTool() {
             type: "object",
             required: ["intent", "endpoint", "method", "payload"],
             properties: {
-              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
-              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
+              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA"] },
+              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]", "/api/jira/tickets/create", "/api/jira/tickets/[key]", "/api/jira/tickets/[key]/comments", "/api/jira/tickets/[key]/transition"] },
               method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
               payload: {
                 type: "object",
@@ -477,6 +579,12 @@ function getActionsTool() {
                   recurrence_json: { type: "string" },
                   blocked_by: { type: "string" },
                   repeat: { type: "string", enum: ["Y","N"] }
+                  ,
+                  // Jira-specific fields
+                  key: { type: "string" },
+                  comment: { type: "string" },
+                  fields: { type: "object" },
+                  transition_to: { type: "string" }
                 },
                 additionalProperties: true
               }
@@ -531,13 +639,55 @@ export async function POST(request) {
     }
 
     // Use client-provided OKRT context if available, otherwise fetch from DB
-    const okrtContext = clientOkrtContext || await getOKRTContext(userId);
-    
-    // Add user display name if not present in client context
+    let okrtContext = clientOkrtContext || await getOKRTContext(userId);
+
+    // If client provided a partial context, ensure we attach the user's display name
     if (clientOkrtContext && !clientOkrtContext.user) {
       await getDatabase(); // Ensure database is initialized
       const user = await get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
       okrtContext.user = { displayName: user?.display_name || 'User' };
+    }
+
+    // If client provided their own context, they may not have Jira tickets included.
+    // Attempt to fetch Jira tickets and merge them into the context (best-effort).
+    if (clientOkrtContext) {
+      try {
+        const jql = 'assignee = currentUser() ORDER BY updated DESC';
+        let allIssues = [];
+        let fetchedAll = false;
+        let currentStart = 0;
+        const batchSize = 100;
+        
+        while (!fetchedAll && currentStart < 1000) {
+          const params = new URLSearchParams({
+            jql: jql,
+            startAt: currentStart.toString(),
+            maxResults: batchSize.toString(),
+            fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description'
+          });
+          
+          const jiraResp = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params}`);
+          const jiraJson = await jiraResp.json();
+          const batch = jiraJson.issues || jiraJson.values || [];
+          
+          if (batch.length === 0) {
+            fetchedAll = true;
+          } else {
+            allIssues = allIssues.concat(batch);
+            currentStart += batch.length;
+            
+            if (batch.length < batchSize) {
+              fetchedAll = true;
+            }
+          }
+        }
+        
+        const parsed = allIssues.map(parseJiraIssue).filter(i => i !== null);
+        okrtContext.jiraTickets = parsed;
+      } catch (e) {
+        // Ignore Jira errors for users who haven't connected Jira
+        okrtContext.jiraTickets = clientOkrtContext.jiraTickets || [];
+      }
     }
     
     // Determine provider early
@@ -925,10 +1075,13 @@ Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
                       }
                       
                       // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
-                      if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && 
-                          action.payload?.id && 
-                          action.endpoint === '/api/okrt') {
-                        action.endpoint = `/api/okrt/${action.payload.id}`;
+                      if (((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && action.payload?.id && action.endpoint === '/api/okrt') ||
+                          ((action.intent === 'UPDATE_JIRA' || action.intent === 'DELETE_JIRA') && action.payload?.id && action.endpoint === '/api/jira/tickets')) {
+                        if (action.endpoint === '/api/okrt') {
+                          action.endpoint = `/api/okrt/${action.payload.id}`;
+                        } else if (action.endpoint === '/api/jira/tickets') {
+                          action.endpoint = `/api/jira/tickets/${action.payload.id}`;
+                        }
                         console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
                       }
                       
