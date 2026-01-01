@@ -89,6 +89,13 @@ export async function PUT(request, { params }) {
       updateFields.labels = body.labels;
     }
 
+    // Handle custom fields
+    if (body.customFields) {
+      Object.entries(body.customFields).forEach(([key, value]) => {
+        updateFields[key] = value;
+      });
+    }
+
     // Update issue in Jira
     await jiraFetchWithRetry(`/rest/api/3/issue/${ticketKey}`, {
       method: 'PUT',

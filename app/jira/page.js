@@ -66,6 +66,9 @@ export default function JiraPage() {
       // Store Jira site URL if available
       if (data.resources && data.resources.length > 0) {
         setJiraSiteUrl(data.resources[0].url);
+      } else if (data.cloudId) {
+        // Fallback: construct URL from cloudId
+        setJiraSiteUrl(`https://staysure-group.atlassian.net`);
       }
 
       // Check for URL parameters
@@ -203,13 +206,14 @@ export default function JiraPage() {
 
   const handleTicketKeyClick = (ticketKey, event) => {
     event.stopPropagation();
-    if (jiraSiteUrl) {
-      window.open(`${jiraSiteUrl}/browse/${ticketKey}`, '_blank');
-    }
+    // Use jiraSiteUrl or construct from known instance
+    const baseUrl = jiraSiteUrl || 'https://staysure-group.atlassian.net';
+    window.open(`${baseUrl}/browse/${ticketKey}`, '_blank');
   };
 
   const handleUpdateTicket = async (ticketKey, updates) => {
     try {
+      console.log('Updating ticket:', ticketKey, 'with data:', updates);
       const response = await fetch(`/api/jira/tickets/${ticketKey}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -220,8 +224,13 @@ export default function JiraPage() {
         const updated = await response.json();
         setSelectedTicket(updated);
         loadTickets(); // Refresh list
+      } else {
+        const errorData = await response.json();
+        console.error('Update failed:', errorData);
+        setError(`Failed to update ticket: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
+      console.error('Update error:', err);
       setError('Failed to update ticket');
     }
   };
@@ -447,11 +456,16 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
   const [editData, setEditData] = useState({
     summary: ticket.summary,
     description: ticket.description,
+    status: ticket.status,
+    startDate: '',
+    days: '',
   });
   const [availableTransitions, setAvailableTransitions] = useState([]);
   const [loadingTransitions, setLoadingTransitions] = useState(false);
+  const isLeaveTicket = ticket.project.name?.toLowerCase().includes('leave');
+  const canEditLeaveTicket = ticket.project.key !== 'ILT'; // ILT project has restricted permissions
 
-  // Fetch available transitions when component mounts
+  // Fetch available transitions and extract custom fields when component mounts
   useEffect(() => {
     const fetchTransitions = async () => {
       setLoadingTransitions(true);
@@ -468,11 +482,65 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
       }
     };
 
+    // Extract custom fields for leave tickets
+    if (isLeaveTicket && ticket.customFields) {
+      let startDate = '';
+      let days = '';
+
+      Object.entries(ticket.customFields).forEach(([key, value]) => {
+        // Check for date fields
+        if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+          startDate = value.split('T')[0];
+        }
+        // Check for number fields (days)
+        if (typeof value === 'number' && value > 0 && value < 1000) {
+          days = value.toString();
+        }
+      });
+
+      setEditData(prev => ({ ...prev, startDate, days }));
+    }
+
     fetchTransitions();
-  }, [ticket.key]);
+  }, [ticket.key, ticket.customFields, isLeaveTicket]);
 
   const handleSave = () => {
-    onUpdate(ticket.key, editData);
+    const updates = {};
+
+    // Only add summary and description if they changed (and not for subtasks)
+    if (editData.summary !== ticket.summary && ticket.issueType !== 'Leave-Request') {
+      updates.summary = editData.summary;
+    }
+    if (editData.description !== ticket.description && ticket.issueType !== 'Leave-Request') {
+      updates.description = editData.description;
+    }
+
+    // If status changed, trigger transition
+    if (editData.status !== ticket.status) {
+      onTransition(ticket.key, editData.status);
+    }
+
+    // Add custom fields if they changed (for leave tickets)
+    if (isLeaveTicket && (editData.startDate || editData.days)) {
+      updates.customFields = {};
+
+      // Find the custom field IDs from original ticket
+      if (ticket.customFields) {
+        Object.entries(ticket.customFields).forEach(([key, value]) => {
+          if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/) && editData.startDate) {
+            updates.customFields[key] = editData.startDate;
+          }
+          if (typeof value === 'number' && editData.days) {
+            updates.customFields[key] = parseFloat(editData.days);
+          }
+        });
+      }
+    }
+
+    // Only call update if there are fields to update
+    if (Object.keys(updates).length > 0) {
+      onUpdate(ticket.key, updates);
+    }
     setIsEditing(false);
   };
 
@@ -497,18 +565,71 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
 
       {isEditing ? (
         <div className={styles.editForm}>
-          <input
-            type="text"
-            value={editData.summary}
-            onChange={(e) => setEditData({ ...editData, summary: e.target.value })}
-            className={styles.editInput}
-          />
-          <textarea
-            value={editData.description}
-            onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-            className={styles.editTextarea}
-            rows={10}
-          />
+          <div className={styles.formGroup}>
+            <label>Summary</label>
+            <input
+              type="text"
+              value={editData.summary}
+              onChange={(e) => setEditData({ ...editData, summary: e.target.value })}
+              className={styles.editInput}
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Description</label>
+            <textarea
+              value={editData.description}
+              onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+              className={styles.editTextarea}
+              rows={6}
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Status</label>
+            <select
+              value={editData.status}
+              onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+              className={styles.editInput}
+              disabled={loadingTransitions || availableTransitions.length === 0}
+            >
+              <option value={ticket.status}>{ticket.status}</option>
+              {availableTransitions.map(transition => (
+                transition.to.name !== ticket.status && (
+                  <option key={transition.id} value={transition.to.name}>
+                    {transition.to.name}
+                  </option>
+                )
+              ))}
+            </select>
+          </div>
+
+          {isLeaveTicket && (
+            <>
+              <div className={styles.formGroup}>
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  value={editData.startDate}
+                  onChange={(e) => setEditData({ ...editData, startDate: e.target.value })}
+                  className={styles.editInput}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Days</label>
+                <input
+                  type="number"
+                  value={editData.days}
+                  onChange={(e) => setEditData({ ...editData, days: e.target.value })}
+                  className={styles.editInput}
+                  step="0.5"
+                  min="0"
+                />
+              </div>
+            </>
+          )}
+
           <div className={styles.editActions}>
             <button onClick={handleSave} className={styles.saveButton}>Save</button>
             <button onClick={() => setIsEditing(false)} className={styles.cancelButton}>Cancel</button>
@@ -546,24 +667,15 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
           </div>
 
           <div className={styles.actions}>
-            <button onClick={() => setIsEditing(true)} className={styles.editButton}>
-              Edit
-            </button>
-            <select
-              onChange={(e) => onTransition(ticket.key, e.target.value)}
-              className={styles.transitionSelect}
-              defaultValue=""
-              disabled={loadingTransitions || availableTransitions.length === 0}
-            >
-              <option value="" disabled>
-                {loadingTransitions ? 'Loading...' : availableTransitions.length === 0 ? 'No transitions available' : 'Change Status'}
-              </option>
-              {availableTransitions.map(transition => (
-                <option key={transition.id} value={transition.to.name}>
-                  {transition.to.name}
-                </option>
-              ))}
-            </select>
+            {canEditLeaveTicket ? (
+              <button onClick={() => setIsEditing(true)} className={styles.editButton}>
+                Edit
+              </button>
+            ) : (
+              <div className={styles.infoMessage}>
+                View only - No edit permission for this project
+              </div>
+            )}
           </div>
         </>
       )}
