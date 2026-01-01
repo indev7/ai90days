@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { IoChevronBack, IoChevronForward } from 'react-icons/io5';
+import { useState, useEffect, useMemo } from 'react';
+import { RiCalendarScheduleLine } from 'react-icons/ri';
 import styles from './page.module.css';
 import { createObjectiveColorMap, getThemeColorPalette, transformOKRTsToObjectives } from '../../lib/clockUtils';
 import TaskUpdateModal from '../../components/TaskUpdateModal';
@@ -86,6 +86,7 @@ export default function CalendarPage() {
     const [startHour, setStartHour] = useState(9); // Default to 9 AM
     const [startMinute, setStartMinute] = useState(0); // Default to 00 minutes
     const [loading, setLoading] = useState(false);
+    const [viewFilter, setViewFilter] = useState('all');
     const [mobileCurrentDay, setMobileCurrentDay] = useState(0); // Index for mobile view
     const [objectiveColorMap, setObjectiveColorMap] = useState({});
     const [hoveredBlockId, setHoveredBlockId] = useState(null);
@@ -315,12 +316,6 @@ export default function CalendarPage() {
         }
     };
 
-    const navigateWeek = (direction) => {
-        const newDate = new Date(currentWeekStart);
-        newDate.setDate(newDate.getDate() + (direction * 7));
-        setCurrentWeekStart(newDate.toISOString().split('T')[0]);
-    };
-
     const navigateMobileDay = (direction) => {
         const newIndex = mobileCurrentDay + direction;
         if (newIndex >= 0 && newIndex < 7) {
@@ -386,6 +381,14 @@ export default function CalendarPage() {
         const minuteStr = minute.toString().padStart(2, '0');
         return `${displayHour}:${minuteStr} ${period}`;
     };
+
+    const filteredTimeBlocks = useMemo(() => {
+        return viewFilter === 'meetings' ? [] : timeBlocks;
+    }, [timeBlocks, viewFilter]);
+
+    const filteredCalendarEvents = useMemo(() => {
+        return viewFilter === 'tasks' ? [] : calendarEvents;
+    }, [calendarEvents, viewFilter]);
 
     const handleObjectiveChange = (value) => {
         if (!value) {
@@ -509,35 +512,45 @@ export default function CalendarPage() {
 
     return (
         <div className={styles.calendarContainer}>
-            <div className={styles.calendarHeader}>
-                <h1 className={styles.calendarTitle}>Calendar</h1>
-                <div className={styles.navigationControls}>
+            <div className="app-pageHeader">
+                <div className="app-titleSection">
+                    <RiCalendarScheduleLine className="app-pageIcon" />
+                    <h1 className="app-pageTitle">Schedule</h1>
+                </div>
+                <div className="app-filterSwitcher" role="group" aria-label="Schedule filter">
+                    <div
+                        className={`app-filterThumb ${
+                            viewFilter === 'tasks'
+                                ? styles.thumbTasks
+                                : viewFilter === 'meetings'
+                                    ? styles.thumbMeetings
+                                    : styles.thumbAll
+                        }`}
+                        aria-hidden="true"
+                    />
                     <button
-                        className={styles.navButtonChevron}
-                        onClick={() => navigateWeek(-1)}
-                        aria-label="Previous Week"
+                        type="button"
+                        className={`app-filterButton ${viewFilter === 'all' ? 'app-filterButtonActive' : ''}`}
+                        onClick={() => setViewFilter('all')}
+                        aria-pressed={viewFilter === 'all'}
                     >
-                        <IoChevronBack size={20} />
+                        All
                     </button>
                     <button
-                        className={styles.navButtonToday}
-                        onClick={() => {
-                            const today = new Date();
-                            const day = today.getDay();
-                            const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-                            const monday = new Date(today);
-                            monday.setDate(diff);
-                            setCurrentWeekStart(monday.toISOString().split('T')[0]);
-                        }}
+                        type="button"
+                        className={`app-filterButton ${viewFilter === 'tasks' ? 'app-filterButtonActive' : ''}`}
+                        onClick={() => setViewFilter('tasks')}
+                        aria-pressed={viewFilter === 'tasks'}
                     >
-                        Today
+                        Tasks
                     </button>
                     <button
-                        className={styles.navButtonChevron}
-                        onClick={() => navigateWeek(1)}
-                        aria-label="Next Week"
+                        type="button"
+                        className={`app-filterButton ${viewFilter === 'meetings' ? 'app-filterButtonActive' : ''}`}
+                        onClick={() => setViewFilter('meetings')}
+                        aria-pressed={viewFilter === 'meetings'}
                     >
-                        <IoChevronForward size={20} />
+                        Meetings
                     </button>
                 </div>
             </div>
@@ -564,8 +577,10 @@ export default function CalendarPage() {
                             {timeSlots.map((slot) => {
                                 const slotId = formatTimeSlotId(dayIndex, slot.hour);
                                 const isSelected = selectedTimeSlot === slotId;
-                                const blocksInSlot = getTimeBlocksForSlot(dayIndex, slot.hour);
-                                const calendarEventsInSlot = getCalendarEventsForSlot(dayIndex, slot.hour);
+                                const blocksInSlot = getTimeBlocksForSlot(dayIndex, slot.hour)
+                                    .filter((block) => filteredTimeBlocks.includes(block));
+                                const calendarEventsInSlot = getCalendarEventsForSlot(dayIndex, slot.hour)
+                                    .filter((event) => filteredCalendarEvents.includes(event));
 
                                 return (
                                     <div
@@ -697,8 +712,10 @@ export default function CalendarPage() {
                             {timeSlots.map((slot) => {
                                 const slotId = formatTimeSlotId(mobileCurrentDay, slot.hour);
                                 const isSelected = selectedTimeSlot === slotId;
-                                const blocksInSlot = getTimeBlocksForSlot(mobileCurrentDay, slot.hour);
-                                const calendarEventsInSlot = getCalendarEventsForSlot(mobileCurrentDay, slot.hour);
+                                const blocksInSlot = getTimeBlocksForSlot(mobileCurrentDay, slot.hour)
+                                    .filter((block) => filteredTimeBlocks.includes(block));
+                                const calendarEventsInSlot = getCalendarEventsForSlot(mobileCurrentDay, slot.hour)
+                                    .filter((event) => filteredCalendarEvents.includes(event));
 
                                 return (
                                     <div key={slot.hour} className={styles.mobileTimeSlot}>
@@ -854,10 +871,10 @@ export default function CalendarPage() {
                                     {selectedObjectiveId ? 'Choose a task' : 'Select an objective first'}
                                 </option>
                                 {selectedObjective?.keyResults?.map((keyResult) => (
-                                    <optgroup key={keyResult.id} label={keyResult.title}>
+                                    <optgroup key={keyResult.id} label={`KR: ${keyResult.title}`}>
                                         {keyResult.tasks.map((task) => (
                                             <option key={task.id} value={task.id}>
-                                                {task.title} {task.task_status ? `(${task.task_status})` : ''}
+                                                Task: {task.title} {task.task_status ? `(${task.task_status})` : ''}
                                             </option>
                                         ))}
                                     </optgroup>

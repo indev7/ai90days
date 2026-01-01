@@ -1,6 +1,10 @@
 "use client";
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { RiDeleteBin6Line } from 'react-icons/ri';
+import { RiDeleteBin6Line, RiOrganizationChart } from 'react-icons/ri';
+import { GiGreekTemple } from 'react-icons/gi';
+import { PiTreeView } from 'react-icons/pi';
+import { HiOutlineUsers } from "react-icons/hi2";
+import { Tree } from 'primereact/tree';
 import "primereact/resources/themes/lara-light-blue/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
@@ -9,7 +13,7 @@ import { useUser } from '@/hooks/useUser';
 import { useMainTree } from '@/hooks/useMainTree';
 import useMainTreeStore from '@/store/mainTreeStore';
 import StrategyHouse from './StrategyHouse';
-import GroupsView from './GroupsView';
+import GroupsView, { GroupDetailsPopover } from './GroupsView';
 import ObjectivesView from './ObjectivesView';
 import styles from './page.module.css';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -75,14 +79,17 @@ export default function IntervestOrgChart() {
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const [groupDetails, setGroupDetails] = useState({});
   const [viewType, setViewType] = useState('strategy'); // 'strategy', 'groups', or 'objectives'
+  const [groupsViewMode, setGroupsViewMode] = useState('hierarchy');
   const [objectivesValue, setObjectivesValue] = useState([]);
   const [expandedObjectiveId, setExpandedObjectiveId] = useState(null);
   const [groups, setGroups] = useState([]);
+  const [selectedRootId, setSelectedRootId] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState({});
   const closeGuardRef = useRef(null);
 
   // Use hooks for user and mainTree data
@@ -123,6 +130,69 @@ export default function IntervestOrgChart() {
       setOrgValue(chartData);
     }
   }, [mainTree]);
+
+  const parentGroups = useMemo(
+    () =>
+      orgValue
+        .map((node) => {
+          const data = node?.data || {};
+          return {
+            id: data.id,
+            name: data.name || node.label || 'Group',
+          };
+        })
+        .filter((group) => group.id),
+    [orgValue]
+  );
+
+  const groupRootMap = useMemo(() => {
+    const map = new Map();
+    const traverse = (node, rootId) => {
+      if (!node) return;
+      const data = node?.data || {};
+      const nodeId = data.id;
+      const nextRootId = rootId || nodeId;
+      if (nodeId && nextRootId) {
+        map.set(nodeId, nextRootId);
+      }
+      if (Array.isArray(node.children)) {
+        node.children.forEach((child) => traverse(child, nextRootId));
+      }
+    };
+    orgValue.forEach((node) => traverse(node, node?.data?.id));
+    return map;
+  }, [orgValue]);
+
+  const activeRootId =
+    parentGroups.length > 1 ? selectedRootId || parentGroups[0]?.id || null : null;
+
+  const visibleOrgValue = useMemo(() => {
+    if (!activeRootId) return orgValue;
+    const match = orgValue.find((node) => node?.data?.id === activeRootId);
+    return match ? [match] : orgValue;
+  }, [orgValue, activeRootId]);
+
+  useEffect(() => {
+    if (parentGroups.length <= 1) {
+      if (selectedRootId !== null) {
+        setSelectedRootId(null);
+      }
+      return;
+    }
+
+    let nextRootId = selectedRootId;
+    if (expandedGroupId && groupRootMap.has(expandedGroupId)) {
+      nextRootId = groupRootMap.get(expandedGroupId);
+    }
+
+    if (!nextRootId || !parentGroups.some((group) => group.id === nextRootId)) {
+      nextRootId = parentGroups[0]?.id || null;
+    }
+
+    if (nextRootId !== selectedRootId) {
+      setSelectedRootId(nextRootId);
+    }
+  }, [parentGroups, expandedGroupId, groupRootMap, selectedRootId]);
 
   // Listen for createGroup event from LeftMenu
   useEffect(() => {
@@ -272,8 +342,138 @@ export default function IntervestOrgChart() {
     }
   };
 
+  const handleObjectiveClick = (objectiveId) => {
+    if (!objectiveId) return;
+    router.push(`/shared/${objectiveId}`);
+  };
+
   const handleObjectiveNodeClick = (objectiveId) => {
     setExpandedObjectiveId(objectiveId === expandedObjectiveId ? null : objectiveId);
+  };
+
+  const groupSummaryMap = useMemo(() => {
+    const map = new Map();
+    const walk = (nodes) => {
+      nodes.forEach((node) => {
+        const data = node?.data || {};
+        const groupId = data.id;
+        if (groupId !== undefined && groupId !== null) {
+          map.set(String(groupId), {
+            name: data.name || node.label || 'Group',
+            objectiveCount: Number.isFinite(data.objectiveCount) ? data.objectiveCount : 0,
+            memberCount: Number.isFinite(data.memberCount) ? data.memberCount : 0,
+            groupId,
+          });
+        }
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          walk(node.children);
+        }
+      });
+    };
+    walk(orgValue);
+    return map;
+  }, [orgValue]);
+
+  const treeNodes = useMemo(() => {
+    const buildTreeNodes = (nodes, parentKey = 'group') =>
+      nodes.map((node, index) => {
+        const data = node?.data || {};
+        const keyValue = data.id ?? node.label ?? `${parentKey}-${index}`;
+        const key = String(keyValue);
+        const children = Array.isArray(node.children)
+          ? buildTreeNodes(node.children, key)
+          : [];
+        return {
+          key,
+          label: data.name || node.label || 'Group',
+          data,
+          children,
+          leaf: children.length === 0,
+        };
+      });
+    return buildTreeNodes(visibleOrgValue);
+  }, [visibleOrgValue]);
+
+  const handleTreeToggle = (event) => {
+    setExpandedKeys(event.value || {});
+  };
+
+  const handleTreeExpand = (event) => {
+    const groupId = event?.node?.data?.id ?? event?.node?.key;
+    if (groupId) {
+      fetchGroupDetails(groupId);
+    }
+  };
+
+  useEffect(() => {
+    if (groupsViewMode !== 'tree') return;
+    if (!treeNodes.length) return;
+    if (Object.keys(expandedKeys || {}).length > 0) return;
+    const firstNode = treeNodes[0];
+    if (!firstNode?.key) return;
+    setExpandedKeys({ [firstNode.key]: true });
+    if (firstNode.data?.id) {
+      fetchGroupDetails(firstNode.data.id);
+    }
+  }, [groupsViewMode, treeNodes, expandedKeys]);
+
+  const renderGroupTreeNode = (node, options) => {
+    const data = node?.data || {};
+    const memberCount = Number.isFinite(data.memberCount) ? data.memberCount : 0;
+    const objectiveCount = Number.isFinite(data.objectiveCount) ? data.objectiveCount : 0;
+    const title = data.name || node.label || 'Group';
+    const details = groupDetails[data.id];
+    const members = details?.members || [];
+    const showMembers = options.expanded;
+
+    return (
+      <div className={`${options.className || ''} ${styles.groupsTreeNode}`}>
+        <button
+          type="button"
+          className={styles.groupsTreeButton}
+          onClick={() => handleNodeClick(data.id)}
+          title={title}
+        >
+          <span className={styles.groupsTreeName}>
+            <HiOutlineUsers className={styles.groupsTreeIcon} aria-hidden="true" />
+            {title}
+            {data.type ? (
+              <span className={styles.groupsTreeType}>({data.type})</span>
+            ) : null}
+          </span>
+          <span className={styles.groupsTreeMeta}>
+            {objectiveCount} objective{objectiveCount === 1 ? '' : 's'} · {memberCount} member{memberCount === 1 ? '' : 's'}
+          </span>
+        </button>
+        {showMembers && (
+          <div className={styles.groupsTreeMembers}>
+            {!details ? (
+              <div className={styles.groupsTreeMemberEmpty}>Loading members...</div>
+            ) : members.length === 0 ? (
+              <div className={styles.groupsTreeMemberEmpty}>No members</div>
+            ) : (
+              <ul className={styles.groupsTreeMemberList}>
+                {members.map((member) => {
+                  const fullName = [member.first_name, member.last_name]
+                    .filter(Boolean)
+                    .join(' ');
+                  const displayName =
+                    fullName || member.display_name || member.email || 'Unknown';
+                  return (
+                    <li key={member.id || displayName} className={styles.groupsTreeMember}>
+                      <span className={styles.groupsTreeMemberAvatar}>
+                        {displayName?.[0]?.toUpperCase() || '?'}
+                      </span>
+                      <span className={styles.groupsTreeMemberName}>{displayName}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleEditGroup = (groupData) => {
@@ -404,6 +604,67 @@ export default function IntervestOrgChart() {
     <div className={styles.container}>
       <div className={styles.content}>
         {viewType === 'strategy' && (
+          <div className="app-pageHeader">
+            <div className="app-titleSection">
+              <GiGreekTemple className="app-pageIcon" />
+              <h1 className="app-pageTitle">Strategy House</h1>
+            </div>
+          </div>
+        )}
+        {viewType === 'groups' && (
+          <div className={`app-pageHeader ${styles.groupsHeader}`}>
+            <div className="app-titleSection">
+              <RiOrganizationChart className="app-pageIcon" />
+              <h1 className="app-pageTitle">Groups</h1>
+            </div>
+            {parentGroups.length > 1 && (
+              <div className={styles.parentFilter}>
+                <label className={styles.parentFilterLabel} htmlFor="parentGroupSelect">
+                  Parent
+                </label>
+                <select
+                  id="parentGroupSelect"
+                  className={styles.parentSelect}
+                  value={activeRootId || ''}
+                  onChange={(event) => setSelectedRootId(event.target.value)}
+                >
+                  {parentGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className={styles.viewSwitcher} role="group" aria-label="Groups view">
+              <div
+                className={`${styles.viewThumb} ${groupsViewMode === 'tree' ? styles.thumbTree : styles.thumbHierarchy}`}
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                className={`${styles.viewButton} ${groupsViewMode === 'hierarchy' ? styles.activeView : ''}`}
+                onClick={() => setGroupsViewMode('hierarchy')}
+                aria-pressed={groupsViewMode === 'hierarchy'}
+                aria-label="Hierarchy view"
+                title="Hierarchy view"
+              >
+                <RiOrganizationChart className={styles.viewIcon} />
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewButton} ${groupsViewMode === 'tree' ? styles.activeView : ''}`}
+                onClick={() => setGroupsViewMode('tree')}
+                aria-pressed={groupsViewMode === 'tree'}
+                aria-label="Tree view"
+                title="Tree view"
+              >
+                <PiTreeView className={styles.viewIcon} />
+              </button>
+            </div>
+          </div>
+        )}
+        {viewType === 'strategy' && (
           <div className={`${styles.strategyContainer} ${styles.strategySurface}`}>
             <div className={styles.strategySurfaceContent}>
               <StrategyHouse />
@@ -414,21 +675,62 @@ export default function IntervestOrgChart() {
         {viewType === 'groups' && (
           <div className={styles.strategySurface}>
             <div className={styles.strategySurfaceContent}>
-              <GroupsView
-                orgValue={orgValue}
-                groupDetails={groupDetails}
+              {groupsViewMode === 'hierarchy' ? (
+                <GroupsView
+                  orgValue={orgValue}
+                  groupDetails={groupDetails}
+                  currentUserId={currentUser?.id}
+                  currentUserRole={currentUser?.role}
+                  onNodeClick={handleNodeClick}
+                  expandedGroupId={expandedGroupId}
+                  onEditGroup={handleEditGroup}
+                  onAddGroup={handleAddGroup}
+                  groups={groups}
+                  mainTreeLoading={mainTreeLoading}
+                  userLoading={userLoading}
+                  error={error}
+                  selectedRootId={activeRootId}
+                />
+              ) : (
+                <div className={styles.groupsTree}>
+                  {(mainTreeLoading || userLoading) && (
+                    <div className={styles.loading}>Loading group hierarchy...</div>
+                  )}
+                  {error && <div className={styles.error}>Error: {error}</div>}
+                  {!mainTreeLoading && !userLoading && !error && orgValue.length === 0 && (
+                    <div className={styles.empty}>No groups found. Create a group to get started.</div>
+                  )}
+                  {!mainTreeLoading && !userLoading && !error && orgValue.length > 0 && (
+                    <Tree
+                      value={treeNodes}
+                      expandedKeys={expandedKeys}
+                      onToggle={handleTreeToggle}
+                      onExpand={handleTreeExpand}
+                      nodeTemplate={renderGroupTreeNode}
+                      className={styles.groupsPrimeTree}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+            {groupsViewMode === 'tree' && expandedGroupId && groupDetails[expandedGroupId] && (
+              <GroupDetailsPopover
+                group={
+                  groupSummaryMap.get(String(expandedGroupId)) || {
+                    name: 'Group',
+                    objectiveCount: 0,
+                    memberCount: 0,
+                    groupId: expandedGroupId,
+                  }
+                }
+                details={groupDetails[expandedGroupId]}
+                onClose={() => handleNodeClick(null)}
+                onEditGroup={handleEditGroup}
                 currentUserId={currentUser?.id}
                 currentUserRole={currentUser?.role}
-                onNodeClick={handleNodeClick}
-                expandedGroupId={expandedGroupId}
-                onEditGroup={handleEditGroup}
-                onAddGroup={handleAddGroup}
-                groups={groups}
-                mainTreeLoading={mainTreeLoading}
-                userLoading={userLoading}
-                error={error}
+                onObjectiveClick={handleObjectiveClick}
               />
-            </div>
+            )}
           </div>
         )}
 

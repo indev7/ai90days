@@ -1012,7 +1012,7 @@ export default function CoachPage() {
             <div className={styles.coachAvatar}>
               <img src="/coach.png" alt="Coach" className={styles.coachImage} />
             </div>
-            <p>Hi! I'm your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
+            <p>Hi! I'm Aime, your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
           </div>
         )}
 

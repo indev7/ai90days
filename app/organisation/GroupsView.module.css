@@ -1,0 +1,210 @@
+.popoverBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.25);
+  z-index: 999;
+}
+
+.popover {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(640px, calc(100vw - 32px));
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface, #0f1117);
+  border: 1px solid var(--border, #1f2937);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 1000;
+  border: 1px solid var(--muted-light);
+}
+
+.popoverHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.popoverTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+
+.popoverMeta {
+  margin-top: 4px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-secondary, #475569);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.popoverMetaDot {
+  color: var(--muted, #94a3b8);
+}
+
+.popoverClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
+  border: 1px solid var(--muted-light);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--text, #0f172a);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  padding-bottom: 3px;
+}
+
+.popoverSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.popoverSectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #1f2937);
+  letter-spacing: 0.01em;
+}
+
+.popoverList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.popoverItem {
+  padding: 10px 12px;
+  border: 1px solid var(--muted-light);
+  border-radius: 10px;
+  background: var(--brand-50);
+  color: var(--text, #f4f6fb);
+  cursor: pointer;
+}
+
+.popoverItemTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #1f2937);
+  margin-bottom: 8px;
+}
+
+.popoverProgress {
+  width: 100%;
+  height: 6px;
+  background: var(--border, #1f2937);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.popoverProgressFill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--success-strong, #22c55e),
+    var(--success, #16a34a)
+  );
+  border-radius: 999px;
+}
+
+.popoverProgressText {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+}
+
+.popoverMembers {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popoverMember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--muted-light);
+  border-radius: 10px;
+  background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
+  color: var(--text, #f4f6fb);
+}
+
+.popoverMemberAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--pill-bg, var(--surface-2, #1a1d29));
+  color: var(--text, #0f172a);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.popoverMemberName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+}
+
+.popoverBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand-strong, #0f172a);
+  background: var(--badge-bg, #e0f2fe);
+  border: 1px solid var(--badge-border, #bae6fd);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.popoverEmpty {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+}
+
+.popoverActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.popoverEditButton {
+  background: var(--brand-primary, #2563eb);
+  color: var(--surface, #ffffff);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+}
+
+.popoverEditButton:hover {
+  background: var(--brand-primary-strong, #1d4ed8);
+}

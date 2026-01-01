@@ -12,6 +12,150 @@
   height: auto;
 }
 
+.groupsHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.groupsHeader .app-titleSection {
+  justify-self: start;
+}
+
+.groupsHeader .viewSwitcher {
+  justify-self: end;
+}
+
+.parentFilter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.parentFilterLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.parentSelect {
+  width: auto;
+  min-width: 200px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface-0);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23838fa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  cursor: pointer;
+}
+
+.parentSelect:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+@media (max-width: 720px) {
+  .groupsHeader {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .groupsHeader .titleSection,
+  .groupsHeader .viewSwitcher {
+    justify-self: center;
+  }
+
+  .parentFilter {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .parentSelect {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+.viewSwitcher {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.viewThumb {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc(50% - 6px);
+  border-radius: 999px;
+  background: rgba(var(--brand-primary-rgb, 126, 88, 255), 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: left 0.2s ease;
+}
+
+.thumbHierarchy {
+  left: 6px;
+}
+
+.thumbTree {
+  left: calc(50% + 3px);
+}
+
+.viewButton {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.25rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.viewButton:hover {
+  color: var(--text);
+}
+
+.activeView {
+  color: var(--brand-primary);
+}
+
+.viewIcon {
+  font-size: 1.1rem;
+}
+
 /* Header with toggle */
 .header {
   display: flex;
@@ -135,6 +279,164 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.groupsTree {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border);
+  border-radius: 0px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.groupsPrimeTree {
+  background: transparent;
+  border: none;
+}
+
+.groupsPrimeTree :global(.p-tree-container) {
+  padding: 0;
+}
+
+.groupsPrimeTree :global(.p-treenode) {
+  margin: 6px 0;
+}
+
+.groupsPrimeTree :global(.p-treenode-content) {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 8px;
+}
+
+.groupsPrimeTree :global(.p-tree-toggler) {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  margin-top: 2px;
+  color: var(--text-secondary, #64748b);
+}
+
+.groupsPrimeTree :global(.p-tree-toggler:hover) {
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.groupsPrimeTree :global(.p-treenode-children) {
+  margin: 6px 0 0 18px;
+  padding-left: 14px;
+  border-left: none;
+}
+
+.groupsTreeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.groupsTreeNode {
+  display: grid;
+  gap: 10px;
+}
+
+.groupsTreeItem {
+  display: grid;
+  gap: 10px;
+}
+
+.groupsTreeButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 4px 2px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.groupsTreeButton:hover {
+  color: var(--brand-primary);
+}
+
+.groupsTreeName {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.groupsTreeIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary, #64748b);
+  flex: 0 0 auto;
+}
+
+.groupsTreeType {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+}
+
+.groupsTreeMeta {
+  font-size: 0.85rem;
+  color: var(--brand-primary);
+  white-space: nowrap;
+}
+
+.groupsTreeChildren {
+  padding-left: 20px;
+  border-left: 1px dashed var(--border);
+}
+
+.groupsTreeMembers {
+  padding-left: 36px;
+}
+
+.groupsTreeMemberList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.groupsTreeMember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.groupsTreeMemberAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--pill-bg, #e7f0f0);
+  color: var(--pill-text, #617b80);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.groupsTreeMemberName {
+  font-size: 0.9rem;
+  color: var(--text, #0f172a);
+}
+
+.groupsTreeMemberEmpty {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 .loading,
@@ -662,6 +964,20 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .viewSwitcher {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .groupsTreeButton {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .groupsTreeMeta {
+    white-space: normal;
+  }
+
   .expandedCard {
     width: 260px;
     margin-top: 8px;
@@ -1013,7 +1329,7 @@
   min-height: 100%;
   padding: 14px 20px 20px;
   background: var(--strategy-bg);
-  border-radius: 24px;
+  border-radius: 0px;
   color: var(--strategy-text-main);
   width: 100%;
   flex: 1;

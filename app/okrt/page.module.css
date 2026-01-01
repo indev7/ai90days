@@ -6,6 +6,18 @@
   color: var(--text);
 }
 
+.thumbAll {
+  left: 6px;
+}
+
+.thumbPrivate {
+  left: calc(33.333% + 3px);
+}
+
+.thumbShared {
+  left: calc(66.666% + 1px);
+}
+
 
 .main {
   padding: 2rem;

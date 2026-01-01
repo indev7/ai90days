@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import OrgChart from "d3-org-chart";
+import styles from "./GroupsView.module.css";
 
 const NODE_TEMPLATE = `
   <div class="org-card">
@@ -125,12 +126,13 @@ function groupFlatNodesByRoot(nodes) {
   }));
 }
 
-function GroupDetailsPopover({
+export function GroupDetailsPopover({
   group,
   details,
   onClose,
   onEditGroup,
   currentUserId,
+  currentUserRole,
   onObjectiveClick,
 }) {
   const strategicIds = details.strategicObjectiveIds || [];
@@ -145,33 +147,40 @@ function GroupDetailsPopover({
   const isCurrentUserAdmin =
     details.isCurrentUserAdmin ??
     members.some((member) => member.id === currentUserId && member.is_admin);
+  const canEditGroup = isCurrentUserAdmin || currentUserRole === "Admin";
 
   return (
     <>
-      <div className="popover-backdrop" onClick={onClose} />
-      <div className="popover">
-        <div className="popover__header">
+      <div className={styles.popoverBackdrop} onClick={onClose} />
+      <div className={styles.popover}>
+        <div className={styles.popoverHeader}>
           <div>
-            <div className="popover__title">{group.name}</div>
-            <div className="popover__meta">
+            <div className={styles.popoverTitle}>{group.name}</div>
+            <div className={styles.popoverMeta}>
               <span>{group.objectiveCount} objectives</span>
-              <span className="dot">•</span>
+              <span className={styles.popoverMetaDot}>•</span>
               <span>{group.memberCount} members</span>
             </div>
           </div>
-          <button className="popover__close" onClick={onClose} aria-label="Close">
+          <button
+            className={styles.popoverClose}
+            onClick={onClose}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
 
         {strategicObjectives.length > 0 && (
-          <div className="popover__section">
-            <div className="popover__sectionTitle">Strategic Objectives</div>
-            <ul className="popover__list">
+          <div className={styles.popoverSection}>
+            <div className={styles.popoverSectionTitle}>
+              Strategic Objectives
+            </div>
+            <ul className={styles.popoverList}>
               {strategicObjectives.map((obj) => (
                 <li
                   key={obj.id}
-                  className="popover__item"
+                  className={styles.popoverItem}
                   onClick={() => onObjectiveClick && onObjectiveClick(obj.id)}
                   role="button"
                   tabIndex={0}
@@ -182,14 +191,14 @@ function GroupDetailsPopover({
                     }
                   }}
                 >
-                  <div className="popover__itemTitle">{obj.title}</div>
-                  <div className="popover__progress">
+                  <div className={styles.popoverItemTitle}>{obj.title}</div>
+                  <div className={styles.popoverProgress}>
                     <div
-                      className="popover__progressFill"
+                      className={styles.popoverProgressFill}
                       style={{ width: `${Math.round(obj.progress || 0)}%` }}
                     />
                   </div>
-                  <div className="popover__progressText">
+                  <div className={styles.popoverProgressText}>
                     {Math.round(obj.progress || 0)}%
                   </div>
                 </li>
@@ -199,13 +208,13 @@ function GroupDetailsPopover({
         )}
 
         {otherObjectives.length > 0 && (
-          <div className="popover__section">
-            <div className="popover__sectionTitle">Shared Objectives</div>
-            <ul className="popover__list">
+          <div className={styles.popoverSection}>
+            <div className={styles.popoverSectionTitle}>Shared Objectives</div>
+            <ul className={styles.popoverList}>
               {otherObjectives.map((obj) => (
                 <li
                   key={obj.id}
-                  className="popover__item"
+                  className={styles.popoverItem}
                   onClick={() => onObjectiveClick && onObjectiveClick(obj.id)}
                   role="button"
                   tabIndex={0}
@@ -216,14 +225,14 @@ function GroupDetailsPopover({
                     }
                   }}
                 >
-                  <div className="popover__itemTitle">{obj.title}</div>
-                  <div className="popover__progress">
+                  <div className={styles.popoverItemTitle}>{obj.title}</div>
+                  <div className={styles.popoverProgress}>
                     <div
-                      className="popover__progressFill"
+                      className={styles.popoverProgressFill}
                       style={{ width: `${Math.round(obj.progress || 0)}%` }}
                     />
                   </div>
-                  <div className="popover__progressText">
+                  <div className={styles.popoverProgressText}>
                     {Math.round(obj.progress || 0)}%
                   </div>
                 </li>
@@ -232,29 +241,35 @@ function GroupDetailsPopover({
           </div>
         )}
 
-        <div className="popover__section">
-          <div className="popover__sectionTitle">Members</div>
+        <div className={styles.popoverSection}>
+          <div className={styles.popoverSectionTitle}>Members</div>
           {members.length === 0 ? (
-            <div className="popover__empty">No members</div>
+            <div className={styles.popoverEmpty}>No members</div>
           ) : (
-            <ul className="popover__members">
-              {members.map((m) => (
-                <li key={m.id} className="popover__member">
-                  <span className="popover__memberAvatar">
-                    {m.display_name?.[0]?.toUpperCase() || "?"}
-                  </span>
-                  <span className="popover__memberName">{m.display_name}</span>
-                  {m.is_admin && <span className="popover__badge">Admin</span>}
-                </li>
-              ))}
+            <ul className={styles.popoverMembers}>
+              {members.map((m) => {
+                const fullName = [m.first_name, m.last_name].filter(Boolean).join(" ");
+                const displayName = fullName || m.display_name || m.email || "Unknown";
+                return (
+                  <li key={m.id} className={styles.popoverMember}>
+                    <span className={styles.popoverMemberAvatar}>
+                      {displayName?.[0]?.toUpperCase() || "?"}
+                    </span>
+                    <span className={styles.popoverMemberName}>{displayName}</span>
+                    {m.is_admin && (
+                      <span className={styles.popoverBadge}>Admin</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
-        {isCurrentUserAdmin && (
-          <div className="popover__actions">
+        {canEditGroup && (
+          <div className={styles.popoverActions}>
             <button
               type="button"
-              className="popover__editButton"
+              className={styles.popoverEditButton}
               onClick={() =>
                 onEditGroup &&
                 onEditGroup({
@@ -268,189 +283,6 @@ function GroupDetailsPopover({
           </div>
         )}
       </div>
-      <style jsx>{`
-        .popover-backdrop {
-          position: fixed;
-          inset: 0;
-          background: rgba(15, 23, 42, 0.25);
-          z-index: 999;
-        }
-        .popover {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: min(640px, calc(100vw - 32px));
-          max-height: 80vh;
-          overflow-y: auto;
-          background: var(--surface, #0f1117);
-          border: 1px solid var(--border, #1f2937);
-          border-radius: 10px;
-          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-          padding: 18px 20px 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          z-index: 1000;
-        }
-        .popover__header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 12px;
-        }
-        .popover__title {
-          font-size: 20px;
-          font-weight: 700;
-          color: var(--text, #0f172a);
-        }
-        .popover__meta {
-          margin-top: 4px;
-          display: inline-flex;
-          gap: 8px;
-          align-items: center;
-          color: var(--text-secondary, #475569);
-          font-size: 13px;
-          font-weight: 600;
-        }
-        .popover__meta .dot {
-          color: var(--muted, #94a3b8);
-        }
-        .popover__close {
-          background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
-          border: 1px solid var(--muted-light);
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          color: var(--text, #0f172a);
-          font-size: 18px;
-          cursor: pointer;
-          line-height: 1;
-        }
-        .popover__section {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .popover__sectionTitle {
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--text, #1f2937);
-          letter-spacing: 0.01em;
-        }
-        .popover__list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .popover__item {
-          padding: 10px 12px;
-          border: 1px solid var(--muted-light);
-          border-radius: 10px;
-          background: var(--brand-50);
-          color: var(--text, #f4f6fb);
-          cursor: pointer;
-        }
-        .popover__itemTitle {
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--text, #1f2937);
-          margin-bottom: 8px;
-        }
-        .popover__progress {
-          width: 100%;
-          height: 6px;
-          background: var(--border, #1f2937);
-          border-radius: 999px;
-          overflow: hidden;
-          position: relative;
-        }
-        .popover__progressFill {
-          height: 100%;
-          background: linear-gradient(
-            90deg,
-            var(--success-strong, #22c55e),
-            var(--success, #16a34a)
-          );
-          border-radius: 999px;
-        }
-        .popover__progressText {
-          margin-top: 6px;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--text-secondary, #475569);
-        }
-        .popover__members {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        .popover__member {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 10px;
-          border: 1px solid var(--muted-light);
-          border-radius: 10px;
-          background: var(--brand-50, var(--surface-1, var(--surface, #111321)));
-          color: var(--text, #f4f6fb);
-        }
-        .popover__memberAvatar {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: var(--pill-bg, var(--surface-2, #1a1d29));
-          color: var(--text, #0f172a);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          font-size: 14px;
-        }
-        .popover__memberName {
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--text, #1f2937);
-        }
-        .popover__badge {
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--brand-strong, #0f172a);
-          background: var(--badge-bg, #e0f2fe);
-          border: 1px solid var(--badge-border, #bae6fd);
-          border-radius: 999px;
-          padding: 4px 8px;
-        }
-        .popover__empty {
-          font-size: 13px;
-          color: var(--text-secondary, #64748b);
-        }
-        .popover__actions {
-          display: flex;
-          justify-content: flex-end;
-          padding-top: 4px;
-        }
-        .popover__editButton {
-          background: var(--brand-primary, #2563eb);
-          color: var(--surface, #ffffff);
-          border: none;
-          border-radius: 10px;
-          padding: 10px 14px;
-          font-weight: 700;
-          font-size: 14px;
-          cursor: pointer;
-          box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
-        }
-        .popover__editButton:hover {
-          background: var(--brand-primary-strong, #1d4ed8);
-        }
-      `}</style>
     </>
   );
 }
@@ -465,6 +297,8 @@ export default function GroupsView({
   groupDetails = {},
   onEditGroup,
   currentUserId,
+  currentUserRole,
+  selectedRootId,
 }) {
   const router = useRouter();
   const containerRefs = useRef(new Map());
@@ -482,10 +316,16 @@ export default function GroupsView({
   );
 
   const groupedCharts = useMemo(() => groupFlatNodesByRoot(flatNodes), [flatNodes]);
-  latestGroupsRef.current = groupedCharts;
+  const visibleCharts = useMemo(() => {
+    if (!selectedRootId) return groupedCharts;
+    const match = groupedCharts.find((group) => group.rootId === selectedRootId);
+    return match ? [match] : groupedCharts;
+  }, [groupedCharts, selectedRootId]);
+
+  latestGroupsRef.current = visibleCharts;
 
   useEffect(() => {
-    const activeRootIds = new Set(groupedCharts.map((g) => g.rootId));
+    const activeRootIds = new Set(visibleCharts.map((g) => g.rootId));
 
     // Clean up charts for roots that no longer exist
     chartRefs.current.forEach((chart, rootId) => {
@@ -494,14 +334,14 @@ export default function GroupsView({
       }
     });
 
-    if (!groupedCharts.length) {
+    if (!visibleCharts.length) {
       containerRefs.current.forEach((el) => {
         if (el) el.innerHTML = "";
       });
       return;
     }
 
-    groupedCharts.forEach(({ rootId, nodes }) => {
+    visibleCharts.forEach(({ rootId, nodes }) => {
       const container = containerRefs.current.get(rootId);
       if (!container) return;
 
@@ -546,7 +386,7 @@ export default function GroupsView({
 
       chart.svgWidth(width).svgHeight(height).data(nodes).render();
     });
-  }, [groupedCharts, onNodeClick]);
+  }, [visibleCharts, onNodeClick]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -583,7 +423,7 @@ export default function GroupsView({
   return (
     <>
       <div className="chartShell">
-        {groupedCharts.map(({ rootId, rootNode }) => (
+        {visibleCharts.map(({ rootId, rootNode }) => (
           <div
             key={rootId}
             ref={(el) => {
@@ -611,6 +451,7 @@ export default function GroupsView({
           onClose={() => onNodeClick && onNodeClick(null)}
           onEditGroup={onEditGroup}
           currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
           onObjectiveClick={handleObjectiveClick}
         />
       )}
@@ -678,8 +519,10 @@ export default function GroupsView({
           gap: 10px;
           padding: 20px 22px;
           background: var(--org-card-bg);
-          border: 1px solid var(--org-card-border);
+          border: none;
           border-radius: 10px;
+          overflow: hidden;
+          box-shadow: inset 0 0 0 1px var(--org-card-border);
         }
 
         .org-card__content {
