@@ -15,6 +15,7 @@
   align-items: center;
   justify-content: flex-start;
   padding: 0 var(--space-8);
+  flex-wrap: nowrap;
   box-shadow: 
     0 1px 2px rgba(0, 0, 0, 0.04), 
     0 1px 1px rgba(0, 0, 0, 0.02);
@@ -131,10 +132,64 @@
 .center {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   flex: 1;
 }
 
+.searchForm {
+  width: min(640px, 100%);
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  
+  box-shadow: var(--shadow-1);
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  outline: none;
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.searchIconButton {
+  border: none;
+  background: none;
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.searchIconButton:hover {
+  background: var(--border-light);
+}
+
+.searchIconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.micButtonRecording {
+  color: var(--danger);
+  background: var(--danger-light);
+}
 
 .right {
   display: flex;
@@ -222,12 +277,18 @@
 /* Mobile adjustments */
 @media (max-width: 767px) {
   .header {
+    height: auto;
     padding-left: var(--space-3);
     padding-right: var(--space-3);
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
   }
 
   .left {
     gap: var(--space-2);
+    order: 1;
   }
 
   .mobileHamburger {
@@ -249,6 +310,19 @@
   .avatar {
     width: 36px;
     height: 36px;
+  }
+
+  .right {
+    order: 2;
+  }
+
+  .center {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .searchForm {
+    width: 100%;
   }
 }
 

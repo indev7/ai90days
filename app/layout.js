@@ -31,6 +31,7 @@ export default function RootLayout({ children }) {
   const isTabletLandscape = useMediaQuery('(min-width: 1024px) and (max-width: 1379px)');
   const isTabletPortrait = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const headerHeight = isMobile ? 128 : 72;
 
   // Initialize theme system
   useEffect(() => {
@@ -173,7 +174,7 @@ export default function RootLayout({ children }) {
               onMobileClose={handleMobileMenuClose}
             />
             <main style={{
-              paddingTop: '72px',
+              paddingTop: `${headerHeight}px`,
               paddingLeft: `${getMenuWidth()}px`,
               transition: 'padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}>
