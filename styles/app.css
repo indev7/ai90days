@@ -53,7 +53,7 @@ input[type="email"],
 input[type="password"],
 textarea {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 20px;
   padding: var(--space-3);
   background-color: var(--surface);
   color: var(--text);
