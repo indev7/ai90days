@@ -79,9 +79,11 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Require the user to be an admin of this specific group
     const isGroupAdmin = await isUserGroupAdmin(requesterId, id);
-    if (!isGroupAdmin) {
+    const isRoleAdmin = currentUser.role === 'Admin';
+
+    // Require the user to be an admin of this specific group unless they are a platform Admin
+    if (!isGroupAdmin && !isRoleAdmin) {
       return NextResponse.json({
         error: 'Forbidden: Only admins of this group can update it'
       }, { status: 403 });
@@ -234,10 +236,18 @@ export async function DELETE(request, { params }) {
 
     const { id } = await params;
     
-    // Check if user is admin of this group
-    const isAdmin = await isUserGroupAdmin(session.sub, id);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Forbidden: Only group admins can delete groups' }, { status: 403 });
+    const requesterId = parseInt(session.sub);
+    const { getUserById } = await import('@/lib/pgdb');
+    const currentUser = await getUserById(requesterId);
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if user is admin of this group or a platform Admin
+    const isAdmin = await isUserGroupAdmin(requesterId, id);
+    const isRoleAdmin = currentUser.role === 'Admin';
+    if (!isAdmin && !isRoleAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Only group admins or Admin role can delete groups' }, { status: 403 });
     }
 
     // Check if group has children

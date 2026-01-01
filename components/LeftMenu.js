@@ -8,14 +8,12 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { GoClock } from "react-icons/go";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
-import { SiSlideshare } from "react-icons/si";
-import { RiOrganizationChart } from "react-icons/ri";
+import { RiFlowerLine, RiOrganizationChart, RiUserSharedLine } from "react-icons/ri";
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { GiGreekTemple } from "react-icons/gi";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
-import { IoChatboxEllipsesOutline } from 'react-icons/io5';
 import { IoAdd } from 'react-icons/io5';
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
@@ -69,7 +67,7 @@ const getTopMenuItems = (userRole) => {
 };
 
 const bottomMenuItems = [
-  { href: '/coach', label: 'Coach', icon: 'coach', disabled: false },
+  { href: '/coach', label: 'Aime', icon: 'coach', disabled: false },
   { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: false },
 ];
 
@@ -79,13 +77,13 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     dashboard: <GoClock  size={iconSize} />,
     goals: <MdOutlineSelfImprovement size={iconSize} />,
     calendar: <RiCalendarScheduleLine size={iconSize} />,
-    shared: <SiSlideshare size={iconSize} />,
+    shared: <RiUserSharedLine size={iconSize} />,
     groups: <RiOrganizationChart size={iconSize} />,
     organisation: <TbBriefcase size={iconSize} />,
     strategy: <GiGreekTemple size={iconSize} />,
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
-    coach: <IoChatboxEllipsesOutline size={iconSize} />,
+    coach: <RiFlowerLine size={iconSize} />,
     notifications: (
       <div style={{ position: 'relative', display: 'inline-block' }}>
         <IoMdNotificationsOutline size={iconSize} />

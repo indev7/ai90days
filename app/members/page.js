@@ -1,19 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { HiOutlineUsers } from 'react-icons/hi2';
 import { useUser } from '@/hooks/useUser';
+import { useMainTree } from '@/hooks/useMainTree';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
 
 export default function MembersPage() {
   const router = useRouter();
   const { user: currentUser, isLoading: userLoading } = useUser();
+  useMainTree();
+  const mainTree = useMainTreeStore((state) => state.mainTree);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [groupFilter, setGroupFilter] = useState('all');
 
   // Check if user is Admin
   useEffect(() => {
@@ -106,6 +113,25 @@ export default function MembersPage() {
     }));
   };
 
+  const groups = useMemo(() => {
+    return (mainTree?.groups || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [mainTree?.groups]);
+
+  const filteredUsers = useMemo(() => {
+    const normalizeRole = (role) => String(role || '').toLowerCase();
+    const roleFiltered = roleFilter === 'all'
+      ? users
+      : users.filter((user) => normalizeRole(user.role) === roleFilter);
+
+    if (groupFilter === 'all') {
+      return roleFiltered;
+    }
+
+    const group = groups.find((g) => String(g.id) === String(groupFilter));
+    const memberIds = new Set((group?.members || []).map((member) => String(member.id)));
+    return roleFiltered.filter((user) => memberIds.has(String(user.id)));
+  }, [users, roleFilter, groupFilter, groups]);
+
   if (userLoading || loading) {
     return (
       <div className={styles.container}>
@@ -123,42 +149,121 @@ export default function MembersPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>Members</h1>
-        <p className={styles.subtitle}>Manage user accounts and roles</p>
+    <div className={styles.page}>
+      <div className="app-pageHeader">
+        <div className="app-titleSection">
+          <HiOutlineUsers className="app-pageIcon" />
+          <h1 className="app-pageTitle">Members</h1>
+          <span className="app-pageCount">({filteredUsers.length})</span>
+        </div>
+        <div className={styles.filtersRow}>
+          <label className={styles.filterLabel} htmlFor="groupFilter">
+            Group
+          </label>
+          <select
+            id="groupFilter"
+            className={styles.filterSelect}
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={`app-filterSwitcher ${styles.membersFilterSwitcher}`} role="group" aria-label="Role filter">
+          <div
+            className={`app-filterThumb ${styles.membersFilterThumb} ${
+              roleFilter === 'user'
+                ? styles.thumbUser
+                : roleFilter === 'leader'
+                  ? styles.thumbLeader
+                  : roleFilter === 'owner'
+                    ? styles.thumbOwner
+                    : roleFilter === 'admin'
+                      ? styles.thumbAdmin
+                      : styles.thumbAll
+            }`}
+            aria-hidden="true"
+          />
+          <button
+            type="button"
+            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'all' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setRoleFilter('all')}
+            aria-pressed={roleFilter === 'all'}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'user' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setRoleFilter('user')}
+            aria-pressed={roleFilter === 'user'}
+          >
+            User
+          </button>
+          <button
+            type="button"
+            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'leader' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setRoleFilter('leader')}
+            aria-pressed={roleFilter === 'leader'}
+          >
+            Leader
+          </button>
+          <button
+            type="button"
+            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'owner' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setRoleFilter('owner')}
+            aria-pressed={roleFilter === 'owner'}
+          >
+            Owner
+          </button>
+          <button
+            type="button"
+            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'admin' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setRoleFilter('admin')}
+            aria-pressed={roleFilter === 'admin'}
+          >
+            Admin
+          </button>
+        </div>
       </div>
 
-      <div className={styles.usersGrid}>
-        {users.map(user => (
-          <div
-            key={user.id}
-            className={styles.userCard}
-            onClick={() => handleUserClick(user)}
-          >
-            <div className={styles.userAvatar}>
-              {user.profile_picture_url ? (
-                <img src={user.profile_picture_url} alt={user.display_name} />
-              ) : (
-                <div className={styles.avatarPlaceholder}>
-                  {(user.display_name || user.email).charAt(0).toUpperCase()}
+      <div className={styles.container}>
+        <div className={styles.usersGrid}>
+          {filteredUsers.map(user => (
+            <div
+              key={user.id}
+              className={styles.userCard}
+              onClick={() => handleUserClick(user)}
+            >
+              <div className={styles.userAvatar}>
+                {user.profile_picture_url ? (
+                  <img src={user.profile_picture_url} alt={user.display_name} />
+                ) : (
+                  <div className={styles.avatarPlaceholder}>
+                    {(user.display_name || user.email).charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className={styles.userInfo}>
+                <div className={styles.userName}>{user.display_name || user.email}</div>
+                <div className={styles.userEmail}>{user.email}</div>
+                <div className={styles.userMeta}>
+                  <span className={`${styles.roleBadge} ${styles[`role${user.role}`]}`}>
+                    {user.role || 'User'}
+                  </span>
+                  <span className={styles.authProvider}>
+                    {user.auth_provider === 'microsoft' ? 'Microsoft' : 'Email'}
+                  </span>
                 </div>
-              )}
-            </div>
-            <div className={styles.userInfo}>
-              <div className={styles.userName}>{user.display_name || user.email}</div>
-              <div className={styles.userEmail}>{user.email}</div>
-              <div className={styles.userMeta}>
-                <span className={`${styles.roleBadge} ${styles[`role${user.role}`]}`}>
-                  {user.role || 'User'}
-                </span>
-                <span className={styles.authProvider}>
-                  {user.auth_provider === 'microsoft' ? 'Microsoft' : 'Email'}
-                </span>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Edit User Modal */}

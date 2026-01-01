@@ -214,10 +214,10 @@ export default function SharedGoalsPage() {
   if (isLoading) {
     return (
       <div className={styles.container}>
-        <div className={styles.header}>
-          <div className={styles.titleSection}>
-            <RiUserSharedLine className={styles.pageIcon} />
-            <h1>Shared OKRs</h1>
+        <div className="app-pageHeader">
+          <div className="app-titleSection">
+            <RiUserSharedLine className="app-pageIcon" />
+            <h1 className="app-pageTitle">Shared OKRs</h1>
           </div>
           {renderModeSwitcher(true)}
         </div>
@@ -228,11 +228,11 @@ export default function SharedGoalsPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.titleSection}>
-          <RiUserSharedLine className={styles.pageIcon} />
-          <h1>Shared OKRs</h1>
-          <span className={styles.count}>({sharedOKRTs.length})</span>
+      <div className="app-pageHeader">
+        <div className="app-titleSection">
+          <RiUserSharedLine className="app-pageIcon" />
+          <h1 className="app-pageTitle">Shared OKRs</h1>
+          <span className="app-pageCount">({sharedOKRTs.length})</span>
         </div>
         {renderModeSwitcher()}
       </div>

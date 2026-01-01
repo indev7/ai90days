@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from 'next/navigation';
+import { MdOutlineSelfImprovement } from 'react-icons/md';
 import styles from './page.module.css';
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
@@ -78,6 +79,7 @@ export default function OKRTPage() {
   const [keyResults, setKeyResults] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [visibilityFilter, setVisibilityFilter] = useState('all');
   const [openKR, setOpenKR] = useState(null);
   const [expandedObjectives, setExpandedObjectives] = useState(new Set());
   const [focusedObjectiveId, setFocusedObjectiveId] = useState(null);
@@ -500,11 +502,23 @@ export default function OKRTPage() {
     });
   }, [orderedObjectives, selectedObjectiveId, focusedObjectiveId]);
 
+  const visibleObjectives = useMemo(() => {
+    return filteredObjectives.filter((objective) => {
+      if (visibilityFilter === 'shared') {
+        return objective.visibility === 'shared';
+      }
+      if (visibilityFilter === 'private') {
+        return objective.visibility !== 'shared';
+      }
+      return true;
+    });
+  }, [filteredObjectives, visibilityFilter]);
+
   const familyGroups = useMemo(() => {
     const groups = [];
     const groupMap = new Map();
 
-    filteredObjectives.forEach((objective) => {
+    visibleObjectives.forEach((objective) => {
       const rootId = objectiveRootMap.get(objective.id) || objective.id;
       if (!groupMap.has(rootId)) {
         const group = { rootId, objectives: [] };
@@ -515,7 +529,7 @@ export default function OKRTPage() {
     });
 
     return groups;
-  }, [filteredObjectives, objectiveRootMap]);
+  }, [visibleObjectives, objectiveRootMap]);
 
   const showFamilyBorders = useMemo(() => {
     // Only show colored grouping when at least one family has a hierarchy
@@ -531,10 +545,54 @@ export default function OKRTPage() {
   }
 
   // Don't return early - render empty state with modal support
-  const hasNoObjectives = objectives.length === 0;
+  const hasNoObjectives = visibleObjectives.length === 0;
+  const headerCount = visibleObjectives.length;
 
   return (
     <div className={styles.container}>
+      <div className="app-pageHeader">
+        <div className="app-titleSection">
+          <MdOutlineSelfImprovement className="app-pageIcon" />
+          <h1 className="app-pageTitle">My OKRs</h1>
+          <span className="app-pageCount">({headerCount})</span>
+        </div>
+        <div className="app-filterSwitcher" role="group" aria-label="Visibility filter">
+          <div
+            className={`app-filterThumb ${
+              visibilityFilter === 'private'
+                ? styles.thumbPrivate
+                : visibilityFilter === 'shared'
+                  ? styles.thumbShared
+                  : styles.thumbAll
+            }`}
+            aria-hidden="true"
+          />
+          <button
+            type="button"
+            className={`app-filterButton ${visibilityFilter === 'all' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setVisibilityFilter('all')}
+            aria-pressed={visibilityFilter === 'all'}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className={`app-filterButton ${visibilityFilter === 'private' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setVisibilityFilter('private')}
+            aria-pressed={visibilityFilter === 'private'}
+          >
+            Private
+          </button>
+          <button
+            type="button"
+            className={`app-filterButton ${visibilityFilter === 'shared' ? 'app-filterButtonActive' : ''}`}
+            onClick={() => setVisibilityFilter('shared')}
+            aria-pressed={visibilityFilter === 'shared'}
+          >
+            Shared
+          </button>
+        </div>
+      </div>
       {/* Main Content */}
       <main className={styles.main}>
         {/* Show empty state if no objectives */}
