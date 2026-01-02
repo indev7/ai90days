@@ -550,6 +550,18 @@ export default function LeftMenu({
     }
   };
 
+  const handleBusinessChildClick = (isGroupsLink) => {
+    if (isGroupsLink) {
+      setIsGroupsListExpanded(true);
+    } else {
+      setIsGroupsListExpanded(false);
+    }
+
+    if (isMobileSlideIn && onMobileClose) {
+      onMobileClose();
+    }
+  };
+
   const isExpanded = (itemHref) => {
     // Auto-expand Organisation submenu when on organisation page
     if (itemHref === '/organisation' && pathname === '/organisation') {
@@ -757,11 +769,7 @@ export default function LeftMenu({
                                   className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
                                   aria-current={isChildActiveLink ? 'page' : undefined}
                                   onClick={() => {
-                                    if (isGroupsLink) {
-                                      setIsGroupsListExpanded(true);
-                                    } else {
-                                      setIsGroupsListExpanded(false);
-                                    }
+                                    handleBusinessChildClick(isGroupsLink);
                                   }}
                                 >
                                   <span className={styles.icon}>
