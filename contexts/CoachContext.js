@@ -7,6 +7,7 @@ const CoachContext = createContext();
 export function CoachProvider({ children }) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState(null);
 
   const addMessage = (message) => {
     setMessages(prev => {
@@ -39,7 +40,9 @@ export function CoachProvider({ children }) {
       updateMessage,
       clearMessages,
       isLoading,
-      setLoading
+      setLoading,
+      pendingMessage,
+      setPendingMessage
     }}>
       {children}
     </CoachContext.Provider>

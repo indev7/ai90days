@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-
+import { useState, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import HamburgerButton from './HamburgerButton';
-import MobileMenu from './MobileMenu';
 import AvatarDropdown from './AvatarDropdown';
 import LoadingIndicators from './LoadingIndicators';
 import styles from './HeaderBar.module.css';
+import { useCoach } from '@/contexts/CoachContext';
+import useVoiceRecording from '@/hooks/useVoiceRecording';
+import { TiMicrophoneOutline } from 'react-icons/ti';
+import { FiSearch, FiX } from 'react-icons/fi';
 
 /**
  * @typedef {Object} User
@@ -40,6 +43,12 @@ export default function HeaderBar({
   onMobileMenuToggle,
   isMobileMenuOpen = false
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isLoading, setPendingMessage } = useCoach();
+  const [query, setQuery] = useState('');
+  const inputRef = useRef(null);
+
   const handleMobileMenuToggle = () => {
     if (onLeftMenuToggle) {
       // For mid-range screens, control the left menu
@@ -50,6 +59,35 @@ export default function HeaderBar({
     }
   };
 
+  const handleTranscription = (text) => {
+    if (text && text.trim()) {
+      setQuery(text);
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  };
+
+  const { isRecording, isProcessing, startRecording, stopRecording } = useVoiceRecording(handleTranscription);
+
+  const handleMicrophoneClick = () => {
+    if (isRecording) {
+      stopRecording('manual');
+    } else {
+      startRecording();
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed || isLoading) return;
+    setPendingMessage({ id: Date.now(), text: trimmed });
+    setQuery('');
+    if (pathname !== '/coach') {
+      router.push('/coach');
+    }
+  };
 
 
   return (
@@ -100,7 +138,50 @@ export default function HeaderBar({
         </div>
 
         <div className={styles.center}>
-          {/* LEDs moved next to user greeting */}
+          {pathname !== '/coach' && (
+            <form className={styles.searchForm} onSubmit={handleSubmit}>
+              <div className={styles.searchBar}>
+                <input
+                  ref={inputRef}
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Ask Aime..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  disabled={isLoading}
+                />
+                {query.trim() && (
+                  <button
+                    type="button"
+                    className={styles.searchIconButton}
+                    onClick={() => setQuery('')}
+                    aria-label="Clear input"
+                  >
+                    <FiX size={20} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`${styles.searchIconButton} ${styles.micButton} ${isRecording ? styles.micButtonRecording : ''}`}
+                  onClick={handleMicrophoneClick}
+                  disabled={isLoading || isProcessing}
+                  aria-label={isRecording ? 'Stop voice input' : 'Start voice input'}
+                  title="Voice Input"
+                >
+                  <TiMicrophoneOutline size={22} />
+                </button>
+                <button
+                  type="submit"
+                  className={styles.searchIconButton}
+                  disabled={isLoading || !query.trim()}
+                  aria-label="Send to coach"
+                  title="Ask Aime"
+                >
+                  <FiSearch size={20} />
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         <div className={styles.right}>
