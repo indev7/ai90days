@@ -8,7 +8,7 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { GoClock } from "react-icons/go";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
-import { RiFlowerLine, RiOrganizationChart, RiUserSharedLine } from "react-icons/ri";
+import { RiArchiveLine, RiFlowerLine, RiOrganizationChart, RiUserSharedLine } from "react-icons/ri";
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { GiGreekTemple } from "react-icons/gi";
@@ -34,7 +34,8 @@ const getTopMenuItems = (userRole) => {
       label: 'My OKRs',
       icon: 'goals',
       children: [
-        { href: '/new', label: 'Add OKR', icon: 'new', isAction: true }
+        { href: '/new', label: 'Add OKR', icon: 'new', isAction: true },
+        { href: '/okrt?view=archived', label: 'Archived', icon: 'archive' }
       ] // Will be populated with objectives dynamically
     },
     {
@@ -83,6 +84,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     strategy: <GiGreekTemple size={iconSize} />,
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
+    archive: <RiArchiveLine size={iconSize} />,
     coach: <RiFlowerLine size={iconSize} />,
     notifications: (
       <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -161,7 +163,7 @@ export default function LeftMenu({
   useEffect(() => {
     // Extract objectives from mainTree
     const myOKRTs = mainTree.myOKRTs || [];
-    const objs = myOKRTs.filter(item => item.type === 'O');
+    const objs = myOKRTs.filter(item => item.type === 'O' && item.status !== 'R');
     setObjectives(objs);
 
     // Process scheduled tasks from mainTree

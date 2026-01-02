@@ -73,6 +73,8 @@ export default function OKRTPage() {
   const searchParams = useSearchParams();
   const selectedObjectiveId = searchParams.get('objective');
   const showAddModal = searchParams.get('showAddModal');
+  const view = searchParams.get('view');
+  const showArchived = view === 'archived';
   
   const { user } = useUser();
   const [objectives, setObjectives] = useState([]);
@@ -504,6 +506,12 @@ export default function OKRTPage() {
 
   const visibleObjectives = useMemo(() => {
     return filteredObjectives.filter((objective) => {
+      if (showArchived) {
+        return objective.status === 'R';
+      }
+      if (objective.status === 'R') {
+        return false;
+      }
       if (visibilityFilter === 'shared') {
         return objective.visibility === 'shared';
       }
@@ -512,7 +520,7 @@ export default function OKRTPage() {
       }
       return true;
     });
-  }, [filteredObjectives, visibilityFilter]);
+  }, [filteredObjectives, visibilityFilter, showArchived]);
 
   const familyGroups = useMemo(() => {
     const groups = [];
@@ -547,13 +555,14 @@ export default function OKRTPage() {
   // Don't return early - render empty state with modal support
   const hasNoObjectives = visibleObjectives.length === 0;
   const headerCount = visibleObjectives.length;
+  const headerTitle = showArchived ? 'Archived OKRs' : 'My OKRs';
 
   return (
     <div className={styles.container}>
       <div className="app-pageHeader">
         <div className="app-titleSection">
           <MdOutlineSelfImprovement className="app-pageIcon" />
-          <h1 className="app-pageTitle">My OKRs</h1>
+          <h1 className="app-pageTitle">{headerTitle}</h1>
           <span className="app-pageCount">({headerCount})</span>
         </div>
         <div className="app-filterSwitcher" role="group" aria-label="Visibility filter">
@@ -599,8 +608,14 @@ export default function OKRTPage() {
         {hasNoObjectives ? (
           <div className={styles.empty}>
             <div>
-              <div className={styles.emptyTitle}>No objectives found</div>
-              <div className={styles.emptyText}>Create your first objective to get started.</div>
+              <div className={styles.emptyTitle}>
+                {showArchived ? 'No archived objectives' : 'No objectives found'}
+              </div>
+              <div className={styles.emptyText}>
+                {showArchived
+                  ? 'Archive an objective to see it here.'
+                  : 'Create your first objective to get started.'}
+              </div>
             </div>
           </div>
         ) : (

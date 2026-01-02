@@ -79,16 +79,16 @@ export default function ObjectiveHeader({
     switch (status) {
       case 'A': return 'active';
       case 'C': return 'complete';
-      case 'D': return 'draft';
+      case 'R': return 'archived';
       default: return 'default';
     }
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'A': return 'in progress';
+      case 'A': return 'Active';
       case 'C': return 'Complete';
-      case 'D': return 'Draft';
+      case 'R': return 'Archived';
       default: return 'Unknown';
     }
   };
