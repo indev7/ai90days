@@ -132,8 +132,8 @@ export default function HeaderBar({
             />
           )}
           
-          <Link href="/" className={styles.logoLink}>
-            <div className={styles.logo}>DreamBig</div>
+          <Link href="/" className={styles.logoLink} aria-label="Aime">
+            <span className={styles.logoIcon} role="img" aria-hidden="true" />
           </Link>
         </div>
 

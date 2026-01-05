@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { RiArchiveLine } from 'react-icons/ri';
 import styles from './OKRTModal.module.css';
 import { Calendar } from 'primereact/calendar';
 import 'primereact/resources/primereact.min.css';
@@ -737,7 +738,10 @@ export default function OKRTModal({
                     onClick={handleUnarchive}
                     disabled={saving || deleting || archiving || unarchiving}
                   >
-                    {unarchiving ? 'Restoring...' : 'Restore'}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <RiArchiveLine />
+                      {unarchiving ? 'Restoring...' : 'Restore'}
+                    </span>
                   </button>
                 ) : (
                   <button
@@ -745,7 +749,10 @@ export default function OKRTModal({
                     onClick={handleArchive}
                     disabled={saving || deleting || archiving || unarchiving}
                   >
-                    {archiving ? 'Archiving...' : 'Archive'}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <RiArchiveLine />
+                      {archiving ? 'Archiving...' : 'Archive'}
+                    </span>
                   </button>
                 )
               )}

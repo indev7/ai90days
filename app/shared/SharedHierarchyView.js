@@ -232,10 +232,11 @@ function FamilyChartWrapper({ family, nodeTemplate }) {
   );
 }
 
-export default function SharedHierarchyView() {
-  const { mainTree, isLoading } = useMainTree();
+export default function SharedHierarchyView({ okrts = null }) {
+  const { mainTree, isLoading: mainTreeLoading } = useMainTree();
   const router = useRouter();
-  const sharedOKRTs = (mainTree?.sharedOKRTs || []).filter((okrt) => okrt.type === 'O');
+  const sourceOKRTs = Array.isArray(okrts) ? okrts : (mainTree?.sharedOKRTs || []);
+  const sharedOKRTs = sourceOKRTs.filter((okrt) => okrt.type === 'O');
   const families = useMemo(() => buildFamilies(sharedOKRTs), [sharedOKRTs]);
 
   const handleNodeClick = (node) => {
@@ -256,7 +257,7 @@ export default function SharedHierarchyView() {
     </button>
   );
 
-  if (isLoading) {
+  if (!Array.isArray(okrts) && mainTreeLoading) {
     return <div className={styles.hierarchyBlank}>Loading shared OKRs...</div>;
   }
 

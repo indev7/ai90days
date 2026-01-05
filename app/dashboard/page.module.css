@@ -1,6 +1,5 @@
 .container {
-  height: calc(100vh - 72px);
-  padding: var(--space-4);
+  min-height: calc(100vh - var(--app-header-height, 72px));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

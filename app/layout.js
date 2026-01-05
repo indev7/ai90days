@@ -174,6 +174,7 @@ export default function RootLayout({ children }) {
               onMobileClose={handleMobileMenuClose}
             />
             <main style={{
+              '--app-header-height': `${headerHeight}px`,
               paddingTop: `${headerHeight}px`,
               paddingLeft: `${getMenuWidth()}px`,
               transition: 'padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1)'

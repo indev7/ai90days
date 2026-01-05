@@ -149,18 +149,26 @@ export default function SharedOKRTDetailPage() {
 
   if (loading) {
     return (
-      <div className={styles.loading}>
-        <div>Loading shared objective...</div>
+      <div className="app-page">
+        <div className="app-pageContent">
+          <div className={styles.loading}>
+            <div>Loading shared objective...</div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={styles.empty}>
-        <div>
-          <div className={styles.emptyTitle}>Error</div>
-          <div className={styles.emptyText}>{error}</div>
+      <div className="app-page">
+        <div className="app-pageContent">
+          <div className={styles.empty}>
+            <div>
+              <div className={styles.emptyTitle}>Error</div>
+              <div className={styles.emptyText}>{error}</div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -168,19 +176,23 @@ export default function SharedOKRTDetailPage() {
 
   if (!objective) {
     return (
-      <div className={styles.empty}>
-        <div>
-          <div className={styles.emptyTitle}>Objective not found</div>
-          <div className={styles.emptyText}>The shared objective you're looking for doesn't exist.</div>
+      <div className="app-page">
+        <div className="app-pageContent">
+          <div className={styles.empty}>
+            <div>
+              <div className={styles.emptyTitle}>Objective not found</div>
+              <div className={styles.emptyText}>The shared objective you're looking for doesn't exist.</div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`app-page ${styles.container}`}>
       {/* Main Content */}
-      <main className={styles.main}>
+      <main className={`app-pageContent ${styles.main}`}>
         <div className={`${styles.objectiveSection} ${focusedObjectiveId === objectiveWithConfidence.id ? styles.focusedObjective : ''}`}>
           <ObjectiveHeader
             objective={objectiveWithConfidence}

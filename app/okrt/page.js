@@ -82,6 +82,7 @@ export default function OKRTPage() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [visibilityFilter, setVisibilityFilter] = useState('all');
+  const [sharedGroupFilter, setSharedGroupFilter] = useState('all');
   const [openKR, setOpenKR] = useState(null);
   const [expandedObjectives, setExpandedObjectives] = useState(new Set());
   const [focusedObjectiveId, setFocusedObjectiveId] = useState(null);
@@ -109,6 +110,43 @@ export default function OKRTPage() {
   // Subscribe to mainTree from Zustand store
   const mainTree = useMainTreeStore((state) => state.mainTree);
   const lastUpdated = useMainTreeStore((state) => state.lastUpdated);
+
+  const sharedGroupOptions = useMemo(() => {
+    const groups = new Map();
+    const items = mainTree?.myOKRTs || [];
+
+    items.forEach((item) => {
+      if (item.type !== 'O' || item.visibility !== 'shared') return;
+      const sharedGroups = item.shared_groups || item.sharedGroups || [];
+      sharedGroups.forEach((group) => {
+        if (!group) return;
+        const name = group.name || group.group_name;
+        if (!name) return;
+        const id = group.id || group.group_id || group.group_or_user_id || name;
+        if (!groups.has(id)) {
+          groups.set(id, { id, name });
+        }
+      });
+    });
+
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [mainTree]);
+
+  useEffect(() => {
+    if (visibilityFilter !== 'shared' && sharedGroupFilter !== 'all') {
+      setSharedGroupFilter('all');
+    }
+  }, [visibilityFilter, sharedGroupFilter]);
+
+  useEffect(() => {
+    if (sharedGroupFilter === 'all') return;
+    const isValid = sharedGroupOptions.some(
+      (group) => String(group.id) === String(sharedGroupFilter)
+    );
+    if (!isValid) {
+      setSharedGroupFilter('all');
+    }
+  }, [sharedGroupOptions, sharedGroupFilter]);
 
   // Process mainTree data whenever it changes (from cross-tab sync or initial load)
   useEffect(() => {
@@ -513,14 +551,25 @@ export default function OKRTPage() {
         return false;
       }
       if (visibilityFilter === 'shared') {
-        return objective.visibility === 'shared';
+        if (objective.visibility !== 'shared') {
+          return false;
+        }
+        if (sharedGroupFilter !== 'all') {
+          const sharedGroups = objective.shared_groups || objective.sharedGroups || [];
+          return sharedGroups.some(
+            (group) =>
+              String(group?.id || group?.group_id || group?.group_or_user_id) ===
+              String(sharedGroupFilter)
+          );
+        }
+        return true;
       }
       if (visibilityFilter === 'private') {
         return objective.visibility !== 'shared';
       }
       return true;
     });
-  }, [filteredObjectives, visibilityFilter, showArchived]);
+  }, [filteredObjectives, visibilityFilter, showArchived, sharedGroupFilter]);
 
   const familyGroups = useMemo(() => {
     const groups = [];
@@ -546,8 +595,12 @@ export default function OKRTPage() {
 
   if (loading) {
     return (
-      <div className={styles.loading}>
-        <div>Loading OKRT data...</div>
+      <div className="app-page">
+        <div className="app-pageContent">
+          <div className={styles.loading}>
+            <div>Loading OKRT data...</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -556,54 +609,76 @@ export default function OKRTPage() {
   const hasNoObjectives = visibleObjectives.length === 0;
   const headerCount = visibleObjectives.length;
   const headerTitle = showArchived ? 'Archived OKRs' : 'My OKRs';
+  const showSharedGroupFilter = visibilityFilter === 'shared' && sharedGroupOptions.length > 0;
 
   return (
-    <div className={styles.container}>
-      <div className="app-pageHeader">
-        <div className="app-titleSection">
-          <MdOutlineSelfImprovement className="app-pageIcon" />
-          <h1 className="app-pageTitle">{headerTitle}</h1>
-          <span className="app-pageCount">({headerCount})</span>
+    <div className={`app-page ${styles.container}`}>
+      <div className="app-pageContent">
+        <div className="app-pageHeader">
+          <div className="app-titleSection">
+            <MdOutlineSelfImprovement className="app-pageIcon" />
+            <h1 className="app-pageTitle">{headerTitle}</h1>
+            <span className="app-pageCount">({headerCount})</span>
+          </div>
+          {showSharedGroupFilter && (
+            <div className={styles.filtersRow}>
+              <label className="app-headerLabel" htmlFor="sharedGroupFilter">
+                Group
+              </label>
+              <select
+                id="sharedGroupFilter"
+                className="app-headerSelect"
+                value={sharedGroupFilter}
+                onChange={(event) => setSharedGroupFilter(event.target.value)}
+              >
+                <option value="all">All</option>
+                {sharedGroupOptions.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="app-filterSwitcher" role="group" aria-label="Visibility filter">
+            <div
+              className={`app-filterThumb ${
+                visibilityFilter === 'private'
+                  ? styles.thumbPrivate
+                  : visibilityFilter === 'shared'
+                    ? styles.thumbShared
+                    : styles.thumbAll
+              }`}
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              className={`app-filterButton ${visibilityFilter === 'all' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setVisibilityFilter('all')}
+              aria-pressed={visibilityFilter === 'all'}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`app-filterButton ${visibilityFilter === 'private' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setVisibilityFilter('private')}
+              aria-pressed={visibilityFilter === 'private'}
+            >
+              Private
+            </button>
+            <button
+              type="button"
+              className={`app-filterButton ${visibilityFilter === 'shared' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setVisibilityFilter('shared')}
+              aria-pressed={visibilityFilter === 'shared'}
+            >
+              Shared
+            </button>
+          </div>
         </div>
-        <div className="app-filterSwitcher" role="group" aria-label="Visibility filter">
-          <div
-            className={`app-filterThumb ${
-              visibilityFilter === 'private'
-                ? styles.thumbPrivate
-                : visibilityFilter === 'shared'
-                  ? styles.thumbShared
-                  : styles.thumbAll
-            }`}
-            aria-hidden="true"
-          />
-          <button
-            type="button"
-            className={`app-filterButton ${visibilityFilter === 'all' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setVisibilityFilter('all')}
-            aria-pressed={visibilityFilter === 'all'}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            className={`app-filterButton ${visibilityFilter === 'private' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setVisibilityFilter('private')}
-            aria-pressed={visibilityFilter === 'private'}
-          >
-            Private
-          </button>
-          <button
-            type="button"
-            className={`app-filterButton ${visibilityFilter === 'shared' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setVisibilityFilter('shared')}
-            aria-pressed={visibilityFilter === 'shared'}
-          >
-            Shared
-          </button>
-        </div>
-      </div>
-      {/* Main Content */}
-      <main className={styles.main}>
+        {/* Main Content */}
+        <main className={styles.main}>
         {/* Show empty state if no objectives */}
         {hasNoObjectives ? (
           <div className={styles.empty}>
@@ -689,7 +764,8 @@ export default function OKRTPage() {
            );
          })
        )}
-      </main>
+        </main>
+      </div>
 
       {/* OKRT Modal */}
       <OKRTModal

@@ -104,8 +104,10 @@ export default function SettingsPage() {
 
   if (userLoading || mainTreeLoading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Loading...</div>
+      <div className={`app-page ${styles.container}`}>
+        <div className="app-pageContent">
+          <div className={styles.loading}>Loading...</div>
+        </div>
       </div>
     );
   }
@@ -115,8 +117,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
+    <div className={`app-page ${styles.container}`}>
+      <div className="app-pageContent">
+        <div className={styles.content}>
         <div className={styles.header}>
           <h1 className={styles.title}>Settings</h1>
          
@@ -243,6 +246,7 @@ export default function SettingsPage() {
                     });
                     setHasChanges(false);
                     setPreferences({
+                      ...(mainTree?.preferences || {}),
                       preferred_voice: preferredVoice,
                       preferred_home: preferredHome,
                       theme,
@@ -260,6 +264,7 @@ export default function SettingsPage() {
               {isSavingPreferences ? 'Saving...' : 'Save'}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>

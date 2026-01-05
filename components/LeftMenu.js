@@ -8,7 +8,7 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { GoClock } from "react-icons/go";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
-import { RiArchiveLine, RiFlowerLine, RiOrganizationChart, RiUserSharedLine } from "react-icons/ri";
+import { RiArchiveLine, RiOrganizationChart, RiUserSharedLine } from "react-icons/ri";
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { GiGreekTemple } from "react-icons/gi";
@@ -68,7 +68,7 @@ const getTopMenuItems = (userRole) => {
 };
 
 const bottomMenuItems = [
-  { href: '/coach', label: 'Aime', icon: 'coach', disabled: false },
+  { href: '/coach', label: 'Chat', icon: 'coach', disabled: false },
   { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: false },
 ];
 
@@ -85,7 +85,13 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     archive: <RiArchiveLine size={iconSize} />,
-    coach: <RiFlowerLine size={iconSize} />,
+    coach: (
+      <span
+        className={styles.aimeIcon}
+        style={{ width: iconSize, height: iconSize }}
+        aria-hidden="true"
+      />
+    ),
     notifications: (
       <div style={{ position: 'relative', display: 'inline-block' }}>
         <IoMdNotificationsOutline size={iconSize} />

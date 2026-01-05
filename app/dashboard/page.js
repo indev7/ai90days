@@ -406,9 +406,11 @@ export default function Dashboard() {
 
   if (userLoading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.content}>
-          <div className={styles.loading}>Loading dashboard...</div>
+      <div className={`app-page ${styles.container}`}>
+        <div className="app-pageContent app-pageContent--full">
+          <div className={styles.content}>
+            <div className={styles.loading}>Loading dashboard...</div>
+          </div>
         </div>
       </div>
     );
@@ -607,10 +609,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <div className={styles.dashboardGrid}>
-          {isMobile ? renderMobileLayout() : isTabletPortrait ? renderTabletPortraitLayout() : renderDesktopLayout()}
+    <div className={`app-page ${styles.container}`}>
+      <div className="app-pageContent app-pageContent--full">
+        <div className={styles.content}>
+          <div className={styles.dashboardGrid}>
+            {isMobile ? renderMobileLayout() : isTabletPortrait ? renderTabletPortraitLayout() : renderDesktopLayout()}
+          </div>
         </div>
       </div>
 

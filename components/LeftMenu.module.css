@@ -288,6 +288,18 @@
   height: 20px;
 }
 
+.aimeIcon {
+  display: block;
+  background-image: url('/aime_light.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+:global(html[data-theme="nature"]) .aimeIcon {
+  background-image: url('/aime_dark.png');
+}
+
 .label {
   white-space: nowrap;
   overflow: hidden;
