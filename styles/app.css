@@ -3,6 +3,11 @@
   padding: 0;
   margin: 0;
 }/* Global CSS Reset and Base Styles */
+:root {
+  --page-max-width: 1200px;
+  --page-max-width-wide: 1400px;
+  --page-padding: clamp(1rem, 0vw, 0rem);
+}
 html,
 body {
   box-sizing: border-box;
@@ -220,9 +225,10 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px;
+  padding: 10px;
   border-bottom: 1px solid var(--border);
   background: var(--menu-bg);
+  margin-bottom: 15px;
 }
 
 .app-titleSection {
@@ -249,12 +255,45 @@ textarea:focus {
   font-weight: 400;
 }
 
+.app-headerLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.app-headerSelect {
+  min-width: 150px;
+  max-width: 300px;
+  padding: 0.7rem 2.5rem 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23838fa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  cursor: pointer;
+}
+
+.app-headerSelect:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb, 126, 88, 255), 0.15);
+}
+
 .app-filterSwitcher {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  padding: 0.35rem;
+  padding: 0.16rem;
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 999px;
@@ -305,6 +344,28 @@ textarea:focus {
   padding: 0 var(--space-4);
 }
 
+/* Common page layout */
+.app-page {
+  width: 100%;
+  min-height: calc(100vh - var(--app-header-height, 72px));
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-pageContent {
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--page-padding);
+}
+
+.app-pageContent--wide {
+  max-width: var(--page-max-width-wide);
+}
+
+.app-pageContent--full {
+  max-width: none;
+}
+
 /* Animation preferences */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -319,6 +380,11 @@ textarea:focus {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .app-headerSelect {
+    width: 100%;
+    min-width: 0;
   }
 
   .app-filterSwitcher {

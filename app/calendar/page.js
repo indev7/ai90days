@@ -511,13 +511,14 @@ export default function CalendarPage() {
     };
 
     return (
-        <div className={styles.calendarContainer}>
-            <div className="app-pageHeader">
-                <div className="app-titleSection">
-                    <RiCalendarScheduleLine className="app-pageIcon" />
-                    <h1 className="app-pageTitle">Schedule</h1>
-                </div>
-                <div className="app-filterSwitcher" role="group" aria-label="Schedule filter">
+        <div className={`app-page ${styles.calendarContainer}`}>
+            <div className="app-pageContent app-pageContent--full">
+                <div className="app-pageHeader">
+                    <div className="app-titleSection">
+                        <RiCalendarScheduleLine className="app-pageIcon" />
+                        <h1 className="app-pageTitle">Schedule</h1>
+                    </div>
+                    <div className="app-filterSwitcher" role="group" aria-label="Schedule filter">
                     <div
                         className={`app-filterThumb ${
                             viewFilter === 'tasks'
@@ -824,6 +825,7 @@ export default function CalendarPage() {
                     </div>
                 </div>
             </div>
+          </div>
 
             {/* Schedule Modal */}
             {showScheduleModal && (

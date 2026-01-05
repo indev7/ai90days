@@ -81,67 +81,70 @@ export default function ClockTestPage() {
   };
 
   return (
-    <div style={{ 
-      padding: '2rem', 
-      maxWidth: '800px', 
-      margin: '0 auto',
-      fontFamily: 'system-ui, sans-serif'
-    }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        TodayClock + TaskUpdateModal Demo
-      </h1>
-      
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        gap: '2rem' 
-      }}>
-        <div style={{
-          padding: '2rem',
-          border: '1px solid #e5e7eb',
-          borderRadius: '12px',
-          backgroundColor: '#f9fafb'
+    <div className="app-page">
+      <div className="app-pageContent">
+        <div style={{ 
+          maxWidth: '800px', 
+          margin: '0 auto',
+          fontFamily: 'system-ui, sans-serif'
         }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '1rem', color: '#374151' }}>
-            Click on Task Sectors
-          </h2>
-          <TodayClock 
-            todoTasks={demoTasks} 
-            size={300} 
-            onTaskClick={handleTaskClick}
+          <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            TodayClock + TaskUpdateModal Demo
+          </h1>
+          
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '2rem' 
+          }}>
+            <div style={{
+              padding: '2rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              backgroundColor: '#f9fafb'
+            }}>
+              <h2 style={{ textAlign: 'center', marginBottom: '1rem', color: '#374151' }}>
+                Click on Task Sectors
+              </h2>
+              <TodayClock 
+                todoTasks={demoTasks} 
+                size={300} 
+                onTaskClick={handleTaskClick}
+              />
+            </div>
+            
+            <div style={{ 
+              maxWidth: '600px', 
+              textAlign: 'center', 
+              color: '#6b7280' 
+            }}>
+              <h3>Instructions:</h3>
+              <ul style={{ textAlign: 'left', lineHeight: '1.6' }}>
+                <li>The colored sectors on the clock face represent scheduled tasks</li>
+                <li>Hover over sectors to see them highlight</li>
+                <li>Click on any sector to open the task update modal</li>
+                <li>Use the progress slider to update task completion (0-100%)</li>
+                <li>Task status updates automatically based on progress:
+                  <ul style={{ marginTop: '0.5rem' }}>
+                    <li><strong>0%</strong> = Todo</li>
+                    <li><strong>1-99%</strong> = In Progress</li>
+                    <li><strong>100%</strong> = Done</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Task Update Modal */}
+          <TaskUpdateModal
+            isOpen={taskUpdateModalState.isOpen}
+            onClose={handleCloseTaskUpdateModal}
+            task={taskUpdateModalState.task}
+            onSave={handleSaveTaskUpdate}
           />
         </div>
-        
-        <div style={{ 
-          maxWidth: '600px', 
-          textAlign: 'center', 
-          color: '#6b7280' 
-        }}>
-          <h3>Instructions:</h3>
-          <ul style={{ textAlign: 'left', lineHeight: '1.6' }}>
-            <li>The colored sectors on the clock face represent scheduled tasks</li>
-            <li>Hover over sectors to see them highlight</li>
-            <li>Click on any sector to open the task update modal</li>
-            <li>Use the progress slider to update task completion (0-100%)</li>
-            <li>Task status updates automatically based on progress:
-              <ul style={{ marginTop: '0.5rem' }}>
-                <li><strong>0%</strong> = Todo</li>
-                <li><strong>1-99%</strong> = In Progress</li>
-                <li><strong>100%</strong> = Done</li>
-              </ul>
-            </li>
-          </ul>
-        </div>
       </div>
-
-      {/* Task Update Modal */}
-      <TaskUpdateModal
-        isOpen={taskUpdateModalState.isOpen}
-        onClose={handleCloseTaskUpdateModal}
-        task={taskUpdateModalState.task}
-        onSave={handleSaveTaskUpdate}
-      />
     </div>
   );
 }

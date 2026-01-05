@@ -1,7 +1,6 @@
 // app/api/llm/route.js
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDatabase, get, all } from '@/lib/pgdb';
 
 /* =========================
    Utility functions
@@ -95,7 +94,7 @@ function cleanObject(obj) {
   return obj;
 }
 
-async function getOKRTContext(userId) {
+/*async function getOKRTContext(userId) {
   try {
     await getDatabase(); // Ensure database is initialized
     const currentQuarter = getCurrentQuarter();
@@ -145,7 +144,7 @@ async function getOKRTContext(userId) {
     console.error('Error fetching OKRT context:', error);
     return { user: { displayName: 'User' }, objectives: [] };
   }
-}
+}*/
 
 /* =========================
    System prompt
@@ -194,7 +193,7 @@ SCOPE & DATA MODEL
 - Single table "okrt" with types O/K/T and parent_id hierarchy.
 - If the user intend to update task progress, then propagate progress upwards to KR and to Objective using weighted sum.
 - Types: Objective (O), Key Result (K), Task (T). Hierarchy via parent_id.
-- Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (D-Draft/A-Active/C-Complete), visibility (private/shared), objective_kind (committed/stretch), progress (0–100).
+- Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (A-Active/C-Complete/R-Archived), visibility (private/shared), objective_kind (committed/stretch), progress (0–100).
 - Key Result (K): description (required), kr_target_number, kr_unit ∈ {count, %, $, hrs}, kr_baseline_number?, weight (default 1.0), progress (0–100).
 - Task (T): description (required), due_date?, task_status ∈ {todo, in_progress, done, blocked}, weight (default 1.0), progress (0–100).
 - Progress propagation: parent_progress = Σ(child_progress × child_weight). Sibling weights under one parent should sum to 1.0.
@@ -277,7 +276,7 @@ function getActionsTool() {
                   area:  { type: "string" },
                   visibility: { type: "string", enum: ["private","shared"] },
                   objective_kind: { type: "string", enum: ["committed","stretch"] },
-                  status: { type: "string", enum: ["D","A","C"] },
+                  status: { type: "string", enum: ["A","C","R"] },
                   cycle_qtr: { type: "string" },
                   kr_target_number:   { type: "number" },
                   kr_unit:            { type: "string", enum: ["%","$","count","hrs"] },
@@ -340,14 +339,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
     }
 
-    // Use client-provided OKRT context if available, otherwise fetch from DB
-    const okrtContext = clientOkrtContext || await getOKRTContext(userId);
-    
-    // Add user display name if not present in client context
-    if (clientOkrtContext && !clientOkrtContext.user) {
-      await getDatabase(); // Ensure database is initialized
-      const user = await get(`SELECT display_name FROM users WHERE id = ?`, [userId]);
-      okrtContext.user = { displayName: user?.display_name || 'User' };
+    if (!clientOkrtContext) {
+      return NextResponse.json({ error: 'okrtContext is required' }, { status: 400 });
+    }
+
+    const okrtContext = clientOkrtContext;
+
+    if (!clientOkrtContext.user) {
+      okrtContext.user = { displayName: 'User' };
     }
     
     const systemPrompt = getCoachSystemPrompt(okrtContext);

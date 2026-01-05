@@ -134,135 +134,141 @@ export default function MembersPage() {
 
   if (userLoading || loading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Loading...</div>
+      <div className={`app-page ${styles.page}`}>
+        <div className="app-pageContent">
+          <div className={styles.loading}>Loading...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={styles.container}>
-        <div className={styles.error}>Error: {error}</div>
+      <div className={`app-page ${styles.page}`}>
+        <div className="app-pageContent">
+          <div className={styles.error}>Error: {error}</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <div className="app-pageHeader">
-        <div className="app-titleSection">
-          <HiOutlineUsers className="app-pageIcon" />
-          <h1 className="app-pageTitle">Members</h1>
-          <span className="app-pageCount">({filteredUsers.length})</span>
-        </div>
-        <div className={styles.filtersRow}>
-          <label className={styles.filterLabel} htmlFor="groupFilter">
-            Group
-          </label>
-          <select
-            id="groupFilter"
-            className={styles.filterSelect}
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={`app-filterSwitcher ${styles.membersFilterSwitcher}`} role="group" aria-label="Role filter">
-          <div
-            className={`app-filterThumb ${styles.membersFilterThumb} ${
-              roleFilter === 'user'
-                ? styles.thumbUser
-                : roleFilter === 'leader'
-                  ? styles.thumbLeader
-                  : roleFilter === 'owner'
-                    ? styles.thumbOwner
-                    : roleFilter === 'admin'
-                      ? styles.thumbAdmin
-                      : styles.thumbAll
-            }`}
-            aria-hidden="true"
-          />
-          <button
-            type="button"
-            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'all' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setRoleFilter('all')}
-            aria-pressed={roleFilter === 'all'}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'user' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setRoleFilter('user')}
-            aria-pressed={roleFilter === 'user'}
-          >
-            User
-          </button>
-          <button
-            type="button"
-            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'leader' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setRoleFilter('leader')}
-            aria-pressed={roleFilter === 'leader'}
-          >
-            Leader
-          </button>
-          <button
-            type="button"
-            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'owner' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setRoleFilter('owner')}
-            aria-pressed={roleFilter === 'owner'}
-          >
-            Owner
-          </button>
-          <button
-            type="button"
-            className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'admin' ? 'app-filterButtonActive' : ''}`}
-            onClick={() => setRoleFilter('admin')}
-            aria-pressed={roleFilter === 'admin'}
-          >
-            Admin
-          </button>
-        </div>
-      </div>
-
-      <div className={styles.container}>
-        <div className={styles.usersGrid}>
-          {filteredUsers.map(user => (
-            <div
-              key={user.id}
-              className={styles.userCard}
-              onClick={() => handleUserClick(user)}
+    <div className={`app-page ${styles.page}`}>
+      <div className="app-pageContent app-pageContent--wide">
+        <div className="app-pageHeader">
+          <div className="app-titleSection">
+            <HiOutlineUsers className="app-pageIcon" />
+            <h1 className="app-pageTitle">Members</h1>
+            <span className="app-pageCount">({filteredUsers.length})</span>
+          </div>
+          <div className={styles.filtersRow}>
+            <label className="app-headerLabel" htmlFor="groupFilter">
+              Group
+            </label>
+            <select
+              id="groupFilter"
+              className="app-headerSelect"
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
             >
-              <div className={styles.userAvatar}>
-                {user.profile_picture_url ? (
-                  <img src={user.profile_picture_url} alt={user.display_name} />
-                ) : (
-                  <div className={styles.avatarPlaceholder}>
-                    {(user.display_name || user.email).charAt(0).toUpperCase()}
+              <option value="all">All</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={`app-filterSwitcher ${styles.membersFilterSwitcher}`} role="group" aria-label="Role filter">
+            <div
+              className={`app-filterThumb ${styles.membersFilterThumb} ${
+                roleFilter === 'user'
+                  ? styles.thumbUser
+                  : roleFilter === 'leader'
+                    ? styles.thumbLeader
+                    : roleFilter === 'owner'
+                      ? styles.thumbOwner
+                      : roleFilter === 'admin'
+                        ? styles.thumbAdmin
+                        : styles.thumbAll
+              }`}
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'all' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setRoleFilter('all')}
+              aria-pressed={roleFilter === 'all'}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'user' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setRoleFilter('user')}
+              aria-pressed={roleFilter === 'user'}
+            >
+              User
+            </button>
+            <button
+              type="button"
+              className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'leader' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setRoleFilter('leader')}
+              aria-pressed={roleFilter === 'leader'}
+            >
+              Leader
+            </button>
+            <button
+              type="button"
+              className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'owner' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setRoleFilter('owner')}
+              aria-pressed={roleFilter === 'owner'}
+            >
+              Owner
+            </button>
+            <button
+              type="button"
+              className={`app-filterButton ${styles.membersFilterButton} ${roleFilter === 'admin' ? 'app-filterButtonActive' : ''}`}
+              onClick={() => setRoleFilter('admin')}
+              aria-pressed={roleFilter === 'admin'}
+            >
+              Admin
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.container}>
+          <div className={styles.usersGrid}>
+            {filteredUsers.map(user => (
+              <div
+                key={user.id}
+                className={styles.userCard}
+                onClick={() => handleUserClick(user)}
+              >
+                <div className={styles.userAvatar}>
+                  {user.profile_picture_url ? (
+                    <img src={user.profile_picture_url} alt={user.display_name} />
+                  ) : (
+                    <div className={styles.avatarPlaceholder}>
+                      {(user.display_name || user.email).charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.userInfo}>
+                  <div className={styles.userName}>{user.display_name || user.email}</div>
+                  <div className={styles.userEmail}>{user.email}</div>
+                  <div className={styles.userMeta}>
+                    <span className={`${styles.roleBadge} ${styles[`role${user.role}`]}`}>
+                      {user.role || 'User'}
+                    </span>
+                    <span className={styles.authProvider}>
+                      {user.auth_provider === 'microsoft' ? 'Microsoft' : 'Email'}
+                    </span>
                   </div>
-                )}
-              </div>
-              <div className={styles.userInfo}>
-                <div className={styles.userName}>{user.display_name || user.email}</div>
-                <div className={styles.userEmail}>{user.email}</div>
-                <div className={styles.userMeta}>
-                  <span className={`${styles.roleBadge} ${styles[`role${user.role}`]}`}>
-                    {user.role || 'User'}
-                  </span>
-                  <span className={styles.authProvider}>
-                    {user.auth_provider === 'microsoft' ? 'Microsoft' : 'Email'}
-                  </span>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

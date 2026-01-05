@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMainTree } from '@/hooks/useMainTree';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
+    displayName: '',
     firstName: '',
     lastName: '',
     currentPassword: '',
@@ -22,7 +23,8 @@ export default function ProfilePage() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const router = useRouter();
+  const { isLoading: mainTreeLoading } = useMainTree();
+  const { mainTree, setPreferences } = useMainTreeStore();
   const EyeIcon = ({ isVisible }) => (
     <svg
       className={styles.toggleIcon}
@@ -73,42 +75,39 @@ export default function ProfilePage() {
   });
   const hasChanges = (() => {
     if (!user) return false;
+    const displayNameChanged = formData.displayName.trim() !== (user.displayName || '').trim();
     const { first: currentFirstName, last: currentLastName } = getCurrentNameParts(user);
     const nameChanged =
       formData.firstName.trim() !== currentFirstName || formData.lastName.trim() !== currentLastName;
     const passwordChanged =
       formData.currentPassword || formData.newPassword || formData.confirmPassword;
-    return nameChanged || passwordChanged;
+    return displayNameChanged || nameChanged || passwordChanged;
   })();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-          
-          // Use actual first/last names if available, otherwise split display name
-          const { first, last } = getCurrentNameParts(data.user);
-          setFormData(prev => ({
-            ...prev,
-            firstName: first,
-            lastName: last,
-          }));
-        } else {
-          router.push('/login');
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-        router.push('/login');
-      } finally {
-        setIsLoading(false);
-      }
+    const preferencesUser = mainTree?.preferences?.user;
+    if (!preferencesUser) {
+      return;
+    }
+
+    const normalizedUser = {
+      firstName: preferencesUser.first_name || '',
+      lastName: preferencesUser.last_name || '',
+      displayName: preferencesUser.display_name || '',
+      email: preferencesUser.email || ''
     };
 
-    fetchUser();
-  }, [router]);
+    setUser(normalizedUser);
+
+    // Use actual first/last names if available, otherwise split display name
+    const { first, last } = getCurrentNameParts(normalizedUser);
+    setFormData(prev => ({
+      ...prev,
+      displayName: normalizedUser.displayName || [first, last].filter(Boolean).join(' '),
+      firstName: first,
+      lastName: last,
+    }));
+  }, [mainTree?.preferences?.user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -133,8 +132,12 @@ export default function ProfilePage() {
       const trimmedFirstName = formData.firstName.trim();
       const trimmedLastName = formData.lastName.trim();
       const { first: currentFirstName, last: currentLastName } = getCurrentNameParts(user);
+      const hasDisplayNameChange =
+        formData.displayName.trim() !== (user.displayName || '').trim();
       const hasNameChange =
-        trimmedFirstName !== currentFirstName || trimmedLastName !== currentLastName;
+        hasDisplayNameChange ||
+        trimmedFirstName !== currentFirstName ||
+        trimmedLastName !== currentLastName;
       const hasPasswordChange =
         formData.currentPassword || formData.newPassword || formData.confirmPassword;
 
@@ -143,6 +146,7 @@ export default function ProfilePage() {
       }
 
       const updateData = {
+        displayName: formData.displayName.trim(),
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
       };
@@ -181,20 +185,36 @@ export default function ProfilePage() {
           newPassword: '',
           confirmPassword: '',
         }));
-        
-        // Refresh user data
-        const userResponse = await fetch('/api/me');
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData.user);
-          // Update form data with new values
-          const { first, last } = getCurrentNameParts(userData.user);
-          setFormData(prev => ({
-            ...prev,
-            firstName: first,
-            lastName: last,
-          }));
-        }
+
+        const updatedUser = data.user || {};
+        const normalizedUser = {
+          firstName: updatedUser.firstName || '',
+          lastName: updatedUser.lastName || '',
+          displayName: updatedUser.displayName || '',
+          email: updatedUser.email || updatedUser.username || ''
+        };
+
+        setUser(normalizedUser);
+
+        const { first, last } = getCurrentNameParts(normalizedUser);
+        setFormData(prev => ({
+          ...prev,
+          displayName: normalizedUser.displayName || [first, last].filter(Boolean).join(' '),
+          firstName: first,
+          lastName: last,
+        }));
+
+        const nextPreferences = {
+          ...(mainTree?.preferences || {}),
+          user: {
+            first_name: normalizedUser.firstName,
+            last_name: normalizedUser.lastName,
+            display_name: normalizedUser.displayName,
+            email: normalizedUser.email
+          }
+        };
+
+        setPreferences(nextPreferences);
       } else {
         setError(data.error || 'Failed to update profile');
       }
@@ -217,6 +237,7 @@ export default function ProfilePage() {
     // Reset form data
     const { first, last } = getCurrentNameParts(user);
     setFormData({
+      displayName: user.displayName || [first, last].filter(Boolean).join(' '),
       firstName: first,
       lastName: last,
       currentPassword: '',
@@ -225,21 +246,20 @@ export default function ProfilePage() {
     });
   };
 
-  if (isLoading) {
+  if (mainTreeLoading || !user) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Loading...</div>
+      <div className={`app-page ${styles.container}`}>
+        <div className="app-pageContent">
+          <div className={styles.loading}>Loading...</div>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
+    <div className={`app-page ${styles.container}`}>
+      <div className="app-pageContent">
+        <div className={styles.content}>
         <div className={styles.header}>
           <h1 className={styles.title}>Profile</h1>
           <p className={styles.subtitle}>Manage your account information</p>
@@ -298,7 +318,24 @@ export default function ProfilePage() {
                 
                 <div className={styles.field}>
                   <label className={styles.label}>Email</label>
-                  <div className={styles.value + ' ' + styles.readonly}>{user.username}</div>
+                  <div className={styles.value + ' ' + styles.readonly}>{user.email}</div>
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="displayName" className={styles.label}>Display Name</label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      id="displayName"
+                      name="displayName"
+                      value={formData.displayName}
+                      onChange={handleInputChange}
+                      className={styles.input}
+                      required
+                    />
+                  ) : (
+                    <div className={styles.value}>{formData.displayName || 'Not set'}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -398,6 +435,7 @@ export default function ProfilePage() {
               )}
             </div>
           </form>
+        </div>
         </div>
       </div>
     </div>

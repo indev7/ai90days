@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { RiArchiveLine } from 'react-icons/ri';
 import styles from './OKRTModal.module.css';
 import { Calendar } from 'primereact/calendar';
 import 'primereact/resources/primereact.min.css';
@@ -82,6 +83,8 @@ export default function OKRTModal({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [unarchiving, setUnarchiving] = useState(false);
   const [childRecords, setChildRecords] = useState([]);
   const [availableObjectives, setAvailableObjectives] = useState([]);
 
@@ -380,6 +383,50 @@ export default function OKRTModal({
       setErrors({ general: 'Failed to delete. Please try again.' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!okrt || !onSave) return;
+    if (okrt.type !== 'O') return;
+
+    const visibility = okrt.visibility || formData.visibility;
+    if (visibility === 'shared') {
+      setErrors({
+        general: 'This objective is shared. Remove sharing first, then try again.'
+      });
+      return;
+    }
+
+    setArchiving(true);
+    setErrors(prev => ({ ...prev, general: undefined }));
+
+    try {
+      await onSave({ status: 'R' });
+      onClose();
+    } catch (error) {
+      console.error('Error archiving OKRT:', error);
+      setErrors({ general: 'Failed to archive. Please try again.' });
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    if (!okrt || !onSave) return;
+    if (okrt.type !== 'O') return;
+
+    setUnarchiving(true);
+    setErrors(prev => ({ ...prev, general: undefined }));
+
+    try {
+      await onSave({ status: 'A' });
+      onClose();
+    } catch (error) {
+      console.error('Error unarchiving OKRT:', error);
+      setErrors({ general: 'Failed to unarchive. Please try again.' });
+    } finally {
+      setUnarchiving(false);
     }
   };
 
@@ -683,34 +730,60 @@ export default function OKRTModal({
 
         <div className={styles.modalFooter}>
           {mode === 'edit' && onDelete && (
-            <button
-              className={styles.deleteButton}
-              onClick={handleDelete}
-              disabled={saving || deleting}
-              style={{ marginRight: 'auto' }}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="3,6 5,6 21,6"></polyline>
-                  <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-                {deleting ? 'Deleting...' : 'Delete'}
-              </span>
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', marginRight: 'auto' }}>
+              {okrt?.type === 'O' && (
+                okrt?.status === 'R' ? (
+                  <button
+                    className={styles.archiveButton}
+                    onClick={handleUnarchive}
+                    disabled={saving || deleting || archiving || unarchiving}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <RiArchiveLine />
+                      {unarchiving ? 'Restoring...' : 'Restore'}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    className={styles.archiveButton}
+                    onClick={handleArchive}
+                    disabled={saving || deleting || archiving || unarchiving}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <RiArchiveLine />
+                      {archiving ? 'Archiving...' : 'Archive'}
+                    </span>
+                  </button>
+                )
+              )}
+              <button
+                className={styles.deleteButton}
+                onClick={handleDelete}
+                disabled={saving || deleting || archiving || unarchiving}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3,6 5,6 21,6"></polyline>
+                    <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </span>
+              </button>
+            </div>
           )}
           <button
             className={styles.cancelButton}
             onClick={onClose}
-            disabled={saving || deleting}
+            disabled={saving || deleting || archiving || unarchiving}
           >
             Cancel
           </button>
           <button
             className={styles.saveButton}
             onClick={handleSave}
-            disabled={saving || deleting}
+            disabled={saving || deleting || archiving || unarchiving}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>

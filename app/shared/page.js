@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RiUserSharedLine } from 'react-icons/ri';
 import { GrTrophy } from 'react-icons/gr';
@@ -15,13 +15,15 @@ import { getThemeColorPalette } from '@/lib/clockUtils';
 export default function SharedGoalsPage() {
   const [followingLoading, setFollowingLoading] = useState({});
   const [viewMode, setViewMode] = useState('grid');
+  const [sharedGroupFilter, setSharedGroupFilter] = useState('all');
   const router = useRouter();
   
   // Subscribe to mainTreeStore
   const { mainTree, isLoading } = useMainTree();
   const { setSharedOKRTs } = useMainTreeStore();
+  const sharedOKRTsAll = mainTree.sharedOKRTs || [];
   // Filter to show only Objectives (type 'O'), not Key Results
-  const sharedOKRTs = (mainTree.sharedOKRTs || []).filter(okrt => okrt.type === 'O');
+  const sharedOKRTs = sharedOKRTsAll.filter(okrt => okrt.type === 'O');
   
   // Use cached user data
   const { user: currentUser } = useUser();
@@ -84,6 +86,83 @@ export default function SharedGoalsPage() {
 
     return { orderedSharedOKRTs: ordered, okrtRootMap: rootMap, familyColorMap: colorMap };
   }, [sharedOKRTs]);
+
+  const sharedGroupOptions = useMemo(() => {
+    const groups = new Map();
+    sharedOKRTs.forEach((okrt) => {
+      const sharedGroups = okrt.shared_groups || okrt.sharedGroups || [];
+      sharedGroups.forEach((group) => {
+        if (!group) return;
+        const name = group.name || group.group_name;
+        if (!name) return;
+        const id = group.id || group.group_id || group.group_or_user_id || name;
+        if (!groups.has(id)) {
+          groups.set(id, { id, name });
+        }
+      });
+    });
+    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [sharedOKRTs]);
+
+  useEffect(() => {
+    if (sharedGroupFilter === 'all') return;
+    const isValid = sharedGroupOptions.some(
+      (group) => String(group.id) === String(sharedGroupFilter)
+    );
+    if (!isValid) {
+      setSharedGroupFilter('all');
+    }
+  }, [sharedGroupFilter, sharedGroupOptions]);
+
+  const visibleSharedOKRTs = useMemo(() => {
+    if (sharedGroupFilter === 'all') {
+      return orderedSharedOKRTs;
+    }
+    return orderedSharedOKRTs.filter((okrt) => {
+      const sharedGroups = okrt.shared_groups || okrt.sharedGroups || [];
+      return sharedGroups.some(
+        (group) =>
+          String(group?.id || group?.group_id || group?.group_or_user_id) ===
+          String(sharedGroupFilter)
+      );
+    });
+  }, [orderedSharedOKRTs, sharedGroupFilter]);
+
+  const filteredHierarchyOKRTs = useMemo(() => {
+    if (sharedGroupFilter === 'all') {
+      return sharedOKRTsAll;
+    }
+
+    const okrtMap = new Map(sharedOKRTsAll.map((okrt) => [okrt.id, okrt]));
+    const allowedObjectives = new Set(
+      sharedOKRTs
+        .filter((okrt) => {
+          const sharedGroups = okrt.shared_groups || okrt.sharedGroups || [];
+          return sharedGroups.some(
+            (group) =>
+              String(group?.id || group?.group_id || group?.group_or_user_id) ===
+              String(sharedGroupFilter)
+          );
+        })
+        .map((okrt) => okrt.id)
+    );
+
+    const findNearestObjectiveId = (okrt) => {
+      let current = okrt;
+      const visited = new Set();
+      while (current && current.type !== 'O' && current.parent_id && okrtMap.has(current.parent_id)) {
+        if (visited.has(current.parent_id)) break;
+        visited.add(current.parent_id);
+        current = okrtMap.get(current.parent_id);
+      }
+      return current && current.type === 'O' ? current.id : null;
+    };
+
+    return sharedOKRTsAll.filter((okrt) => {
+      const objectiveId = okrt.type === 'O' ? okrt.id : findNearestObjectiveId(okrt);
+      return objectiveId && allowedObjectives.has(objectiveId);
+    });
+  }, [sharedGroupFilter, sharedOKRTs, sharedOKRTsAll]);
 
   const objectiveGroupMap = useMemo(() => {
     const groups = mainTree?.groups || [];
@@ -213,32 +292,55 @@ export default function SharedGoalsPage() {
 
   if (isLoading) {
     return (
-      <div className={styles.container}>
-        <div className="app-pageHeader">
-          <div className="app-titleSection">
-            <RiUserSharedLine className="app-pageIcon" />
-            <h1 className="app-pageTitle">Shared OKRs</h1>
+      <div className={`app-page ${styles.container}`}>
+        <div className="app-pageContent">
+          <div className="app-pageHeader">
+            <div className="app-titleSection">
+              <RiUserSharedLine className="app-pageIcon" />
+              <h1 className="app-pageTitle">Shared OKRs</h1>
+            </div>
+            {renderModeSwitcher(true)}
           </div>
-          {renderModeSwitcher(true)}
+          <div className={styles.loading}>Loading shared OKRs...</div>
         </div>
-        <div className={styles.loading}>Loading shared OKRs...</div>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className="app-pageHeader">
-        <div className="app-titleSection">
-          <RiUserSharedLine className="app-pageIcon" />
-          <h1 className="app-pageTitle">Shared OKRs</h1>
-          <span className="app-pageCount">({sharedOKRTs.length})</span>
+    <div className={`app-page ${styles.container}`}>
+      <div className="app-pageContent">
+        <div className="app-pageHeader">
+          <div className="app-titleSection">
+            <RiUserSharedLine className="app-pageIcon" />
+            <h1 className="app-pageTitle">Shared OKRs</h1>
+            <span className="app-pageCount">({visibleSharedOKRTs.length})</span>
+          </div>
+          {sharedGroupOptions.length > 0 && (
+            <div className={styles.filtersRow}>
+              <label className="app-headerLabel" htmlFor="sharedGroupFilter">
+                Group
+              </label>
+              <select
+                id="sharedGroupFilter"
+                className="app-headerSelect"
+                value={sharedGroupFilter}
+                onChange={(event) => setSharedGroupFilter(event.target.value)}
+              >
+                <option value="all">All</option>
+                {sharedGroupOptions.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {renderModeSwitcher()}
         </div>
-        {renderModeSwitcher()}
-      </div>
 
-      {viewMode === 'grid' ? (
-        orderedSharedOKRTs.length === 0 ? (
+        {viewMode === 'grid' ? (
+        visibleSharedOKRTs.length === 0 ? (
           <div className={styles.emptyState}>
             <RiUserSharedLine className={styles.emptyIcon} />
             <h3>No Shared OKRs</h3>
@@ -246,7 +348,7 @@ export default function SharedGoalsPage() {
           </div>
         ) : (
           <div className={styles.okrtGrid}>
-            {orderedSharedOKRTs.map((okrt) => {
+            {visibleSharedOKRTs.map((okrt) => {
               const rootId = okrtRootMap.get(okrt.id) || okrt.id;
               const familyColor = familyColorMap.get(rootId);
               const groupNames = Array.from(new Set([
@@ -344,8 +446,9 @@ export default function SharedGoalsPage() {
           </div>
         )
       ) : (
-        <SharedHierarchyView />
+        <SharedHierarchyView okrts={filteredHierarchyOKRTs} />
       )}
+      </div>
     </div>
   );
 }

@@ -563,7 +563,9 @@ export default function CoachPage() {
 
     try {
       // Prepare OKRT context from mainTreeStore
+      const displayName = user?.displayName || 'User';
       const okrtContext = {
+        user: { displayName },
         objectives: myOKRTs.filter(okrt => okrt.type === 'O').map(obj => {
           const krs = myOKRTs.filter(okrt => okrt.type === 'K' && okrt.parent_id === obj.id);
           return {
@@ -810,14 +812,15 @@ export default function CoachPage() {
   };
 
   return (
-    <div className={styles.container}>
+    <div className="app-page">
+      <div className={`app-pageContent app-pageContent--full ${styles.container}`}>
 
 
       <div className={styles.messagesContainer}>
         {messages.length === 0 && (
           <div className={styles.welcomeMessage}>
             <div className={styles.coachAvatar}>
-              <img src="/coach.png" alt="Coach" className={styles.coachImage} />
+              <span className={styles.coachImage} role="img" aria-label="Aime" />
             </div>
             <p>Hi! I'm Aime, your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
           </div>
@@ -906,6 +909,7 @@ export default function CoachPage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

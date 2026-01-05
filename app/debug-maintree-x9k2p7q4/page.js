@@ -87,39 +87,44 @@ export default function DebugMainTreePage() {
 
   if (isLoading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Loading mainTree from store...</div>
+      <div className={`app-page ${styles.container}`}>
+        <div className="app-pageContent app-pageContent--full">
+          <div className={styles.loading}>Loading mainTree from store...</div>
+        </div>
       </div>
     );
   }
 
   if (!mainTree) {
     return (
-      <div className={styles.container}>
-        <div className={styles.error}>
-          <h2>No MainTree Data</h2>
-          <p>The Zustand store does not contain any mainTree data yet.</p>
-          <p>Navigate to another page to load the data, then return here.</p>
+      <div className={`app-page ${styles.container}`}>
+        <div className="app-pageContent app-pageContent--full">
+          <div className={styles.error}>
+            <h2>No MainTree Data</h2>
+            <p>The Zustand store does not contain any mainTree data yet.</p>
+            <p>Navigate to another page to load the data, then return here.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>🐛 MainTree Debug Viewer (Zustand Store)</h1>
-        <div className={styles.headerInfo}>
-          {lastUpdated && (
-            <span className={styles.lastUpdated}>
-              Last Updated: {new Date(lastUpdated).toLocaleString()}
-            </span>
-          )}
-          <button onClick={refreshFromStore} className={styles.refreshButton}>
-            🔄 Refresh View
-          </button>
+    <div className={`app-page ${styles.container}`}>
+      <div className="app-pageContent app-pageContent--full">
+        <div className={styles.header}>
+          <h1>🐛 MainTree Debug Viewer (Zustand Store)</h1>
+          <div className={styles.headerInfo}>
+            {lastUpdated && (
+              <span className={styles.lastUpdated}>
+                Last Updated: {new Date(lastUpdated).toLocaleString()}
+              </span>
+            )}
+            <button onClick={refreshFromStore} className={styles.refreshButton}>
+              🔄 Refresh View
+            </button>
+          </div>
         </div>
-      </div>
 
       {mainTree && (
         <div className={styles.content}>
@@ -186,6 +191,7 @@ export default function DebugMainTreePage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
