@@ -256,6 +256,11 @@
   color: #059669;
 }
 
+.statusArchived {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .taskTodo {
   background: #fef3c7;
   color: #d97706;

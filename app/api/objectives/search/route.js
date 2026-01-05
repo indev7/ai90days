@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { all } from '@/lib/pgdb';
 
-// GET /api/objectives/search - Search for objectives by title
+// GET /api/objectives/search-deprecated - Search for objectives by title
 export async function GET(request) {
   try {
     const session = await getSession();
@@ -35,7 +35,7 @@ export async function GET(request) {
       FROM okrt o
       JOIN users u ON o.owner_id = u.id
       WHERE o.type = 'O'
-        AND o.status = 'A'
+        AND o.status IN ('A', 'C')
         AND (
           o.title ILIKE $1
           OR o.description ILIKE $1

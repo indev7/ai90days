@@ -58,8 +58,12 @@ export default function HomeRedirectPage() {
   }, [user, isLoading, router]);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)' }}>
-      Loading your home...
+    <div className="app-page">
+      <div className="app-pageContent">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)' }}>
+          Loading your home...
+        </div>
+      </div>
     </div>
   );
 }

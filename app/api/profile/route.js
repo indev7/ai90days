@@ -13,7 +13,16 @@ export async function PUT(request) {
       );
     }
 
-    const { firstName, lastName, currentPassword, newPassword, preferredVoice, preferredHome, preferredTheme } = await request.json();
+    const {
+      displayName,
+      firstName,
+      lastName,
+      currentPassword,
+      newPassword,
+      preferredVoice,
+      preferredHome,
+      preferredTheme
+    } = await request.json();
 
     // Validate required fields
     if (!firstName || firstName.trim().length === 0) {
@@ -34,8 +43,11 @@ export async function PUT(request) {
       );
     }
 
+    const normalizedDisplayName = displayName?.trim();
+    const fallbackDisplayName = `${firstName.trim()} ${lastName?.trim() || ''}`.trim();
+
     let updateData = {
-      display_name: `${firstName.trim()} ${lastName?.trim() || ''}`.trim(),
+      display_name: normalizedDisplayName || fallbackDisplayName,
       first_name: firstName.trim(),
       last_name: lastName?.trim() || '',
       updated_at: new Date().toISOString(),

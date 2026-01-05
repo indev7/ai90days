@@ -1,7 +1,5 @@
 .container {
-  min-height: calc(100vh - 72px);
-  padding: var(--space-8) var(--space-6);
-  background: var(--bg-solid);
+  width: 100%;
 }
 
 .content {

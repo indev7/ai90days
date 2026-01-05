@@ -41,7 +41,9 @@ export async function GET(request) {
           // 0. Load user preferences first
           console.log('[Progressive] Loading preferences...');
           const preferencesRow = await get(
-            `SELECT preferences FROM users WHERE id = ?`,
+            `SELECT preferences, display_name, first_name, last_name, email
+             FROM users
+             WHERE id = ?`,
             [userId]
           );
 
@@ -70,6 +72,19 @@ export async function GET(request) {
               // Keep defaults if parsing fails
             }
           }
+
+          const profileEmail = preferencesRow?.email || '';
+          const profileDisplayName =
+            preferencesRow?.display_name ||
+            profileEmail.split('@')[0] ||
+            '';
+
+          preferences.user = {
+            first_name: preferencesRow?.first_name || '',
+            last_name: preferencesRow?.last_name || '',
+            display_name: profileDisplayName,
+            email: profileEmail
+          };
 
           sendSection('preferences', preferences);
           console.log('[Progressive] ✅ preferences sent');
@@ -276,6 +291,31 @@ export async function GET(request) {
             ORDER BY o.id, CASE WHEN f.id IS NOT NULL THEN 0 ELSE 1 END, o.updated_at DESC
           `, [userId, userId, userId]);
 
+          const sharedGroupMap = new Map();
+          if (sharedOKRTsRaw.length > 0) {
+            const placeholders = sharedOKRTsRaw.map(() => '?').join(', ');
+            const sharedGroups = await all(
+              `
+              SELECT s.okrt_id, g.id, g.name
+              FROM share s
+              JOIN groups g ON s.group_or_user_id = g.id
+              WHERE s.share_type = 'G'
+                AND s.okrt_id IN (${placeholders})
+            `,
+              sharedOKRTsRaw.map((okrt) => okrt.id)
+            );
+
+            sharedGroups.forEach((group) => {
+              if (!sharedGroupMap.has(group.okrt_id)) {
+                sharedGroupMap.set(group.okrt_id, []);
+              }
+              sharedGroupMap.get(group.okrt_id).push({
+                id: group.id,
+                name: group.name || `Group ${group.id}`,
+              });
+            });
+          }
+
           const sharedOKRTs = await Promise.all(
             sharedOKRTsRaw.map(async (okrt) => {
               // Fetch comments for this objective
@@ -348,6 +388,7 @@ export async function GET(request) {
                 ...okrt,
                 comments,
                 keyResults: krs,
+                shared_groups: sharedGroupMap.get(okrt.id) || [],
               };
             })
           );

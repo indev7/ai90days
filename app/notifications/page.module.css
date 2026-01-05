@@ -1,7 +1,5 @@
 .notificationsContainer {
-  padding: var(--space-6);
-  margin: 0 auto;
-  min-height: calc(100vh - 72px);
+  width: 100%;
 }
 
 .notificationsHeader {

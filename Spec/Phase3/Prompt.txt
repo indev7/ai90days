@@ -12,7 +12,7 @@ Here is the OKRT table description
 | **title**                | TEXT      | Short name for lists/cards (used only for objectives))                                     |
 | **description**          | TEXT      | Detailed explanation                                            |
 | **progress**             | REAL      | 0–100 percentage                                                |
-| **status**               | TEXT      | `'D'`=Draft \| `'A'`=Active \| `'C'`=Complete                    |
+| **status**               | TEXT      | `'A'`=Active \| `'C'`=Complete \| `'R'`=Archived                 |
 | **area**                 | TEXT      | e.g., `Life`, `Work`, `Health`, `Finance`                       |
 | **cycle\_qtr**           | TEXT      | e.g., `2025-Q3`                                                 |                                                       |
 | **created\_at**          | TEXT      | Default `datetime('now')`                                       |
@@ -47,7 +47,6 @@ When other.
 Modal Edit popups for each record and associated editable attributes:
 Each record (the objective, KRs or tasks) can be opened for edit along with their associated parameters like for example weight for KR/Task or visibility for objective. 
 The edit UIs must be compact rectangular popups with Close and Save button actions for human user to edit and save or close the modal. 
-
 
 
 

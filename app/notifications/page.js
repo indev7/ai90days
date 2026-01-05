@@ -228,46 +228,54 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className={styles.notificationsContainer}>
-        <div className={styles.notificationsHeader}>
-          <Skeleton width="200px" height="2rem" />
-        </div>
-        <div className={styles.notificationsList}>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className={styles.notificationItem}>
-              <Skeleton shape="circle" size="3rem" />
-              <div className={styles.notificationContent}>
-                <Skeleton width="100%" height="1.5rem" className="mb-2" />
-                <Skeleton width="80%" height="1rem" className="mb-2" />
-                <Skeleton width="60%" height="1rem" />
-              </div>
+      <div className="app-page">
+        <div className="app-pageContent">
+          <div className={styles.notificationsContainer}>
+            <div className={styles.notificationsHeader}>
+              <Skeleton width="200px" height="2rem" />
             </div>
-          ))}
+            <div className={styles.notificationsList}>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className={styles.notificationItem}>
+                  <Skeleton shape="circle" size="3rem" />
+                  <div className={styles.notificationContent}>
+                    <Skeleton width="100%" height="1.5rem" className="mb-2" />
+                    <Skeleton width="80%" height="1rem" className="mb-2" />
+                    <Skeleton width="60%" height="1rem" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={styles.notificationsContainer}>
-      <Toast ref={toast} />
-      
-      {notifications.length === 0 ? (
-        <div className={styles.emptyState}>
-          <i className="pi pi-bell" style={{ fontSize: '4rem', color: 'var(--muted)' }}></i>
-          <h2>No notifications yet</h2>
-          <p>When you have notifications, they'll appear here.</p>
+    <div className="app-page">
+      <div className="app-pageContent">
+        <div className={styles.notificationsContainer}>
+          <Toast ref={toast} />
+          
+          {notifications.length === 0 ? (
+            <div className={styles.emptyState}>
+              <i className="pi pi-bell" style={{ fontSize: '4rem', color: 'var(--muted)' }}></i>
+              <h2>No notifications yet</h2>
+              <p>When you have notifications, they'll appear here.</p>
+            </div>
+          ) : (
+            <DataView
+              value={notifications}
+              itemTemplate={itemTemplate}
+              header={header}
+              paginator
+              rows={10}
+              className={styles.notificationsDataView}
+            />
+          )}
         </div>
-      ) : (
-        <DataView
-          value={notifications}
-          itemTemplate={itemTemplate}
-          header={header}
-          paginator
-          rows={10}
-          className={styles.notificationsDataView}
-        />
-      )}
+      </div>
     </div>
   );
 }

@@ -601,8 +601,8 @@ export default function IntervestOrgChart() {
   }, [searchParams, expandedGroupId, mainTree]);
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
+    <div className={`app-page ${styles.container}`}>
+      <div className={`app-pageContent app-pageContent--full ${styles.content}`}>
         {viewType === 'strategy' && (
           <div className="app-pageHeader">
             <div className="app-titleSection">
@@ -619,12 +619,12 @@ export default function IntervestOrgChart() {
             </div>
             {parentGroups.length > 1 && (
               <div className={styles.parentFilter}>
-                <label className={styles.parentFilterLabel} htmlFor="parentGroupSelect">
-                  Parent
+                <label className="app-headerLabel" htmlFor="parentGroupSelect">
+                  Root Group
                 </label>
                 <select
                   id="parentGroupSelect"
-                  className={styles.parentSelect}
+                  className="app-headerSelect"
                   value={activeRootId || ''}
                   onChange={(event) => setSelectedRootId(event.target.value)}
                 >
