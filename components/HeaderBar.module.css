@@ -118,6 +118,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-left: -20px;
   transform: translateY(-0px);
+  margin-bottom: 15px;
 }
 
 .logoLink:hover {
@@ -150,7 +151,7 @@
     max-width: 110px;
   }
   .logoLink {
-    transform: translate(7px, -7px);
+    transform: translate(8px, -1px);
   }
   .userMenu {
     gap: 4px;
@@ -168,7 +169,7 @@
 
 .searchForm {
   width: min(640px, 100%);
-  margin-right: 20px;
+  margin-right: 0px;
 }
 
 .searchBar {
