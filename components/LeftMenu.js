@@ -69,7 +69,6 @@ const getTopMenuItems = (userRole) => {
 
 const bottomMenuItems = [
   { href: '/coach', label: 'Chat', icon: 'coach', disabled: false },
-  { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: false },
 ];
 
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
@@ -672,7 +671,17 @@ export default function LeftMenu({
                     <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
-                    <span className={styles.label}>{item.label}</span>
+                    <span className={styles.label}>
+                      {item.icon === 'coach' ? (
+                        <img
+                          src="/AIME.png"
+                          alt="AIME"
+                          className={styles.chatLabelImage}
+                        />
+                      ) : (
+                        item.label
+                      )}
+                    </span>
                   </span>
                 ) : isAction ? (
                   <button
@@ -683,7 +692,17 @@ export default function LeftMenu({
                     <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
-                    <span className={styles.label}>{item.label}</span>
+                    <span className={styles.label}>
+                      {item.icon === 'coach' ? (
+                        <img
+                          src="/AIME.png"
+                          alt="AIME"
+                          className={styles.chatLabelImage}
+                        />
+                      ) : (
+                        item.label
+                      )}
+                    </span>
                   </button>
                 ) : (
                   <>
@@ -697,7 +716,17 @@ export default function LeftMenu({
                         <span className={getIconWrapperClass(item.icon)}>
                           {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                         </span>
-                        <span className={styles.label}>{item.label}</span>
+                        <span className={styles.label}>
+                          {item.icon === 'coach' ? (
+                            <img
+                              src="/AIME.png"
+                              alt="AIME"
+                              className={styles.chatLabelImage}
+                            />
+                          ) : (
+                            item.label
+                          )}
+                        </span>
                       </Link>
                     ) : (
                       <Link
@@ -709,7 +738,17 @@ export default function LeftMenu({
                         <span className={getIconWrapperClass(item.icon)}>
                           {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                         </span>
-                        <span className={styles.label}>{item.label}</span>
+                        <span className={styles.label}>
+                          {item.icon === 'coach' ? (
+                            <img
+                              src="/AIME.png"
+                              alt="AIME"
+                              className={styles.chatLabelImage}
+                            />
+                          ) : (
+                            item.label
+                          )}
+                        </span>
                       </Link>
                     )}
                     {item.children && (isMobileSlideIn || (!isDesktopCollapsed && !isCollapsed)) && isExpanded(item.href) && (
@@ -839,7 +878,17 @@ export default function LeftMenu({
                     <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
-                    <span className={styles.label}>{item.label}</span>
+                    <span className={styles.label}>
+                      {item.icon === 'coach' ? (
+                        <img
+                          src="/AIME.png"
+                          alt="AIME"
+                          className={styles.chatLabelImage}
+                        />
+                      ) : (
+                        item.label
+                      )}
+                    </span>
                   </span>
                 ) : (
                   <Link
@@ -851,7 +900,17 @@ export default function LeftMenu({
                     <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
-                    <span className={styles.label}>{item.label}</span>
+                    <span className={styles.label}>
+                      {item.icon === 'coach' ? (
+                        <img
+                          src="/AIME.png"
+                          alt="AIME"
+                          className={styles.chatLabelImage}
+                        />
+                      ) : (
+                        item.label
+                      )}
+                    </span>
                   </Link>
                 )}
               </li>

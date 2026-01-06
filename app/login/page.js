@@ -12,14 +12,14 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
-  const [logoSrc, setLogoSrc] = useState('/dbwaime_logo_light.png');
+  const [logoSrc, setLogoSrc] = useState('/DB_logo_light.png');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const currentTheme = getCurrentTheme();
-    setLogoSrc(currentTheme === 'nature' ? '/dbwaime_dark.png' : '/dbwaime_logo_light.png');
+    setLogoSrc(currentTheme === 'nature' ? '/DB_logo_dark.png' : '/DB_logo_light.png');
   }, []);
 
   const handleChange = (e) => {

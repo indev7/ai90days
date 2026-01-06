@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import HamburgerButton from './HamburgerButton';
@@ -9,8 +9,11 @@ import LoadingIndicators from './LoadingIndicators';
 import styles from './HeaderBar.module.css';
 import { useCoach } from '@/contexts/CoachContext';
 import useVoiceRecording from '@/hooks/useVoiceRecording';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { useMainTree } from '@/hooks/useMainTree';
 import { TiMicrophoneOutline } from 'react-icons/ti';
 import { FiSearch, FiX } from 'react-icons/fi';
+import { IoMdNotificationsOutline } from 'react-icons/io';
 
 /**
  * @typedef {Object} User
@@ -46,8 +49,50 @@ export default function HeaderBar({
   const router = useRouter();
   const pathname = usePathname();
   const { isLoading, setPendingMessage } = useCoach();
+  const unreadFromStore = useMainTreeStore(
+    (state) => state.mainTree.notifications.filter((notification) => !notification.is_read).length
+  );
+  const [unreadCount, setUnreadCount] = useState(unreadFromStore);
   const [query, setQuery] = useState('');
   const inputRef = useRef(null);
+
+  useMainTree();
+
+  useEffect(() => {
+    setUnreadCount(unreadFromStore);
+  }, [unreadFromStore]);
+
+  useEffect(() => {
+    const setupSSE = () => {
+      const eventSource = new EventSource('/api/notifications/sse');
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'unread_count') {
+            setUnreadCount(data.count);
+          }
+        } catch (error) {
+          console.error('Error parsing SSE data:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        eventSource.close();
+        setTimeout(setupSSE, 5000);
+      };
+
+      return eventSource;
+    };
+
+    const eventSource = setupSSE();
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, []);
 
   const handleMobileMenuToggle = () => {
     if (onLeftMenuToggle) {
@@ -55,6 +100,23 @@ export default function HeaderBar({
       onLeftMenuToggle();
     } else if (onMobileMenuToggle) {
       // For mobile screens, control the mobile slide-in menu
+      onMobileMenuToggle();
+    }
+  };
+
+  const handleLogoClick = (e) => {
+    if (onDesktopMenuToggle) {
+      e.preventDefault();
+      onDesktopMenuToggle();
+      return;
+    }
+    if (onLeftMenuToggle) {
+      e.preventDefault();
+      onLeftMenuToggle();
+      return;
+    }
+    if (onMobileMenuToggle) {
+      e.preventDefault();
       onMobileMenuToggle();
     }
   };
@@ -132,7 +194,7 @@ export default function HeaderBar({
             />
           )}
           
-          <Link href="/" className={styles.logoLink} aria-label="Aime">
+          <Link href="/" className={styles.logoLink} aria-label="Aime" onClick={handleLogoClick}>
             <span className={styles.logoIcon} role="img" aria-hidden="true" />
           </Link>
         </div>
@@ -187,6 +249,14 @@ export default function HeaderBar({
         <div className={styles.right}>
           {user ? (
             <div className={styles.userMenu}>
+              <Link href="/notifications" className={styles.notificationLink} aria-label="Notifications">
+                <IoMdNotificationsOutline size={22} />
+                {unreadCount > 0 && (
+                  <span className={styles.notificationBadge}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </Link>
               <div className={styles.userInfo}>
                 <span className={styles.greeting}>
                   Welcome, {user.displayName}
