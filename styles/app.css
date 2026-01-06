@@ -383,19 +383,70 @@ textarea:focus {
   }
 
   .app-headerSelect {
-    width: 100%;
-    min-width: 0;
+   
   }
 
   .app-filterSwitcher {
-    width: 100%;
-    min-width: 0;
+
+  }
+}
+
+@media (max-width: 721px) {
+  .app-titleSection {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .app-pageTitle {
+    font-size: 1.25rem;
+    text-align: left;
   }
 }
 
 @media (max-width: 480px) {
+  .app-headerLabel {
+    font-size: 0.8rem;
+  }
+
+  .app-headerSelect {
+    padding: 0.55rem 2rem 0.55rem 0.7rem;
+    font-size: 0.85rem;
+    background-position: right 10px center;
+    background-size: 12px;
+  }
+
+  .app-filterSwitcher {
+    min-width: 200px;
+    padding: 0.1rem;
+  }
+
+  .app-filterThumb {
+    top: 5px;
+    bottom: 5px;
+    left: 5px;
+    width: calc(33.333% - 5px);
+  }
+
   .app-filterButton {
-    font-size: 0.9rem;
+    padding: 0.45rem 0.2rem;
+    font-size: 0.8rem;
+  }
+
+  .membersFilterSwitcher {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .membersFilterThumb {
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(20% - 4px);
+  }
+
+  .membersFilterButton {
+    padding: 0.4rem 0.15rem;
+    font-size: 0.75rem;
   }
 }
 

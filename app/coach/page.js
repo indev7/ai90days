@@ -427,6 +427,7 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
       <div className={styles.messageContent}>
+        {!isUser && <span className={styles.assistantAvatar} aria-hidden="true" />}
         {message.error ? (
           <div className={styles.errorMessage}>
             <p>{textOnly}</p>
