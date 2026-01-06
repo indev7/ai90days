@@ -74,6 +74,7 @@ const bottomMenuItems = [
 
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
   const iconSize = isCollapsed ? 24 : 20;
+  const coachIconSize = 32;
   const icons = {
     dashboard: <GoClock  size={iconSize} />,
     goals: <MdOutlineSelfImprovement size={iconSize} />,
@@ -88,7 +89,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     coach: (
       <span
         className={styles.aimeIcon}
-        style={{ width: iconSize, height: iconSize }}
+        style={{ width: coachIconSize, height: coachIconSize }}
         aria-hidden="true"
       />
     ),
@@ -104,6 +105,10 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     ),
   };
   return icons[iconName] || null;
+}
+
+function getIconWrapperClass(iconName) {
+  return `${styles.icon} ${iconName === 'coach' ? styles.coachIconWrap : ''}`;
 }
 
 /**
@@ -664,7 +669,7 @@ export default function LeftMenu({
                     className={`${styles.menuLink} ${styles.disabled}`}
                     title={`${item.label} (Coming Soon)`}
                   >
-                    <span className={styles.icon}>
+                    <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
@@ -675,7 +680,7 @@ export default function LeftMenu({
                     onClick={handleNewClick}
                     title="Create New Objective"
                   >
-                    <span className={styles.icon}>
+                    <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
@@ -689,7 +694,7 @@ export default function LeftMenu({
                         aria-current={isActive ? 'page' : undefined}
                         onClick={() => handleMenuItemClick(item.href, true)}
                       >
-                        <span className={styles.icon}>
+                        <span className={getIconWrapperClass(item.icon)}>
                           {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                         </span>
                         <span className={styles.label}>{item.label}</span>
@@ -701,7 +706,7 @@ export default function LeftMenu({
                         aria-current={isActive ? 'page' : undefined}
                         onClick={() => handleMenuItemClick(item.href, false)}
                       >
-                        <span className={styles.icon}>
+                        <span className={getIconWrapperClass(item.icon)}>
                           {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                         </span>
                         <span className={styles.label}>{item.label}</span>
@@ -754,10 +759,10 @@ export default function LeftMenu({
                                   onClick={handleAddGroupClick}
                                   className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
                                 >
-                                  <span className={styles.icon}>
-                                    {getIcon(child.icon, false)}
-                                  </span>
-                                  <span className={styles.label}>{child.label}</span>
+                        <span className={getIconWrapperClass(child.icon)}>
+                          {getIcon(child.icon, false)}
+                        </span>
+                        <span className={styles.label}>{child.label}</span>
                                 </button>
                               ) : isAddOKR ? (
                                 <button
@@ -766,10 +771,10 @@ export default function LeftMenu({
                                   className={styles.childMenuLink}
                                   title="Create New Objective"
                                 >
-                                  <span className={styles.icon}>
-                                    {getIcon(child.icon, false)}
-                                  </span>
-                                  <span className={styles.label}>{child.label}</span>
+                        <span className={getIconWrapperClass(child.icon)}>
+                          {getIcon(child.icon, false)}
+                        </span>
+                        <span className={styles.label}>{child.label}</span>
                                 </button>
                               ) : (
                                 <Link
@@ -780,10 +785,10 @@ export default function LeftMenu({
                                     handleBusinessChildClick(isGroupsLink);
                                   }}
                                 >
-                                  <span className={styles.icon}>
-                                    {getIcon(child.icon, false)}
-                                  </span>
-                                  <span className={styles.label}>{child.label}</span>
+                        <span className={getIconWrapperClass(child.icon)}>
+                          {getIcon(child.icon, false)}
+                        </span>
+                        <span className={styles.label}>{child.label}</span>
                                 </Link>
                               )}
                               {isGroupsLink && isGroupsListExpanded && memberGroups.length > 0 && (
@@ -831,7 +836,7 @@ export default function LeftMenu({
                     className={`${styles.menuLink} ${styles.disabled}`}
                     title={`${item.label} (Coming Soon)`}
                   >
-                    <span className={styles.icon}>
+                    <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>
@@ -843,7 +848,7 @@ export default function LeftMenu({
                     aria-current={isActive ? 'page' : undefined}
                     onClick={() => handleMenuItemClick(item.href, false)}
                   >
-                    <span className={styles.icon}>
+                    <span className={getIconWrapperClass(item.icon)}>
                       {getIcon(item.icon, isDesktopCollapsed, item.icon === 'notifications' ? unreadCount : 0)}
                     </span>
                     <span className={styles.label}>{item.label}</span>

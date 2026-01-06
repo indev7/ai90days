@@ -55,14 +55,14 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background-image: url('/aime_light.png');
+  background-image: url('/aime_profile.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
 }
 
 :global(html[data-theme="nature"]) .coachImage {
-  background-image: url('/aime_dark.png');
+  background-image: url('/aime_profile.png');
 }
 
 .message {
