@@ -1,19 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import styles from './page.module.css';
+import { getCurrentTheme } from '@/lib/themeManager';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [logoSrc, setLogoSrc] = useState('/dbwaime_logo_light.png');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const currentTheme = getCurrentTheme();
+    setLogoSrc(currentTheme === 'nature' ? '/dbwaime_dark.png' : '/dbwaime_logo_light.png');
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,6 +82,13 @@ export default function LoginPage() {
   return (
     <div className={styles.container}>
       <div className={styles.formCard}>
+        <div className={styles.logoWrap}>
+          <img
+            src={logoSrc}
+            alt="DreamBig"
+            className={styles.logo}
+          />
+        </div>
         <div className={styles.header}>
           <h1 className={styles.title}>Welcome back</h1>
           <p className={styles.subtitle}>Sign in to your DreamBig account</p>

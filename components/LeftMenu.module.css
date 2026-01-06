@@ -288,16 +288,23 @@
   height: 20px;
 }
 
+.coachIconWrap {
+  width: 32px;
+  height: 32px;
+  overflow: visible;
+}
+
 .aimeIcon {
   display: block;
-  background-image: url('/aime_light.png');
+  background-image: url('/aime_profile.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
+  border-radius: 50%;
 }
 
 :global(html[data-theme="nature"]) .aimeIcon {
-  background-image: url('/aime_dark.png');
+  background-image: url('/aime_profile.png');
 }
 
 .label {
