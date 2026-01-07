@@ -427,6 +427,7 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
       <div className={styles.messageContent}>
+        {!isUser && <span className={styles.assistantAvatar} aria-hidden="true" />}
         {message.error ? (
           <div className={styles.errorMessage}>
             <p>{textOnly}</p>
@@ -515,7 +516,7 @@ export default function CoachPage() {
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
   
-  // Voice recording hook with callback
+  // Voice-to-text: microphone capture + transcription callback from useVoiceRecording
   const handleTranscription = (text) => {
     if (text && text.trim()) {
       setInput(text);
@@ -549,6 +550,7 @@ export default function CoachPage() {
   const sendMessage = async (messageContent = input) => {
     if (!messageContent.trim() || isLoading) return;
 
+    // LLM step 1: push user message into local chat state.
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -562,7 +564,7 @@ export default function CoachPage() {
     setLLMActivity(true);
 
     try {
-      // Prepare OKRT context from mainTreeStore
+      // LLM step 2: build OKRT context to send with the prompt.
       const displayName = user?.displayName || 'User';
       const okrtContext = {
         user: { displayName },
@@ -581,6 +583,7 @@ export default function CoachPage() {
         })
       };
 
+      // LLM step 3: call the backend LLM route with messages + context.
       const response = await fetch('/api/llm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -621,6 +624,7 @@ export default function CoachPage() {
         }
       };
 
+      // LLM step 4: stream response chunks and update the UI as text arrives.
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;

@@ -80,6 +80,7 @@ export default function useVoiceRecording(onTranscriptionComplete) {
 
   const startRecording = async () => {
     try {
+      // Step 1: Request microphone access and open a media stream.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -87,14 +88,17 @@ export default function useVoiceRecording(onTranscriptionComplete) {
       lastSoundTimeRef.current = Date.now();
       stopRequestedRef.current = false;
 
+      // Step 2: Create an AudioContext/Analyser for silence detection.
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       analyserRef.current = audioContextRef.current.createAnalyser();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       analyserRef.current.fftSize = 2048;
 
+      // Step 3: Begin periodic RMS checks to detect silence/timeout.
       monitorIntervalRef.current = setInterval(checkAudioLevel, 100);
 
+      // Step 4: Start MediaRecorder to capture raw audio data.
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -106,6 +110,7 @@ export default function useVoiceRecording(onTranscriptionComplete) {
       };
 
       mediaRecorder.onstop = async () => {
+        // Step 5: Cleanup local recording resources and build the audio blob.
         if (monitorIntervalRef.current) {
           clearInterval(monitorIntervalRef.current);
           monitorIntervalRef.current = null;
@@ -128,6 +133,7 @@ export default function useVoiceRecording(onTranscriptionComplete) {
 
         setIsProcessing(true);
         try {
+          // Step 6: POST audio blob to speech-to-text API.
           const formData = new FormData();
           formData.append('audio', audioBlob, 'recording.webm');
 
@@ -142,11 +148,13 @@ export default function useVoiceRecording(onTranscriptionComplete) {
 
           const result = await response.json();
           if (onTranscriptionComplete) {
+            // Step 7: Return the transcribed text to the caller.
             onTranscriptionComplete(result.text);
           }
         } catch (error) {
           console.error('Transcription error:', error);
           if (onTranscriptionComplete) {
+            // Step 7 (fallback): Return empty text on error.
             onTranscriptionComplete('');
           }
         } finally {

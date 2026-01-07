@@ -31,7 +31,7 @@
 }
 
 .menuToggle {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 2rem;
@@ -55,7 +55,7 @@
 }
 
 .leftMenuToggle {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 2rem;
@@ -116,6 +116,9 @@
   text-decoration: none;
   color: var(--header-text, var(--text));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: -20px;
+  transform: translateY(-0px);
+  margin-bottom: 15px;
 }
 
 .logoLink:hover {
@@ -130,14 +133,32 @@
 }
 
 .logoIcon {
-  width: 100px;
-  height: 28px;
+  width: 175px;
+  height: 49px;
   display: inline-block;
-  background-image: url('/AIME.png');
+  background-image: url('/DB_logo_light.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
 }
+
+:global(html[data-theme="nature"]) .logoIcon {
+  background-image: url('/DB_logo_dark.png');
+}
+
+@media (max-width: 500px) {
+  .logoIcon {
+    max-width: 110px;
+  }
+  .logoLink {
+    transform: translate(8px, -1px);
+  }
+  .userMenu {
+    gap: 4px;
+  }
+}
+
+
 
 .center {
   display: flex;
@@ -148,6 +169,7 @@
 
 .searchForm {
   width: min(640px, 100%);
+  margin-right: 0px;
 }
 
 .searchBar {
@@ -228,6 +250,40 @@
   gap: var(--space-3);
 }
 
+.notificationLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--header-icon, var(--text));
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease, color 0.2s ease;
+  position: relative;
+  transform: translateY(2px);
+}
+
+.notificationLink:hover {
+  background: var(--header-hover, var(--border-light));
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 0.6rem;
+  line-height: 16px;
+  font-weight: 700;
+  text-align: center;
+  transform: none;
+}
+
 .greeting {
   font-size: var(--text-sm);
   color: var(--header-greeting, var(--muted));
@@ -242,7 +298,7 @@
 }
 
 .userIndicators {
-  transform: translateY(2px);
+  transform: translateY(0px);
   align-self: flex-end;
   display: flex;
   justify-content: flex-end;
