@@ -403,6 +403,8 @@ function labelForAction(action) {
   if (intent === 'UPDATE_JIRA') return `Update Jira Ticket`;
   if (intent === 'COMMENT_JIRA') return `Add Comment to Jira`;
   if (intent === 'TRANSITION_JIRA') return `Change Jira Status`;
+  if (intent === 'CREATE_SUBTASK') return `Create Subtask: ${payload?.summary || 'New Subtask'}`;
+  if (intent === 'LINK_JIRA') return `Link Jira Tickets`;
   
   // Handle OKRT intents
   const noun =
@@ -894,20 +896,63 @@ export default function CoachPage() {
         
         console.log('CREATE_JIRA payload:', JSON.stringify(payload, null, 2));
       } else if (action.intent === 'UPDATE_JIRA') {
-        // For UPDATE_JIRA, ensure we have fields object
-        if (!payload.fields && payload.summary) {
-          payload = { fields: payload };
+        // Transform UPDATE_JIRA payload from LLM format to API format
+        // LLM might send: {fields: {...}} or {summary, description, ...}
+        // API expects: {summary?, description?, assignee?, priority?, labels?}
+        
+        // If LLM sent fields object, extract to top level
+        if (payload.fields) {
+          const fields = payload.fields;
+          payload = {
+            summary: fields.summary,
+            description: fields.description,
+            assignee: fields.assignee?.accountId || fields.assignee,
+            priority: fields.priority?.name || fields.priority,
+            labels: fields.labels
+          };
+          // Remove undefined values
+          Object.keys(payload).forEach(key => {
+            if (payload[key] === undefined) delete payload[key];
+          });
         }
+        
+        console.log('UPDATE_JIRA payload:', JSON.stringify(payload, null, 2));
       } else if (action.intent === 'COMMENT_JIRA') {
         // Ensure comment is in correct format
+        // LLM sends: {comment: "text"} or {text: "text"}
+        // API expects: {comment: "text"}
         if (!payload.comment && payload.text) {
           payload = { comment: payload.text };
+        } else if (!payload.comment) {
+          throw new Error('Comment text is required');
         }
       } else if (action.intent === 'TRANSITION_JIRA') {
         // Ensure transitionName is present
+        // LLM sends: {transitionName: "status"} or {transition: "status"} or {status: "status"}
+        // API expects: {transitionName: "status"} or {status: "status"}
         if (!payload.transitionName && payload.transition) {
           payload = { transitionName: payload.transition };
+        } else if (!payload.transitionName && payload.status) {
+          payload = { transitionName: payload.status };
+        } else if (!payload.transitionName) {
+          throw new Error('Transition status is required');
         }
+      } else if (action.intent === 'CREATE_SUBTASK') {
+        // Ensure summary is present
+        // LLM sends: {summary: "text", description?, assignee?, priority?}
+        // API expects: {summary: "text", description?, assignee?, priority?}
+        if (!payload.summary) {
+          throw new Error('Subtask summary is required');
+        }
+        console.log('CREATE_SUBTASK payload:', JSON.stringify(payload, null, 2));
+      } else if (action.intent === 'LINK_JIRA') {
+        // Ensure targetKey and linkType are present
+        // LLM sends: {targetKey: "KEY-123", linkType: "blocks", comment?}
+        // API expects: {targetKey: "KEY-123", linkType: "blocks", comment?}
+        if (!payload.targetKey || !payload.linkType) {
+          throw new Error('Target ticket key and link type are required');
+        }
+        console.log('LINK_JIRA payload:', JSON.stringify(payload, null, 2));
       }
       
       const res = await fetch(endpoint, {
@@ -936,10 +981,20 @@ export default function CoachPage() {
         }
       }
       
-      // For Jira actions, show the created ticket key if available
+      // For Jira actions, show appropriate success messages
       let successMsg = `✅ ${action.label} completed successfully!`;
       if (action.intent === 'CREATE_JIRA' && result.issue?.key) {
         successMsg = `✅ Jira ticket ${result.issue.key} created successfully!`;
+      } else if (action.intent === 'COMMENT_JIRA') {
+        successMsg = `✅ Comment added to Jira ticket successfully!`;
+      } else if (action.intent === 'TRANSITION_JIRA' && result.newStatus) {
+        successMsg = `✅ Jira ticket status changed to "${result.newStatus}"!`;
+      } else if (action.intent === 'UPDATE_JIRA') {
+        successMsg = `✅ Jira ticket updated successfully!`;
+      } else if (action.intent === 'CREATE_SUBTASK' && result.subtask?.key) {
+        successMsg = `✅ Subtask ${result.subtask.key} created successfully!`;
+      } else if (action.intent === 'LINK_JIRA') {
+        successMsg = `✅ Jira tickets linked successfully!`;
       }
       
       addMessage({ id: Date.now(), role: 'assistant', content: successMsg, timestamp: new Date() });

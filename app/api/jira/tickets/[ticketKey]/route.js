@@ -59,10 +59,11 @@ export async function PUT(request, { params }) {
     // Prepare update fields
     const updateFields = {};
 
-    if (body.summary !== undefined) {
+    // Only include fields that have non-empty values
+    if (body.summary !== undefined && body.summary !== null && body.summary.trim() !== '') {
       updateFields.summary = body.summary;
     }
-    if (body.description !== undefined) {
+    if (body.description !== undefined && body.description !== null) {
       updateFields.description = {
         type: 'doc',
         version: 1,
@@ -87,6 +88,14 @@ export async function PUT(request, { params }) {
     }
     if (body.labels !== undefined) {
       updateFields.labels = body.labels;
+    }
+
+    // Validate that at least one field is being updated
+    if (Object.keys(updateFields).length === 0) {
+      return NextResponse.json(
+        { error: 'No valid fields to update' },
+        { status: 400 }
+      );
     }
 
     // Update issue in Jira

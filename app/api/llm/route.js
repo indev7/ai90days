@@ -9,27 +9,6 @@ export const maxDuration = 300; // 5 minutes (Vercel limit)
 export const dynamic = 'force-dynamic'; // Disable caching for LLM responses
 
 /* =========================
-   Utility functions
-   ========================= */
-function logHumanReadable(title, obj) {
-  console.log(`=== ${title} ===`);
-  
-  // First stringify normally, then replace escape sequences with actual characters
-  let jsonString = JSON.stringify(obj, null, 2);
-  
-  // Replace escaped characters with actual characters for better readability
-  jsonString = jsonString
-    .replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t')
-    .replace(/\\r/g, '\r')
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\');
-  
-  console.log(jsonString);
-  console.log(`=== END ${title} ===`);
-}
-
-/* =========================
    Time/Quarter helpers
    ========================= */
 function getCurrentQuarter() {
@@ -158,7 +137,7 @@ async function getOKRTContext(userId) {
           jql: jql,
           startAt: currentStart.toString(),
           maxResults: batchSize.toString(),
-          fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description'
+          fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description,subtasks,parent,issuelinks'
         });
         
         const jiraResp = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params}`);
@@ -179,10 +158,6 @@ async function getOKRTContext(userId) {
       
       const parsed = allIssues.map(parseJiraIssue).filter(i => i !== null);
       context.jiraTickets = parsed;
-      
-      // Log available projects for debugging
-      const uniqueProjects = [...new Set(parsed.map(t => t.project?.key).filter(Boolean))];
-      console.log('[LLM Context] Available Jira project keys:', uniqueProjects);
     } catch (e) {
       // Ignore Jira errors - not all users are connected
       context.jiraTickets = [];
@@ -260,10 +235,23 @@ OUTPUT CONTRACT
 
 JIRA SUPPORT
 - This coach can also manage Jira tickets in addition to OKRTs. When recommending or taking actions on Jira tickets, use these intents and endpoints:
-  * CREATE_JIRA: endpoint '/api/jira/tickets/create', payload: {project, summary, issueType, description?}
-  * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', payload: {fields}
-  * COMMENT_JIRA: endpoint '/api/jira/tickets/{key}/comments', payload: {comment}
-  * TRANSITION_JIRA: endpoint '/api/jira/tickets/{key}/transition', payload: {transitionName}
+  * CREATE_JIRA: endpoint '/api/jira/tickets/create', method: 'POST', payload: {project, summary, issueType, description?}
+  * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', method: 'PUT', payload: {summary?, description?, assignee?, priority?, labels?}
+    - Replace {key} with the actual ticket key (e.g., '/api/jira/tickets/90D-123')
+    - Only include fields you want to update
+  * COMMENT_JIRA: endpoint '/api/jira/tickets/{key}/comments', method: 'POST', payload: {comment: "text"}
+    - Replace {key} with the actual ticket key
+  * TRANSITION_JIRA: endpoint '/api/jira/tickets/{key}/transition', method: 'POST', payload: {transitionName: "status"}
+    - Replace {key} with the actual ticket key
+    - Common status values: "To Do", "In Progress", "Done", "Blocked"
+    - Check the Jira ticket's available transitions if unsure
+  * CREATE_SUBTASK: endpoint '/api/jira/tickets/{parentKey}/subtasks', method: 'POST', payload: {summary, description?, assignee?, priority?}
+    - Replace {parentKey} with the parent ticket key (e.g., '/api/jira/tickets/90D-123/subtasks')
+    - Creates a subtask under the parent ticket
+  * LINK_JIRA: endpoint '/api/jira/tickets/{key}/links', method: 'POST', payload: {targetKey, linkType, comment?}
+    - Replace {key} with the source ticket key
+    - linkType options: "blocks", "is blocked by", "relates to", "duplicates", "is duplicated by"
+    - targetKey is the ticket you're linking to
 
 ⚠️ CRITICAL: PROJECT EXTRACTION FOR JIRA
 When user wants to create a Jira ticket, you MUST extract the project KEY (not name) from their message:
@@ -284,6 +272,31 @@ User: "add ticket for IRIS to track bug"
 
 User: "create jira ticket called fix login"
 → Look at existing tickets' project.key field, use that (e.g., {project: "90D", summary: "fix login", issueType: "Task"})
+
+JIRA ACTION EXAMPLES:
+1. CREATE_JIRA:
+   {intent: "CREATE_JIRA", endpoint: "/api/jira/tickets/create", method: "POST", 
+    payload: {project: "90D", summary: "Fix login bug", issueType: "Task", description: "User cannot login"}}
+
+2. UPDATE_JIRA:
+   {intent: "UPDATE_JIRA", endpoint: "/api/jira/tickets/90D-123", method: "PUT",
+    payload: {summary: "Updated summary", description: "New description"}}
+
+3. COMMENT_JIRA:
+   {intent: "COMMENT_JIRA", endpoint: "/api/jira/tickets/90D-123/comments", method: "POST",
+    payload: {comment: "Work in progress, 50% complete"}}
+
+4. TRANSITION_JIRA:
+   {intent: "TRANSITION_JIRA", endpoint: "/api/jira/tickets/90D-123/transition", method: "POST",
+    payload: {transitionName: "In Progress"}}
+
+5. CREATE_SUBTASK:
+   {intent: "CREATE_SUBTASK", endpoint: "/api/jira/tickets/90D-123/subtasks", method: "POST",
+    payload: {summary: "Implement login form validation", description: "Add client-side validation"}}
+
+6. LINK_JIRA:
+   {intent: "LINK_JIRA", endpoint: "/api/jira/tickets/90D-123/links", method: "POST",
+    payload: {targetKey: "90D-124", linkType: "blocks", comment: "Cannot proceed until this is done"}}
 
 Jira actions follow ACTIONS_JSON format but use these specific Jira endpoints and payload structures.
 
@@ -342,7 +355,7 @@ User: ${displayName} has no OKRTs yet.`;
   const timeBlock = `
 TIME: Quarter ${timeCtx.currentQuarter} (${timeCtx.quarterStart} to ${timeCtx.quarterEnd})`;
 
-  // DETAILED prompt for qwen2.5:7b - keeps full instructions but minimal context
+  // DETAILED prompt for llama3.2:latest - keeps full instructions but minimal context
   return `You are an OKRT coach. Address user as "${displayName}".
 
 ${timeBlock}
@@ -361,10 +374,18 @@ O (Objective) → K (Key Result) → T (Task) linked by parent_id
 
 JIRA SUPPORT:
 - This coach can also propose and emit actions for Jira tickets. Use these intents:
-  * CREATE_JIRA: endpoint '/api/jira/tickets/create', payload must have: project (string), summary (string), issueType (string like 'Task'), description (optional string)
-  * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', payload: {fields: {...}}
+  * CREATE_JIRA: endpoint '/api/jira/tickets/create', payload must have: project, summary, issueType, description?
+  * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', payload: {summary?, description?, assignee?, priority?, labels?}
   * COMMENT_JIRA: endpoint '/api/jira/tickets/{key}/comments', payload: {comment: 'text'}
   * TRANSITION_JIRA: endpoint '/api/jira/tickets/{key}/transition', payload: {transitionName: 'Done'}
+  * CREATE_SUBTASK: endpoint '/api/jira/tickets/{parentKey}/subtasks', payload: {summary, description?}
+  * LINK_JIRA: endpoint '/api/jira/tickets/{key}/links', payload: {targetKey, linkType}
+
+⚠️ TICKET KEY FORMAT:
+- User might say "D90-529" or "90D-529" - BOTH refer to same ticket
+- Common formats: D90-XXX, 90D-XXX, IRIS-XXX, PROJ-XXX
+- When user says "D90-529", use it AS-IS in the endpoint
+- Example: User says "Create subtask for D90-529" → endpoint: "/api/jira/tickets/D90-529/subtasks"
 
 ⚠️ PROJECT EXTRACTION:
 - Extract project KEY from existing Jira tickets above (look for project.key field, e.g., "90D", "IRIS")
@@ -491,6 +512,33 @@ ACTIONS_JSON:
 
 NOTE: ID comes from the EXISTING USER OKRTS list, NOT from examples!
 
+Example 4 - CREATE JIRA SUBTASK:
+User: "Create a subtask for ticket D90-529 to implement the login form"
+
+Your response:
+I'll create that subtask for you!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"CREATE_SUBTASK","endpoint":"/api/jira/tickets/D90-529/subtasks","method":"POST","payload":{"summary":"Implement the login form","description":"Create login form UI components"}}]}
+
+Example 5 - COMMENT ON JIRA:
+User: "Add comment to D90-529: Working on this now"
+
+Your response:
+I'll add that comment!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"COMMENT_JIRA","endpoint":"/api/jira/tickets/D90-529/comments","method":"POST","payload":{"comment":"Working on this now"}}]}
+
+Example 6 - LINK JIRA TICKETS:
+User: "Link D90-529 to D90-530 because it blocks it"
+
+Your response:
+I'll create that link!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"LINK_JIRA","endpoint":"/api/jira/tickets/D90-529/links","method":"POST","payload":{"targetKey":"D90-530","linkType":"blocks"}}]}
+
 IMPORTANT: IDs in examples are gen-x7m9k2p4, gen-w3n8q5r1, gen-t6y2h9v3, gen-abc12345
 YOUR IDs must be DIFFERENT! Generate random combinations like: gen-j4k8m1n7, gen-p9r2s5t8, etc.
 
@@ -535,8 +583,8 @@ function getActionsTool() {
             type: "object",
             required: ["intent", "endpoint", "method", "payload"],
             properties: {
-              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA"] },
-              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]", "/api/jira/tickets/create", "/api/jira/tickets/[key]", "/api/jira/tickets/[key]/comments", "/api/jira/tickets/[key]/transition"] },
+              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA", "CREATE_SUBTASK", "LINK_JIRA"] },
+              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]", "/api/jira/tickets/create", "/api/jira/tickets/[key]", "/api/jira/tickets/[key]/comments", "/api/jira/tickets/[key]/transition", "/api/jira/tickets/[key]/subtasks", "/api/jira/tickets/[key]/links"] },
               method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
               payload: {
                 type: "object",
@@ -584,7 +632,13 @@ function getActionsTool() {
                   key: { type: "string" },
                   comment: { type: "string" },
                   fields: { type: "object" },
-                  transition_to: { type: "string" }
+                  transition_to: { type: "string" },
+                  summary: { type: "string" },
+                  project: { type: "string" },
+                  issueType: { type: "string" },
+                  parent: { type: "string" },
+                  targetKey: { type: "string" },
+                  linkType: { type: "string" }
                 },
                 additionalProperties: true
               }
@@ -631,7 +685,6 @@ export async function POST(request) {
     const userId = parseInt(session.sub, 10);
 
     const requestBody = await request.json();
-    logHumanReadable('COMPLETE API REQUEST JSON', requestBody);
     
     const { messages, okrtContext: clientOkrtContext } = requestBody;
     if (!messages || !Array.isArray(messages)) {
@@ -740,30 +793,22 @@ export async function POST(request) {
           top_p: 0.9,              // Nucleus sampling
           num_predict: 3000,       // Increased to allow full JSON completion
           // No stop sequences - let it complete the JSON fully
-          num_ctx: 8192,           // Larger context window for qwen2.5
+          num_ctx: 8192,           // Larger context window for llama3.2
           num_thread: 8,           // Use more CPU threads
           repeat_penalty: 1.1,     // Avoid repetition
         }
       };
 
-      console.log('⏱️  Requesting from Ollama (this may take 30-90 seconds)...\n');
-
-      // WORKAROUND: Node.js fetch has 300s timeout hardcoded in undici
-      // We need to wrap the fetch with a timeout handler that allows longer waits
+      // Make request to Ollama
       let response;
       try {
-        // Create a promise that resolves with the fetch
-        const fetchPromise = fetch(`${ollamaUrl}/api/chat`, {
+        response = await fetch(`${ollamaUrl}/api/chat`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(ollamaRequestBody),
         });
-        
-        // Wait for response - if Ollama doesn't respond, fetch will handle its own timeout
-        // The key is we're not adding an external timeout that would cancel it
-        response = await fetchPromise;
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -773,12 +818,11 @@ export async function POST(request) {
         // Check if it's the dreaded headers timeout
         if (error.cause?.code === 'UND_ERR_HEADERS_TIMEOUT') {
           throw new Error(`Ollama is taking too long to respond (>5 min). This usually means:
-1. Model is too large for your hardware (try: ollama pull llama3.2:latest)
+1. Model is too large for your hardware (current model: ${model})
 2. Ollama service is overloaded or crashed (restart: sudo systemctl restart ollama)
 3. First request is loading model into memory (wait 2-3 minutes and try again)
 
-Current model: ${model}
-Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
+Recommended: Use llama3.2:latest (3B, fast and efficient)`);
         }
         throw error;
       }
@@ -885,7 +929,7 @@ Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
           console.log('✓ Found ACTIONS_JSON marker at position', markerIndex);
           let after = raw.slice(markerIndex + 'ACTIONS_JSON:'.length).trim();
           
-          // Remove markdown code fences (qwen2.5 loves to add these)
+          // Remove markdown code fences (some models add these)
           after = after.replace(/^```json\s*/i, '').replace(/^```\s*/i, '');
           after = after.replace(/```\s*$/i, '');
           console.log('After cleaning fences, first 200 chars:', after.substring(0, 200));
@@ -1210,7 +1254,6 @@ Recommended: Switch to llama3.2:latest (3B, much faster) or qwen2.5:7b`);
       });
 
       const openaiPayload = { model, input, tools: [getActionsTool()], tool_choice: "auto", stream: true };
-      logHumanReadable('OPENAI API PAYLOAD', openaiPayload);
 
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',

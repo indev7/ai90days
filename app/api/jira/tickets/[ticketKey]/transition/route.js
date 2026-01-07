@@ -18,8 +18,11 @@ export async function POST(request, { params }) {
     const { ticketKey } = await params;
     const body = await request.json();
 
-    if (!body.status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+    // Accept both 'status' and 'transitionName' for backwards compatibility
+    const targetStatus = body.transitionName || body.status;
+    
+    if (!targetStatus) {
+      return NextResponse.json({ error: 'Status or transitionName is required' }, { status: 400 });
     }
 
     // Get available transitions for the issue
@@ -30,12 +33,12 @@ export async function POST(request, { params }) {
 
     // Find the transition that matches the desired status
     const transition = transitionsData.transitions.find(
-      t => t.to.name.toLowerCase() === body.status.toLowerCase()
+      t => t.to.name.toLowerCase() === targetStatus.toLowerCase()
     );
 
     if (!transition) {
       return NextResponse.json(
-        { error: `No valid transition found to status: ${body.status}` },
+        { error: `No valid transition found to status: ${targetStatus}. Available: ${transitionsData.transitions.map(t => t.to.name).join(', ')}` },
         { status: 400 }
       );
     }
