@@ -128,7 +128,7 @@ export async function GET(request, { params }) {
  */
 function extractTextFromADF(adf) {
   if (!adf || !adf.content) return '';
-  
+
   let text = '';
   for (const node of adf.content) {
     if (node.type === 'paragraph' && node.content) {

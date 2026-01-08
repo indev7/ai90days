@@ -131,7 +131,7 @@ async function getOKRTContext(userId) {
       let fetchedAll = false;
       let currentStart = 0;
       const batchSize = 100;
-      
+
       while (!fetchedAll && currentStart < 1000) {
         const params = new URLSearchParams({
           jql: jql,
@@ -139,23 +139,23 @@ async function getOKRTContext(userId) {
           maxResults: batchSize.toString(),
           fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description,subtasks,parent,issuelinks'
         });
-        
+
         const jiraResp = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params}`);
         const jiraJson = await jiraResp.json();
         const batch = jiraJson.issues || jiraJson.values || [];
-        
+
         if (batch.length === 0) {
           fetchedAll = true;
         } else {
           allIssues = allIssues.concat(batch);
           currentStart += batch.length;
-          
+
           if (batch.length < batchSize) {
             fetchedAll = true;
           }
         }
       }
-      
+
       const parsed = allIssues.map(parseJiraIssue).filter(i => i !== null);
       context.jiraTickets = parsed;
     } catch (e) {
@@ -327,7 +327,7 @@ function getCoachSystemPromptForOllama(okrtContext) {
   const displayName = okrtContext?.user?.displayName || 'User';
   const objectives = okrtContext?.objectives || [];
   const krCount = objectives.reduce((sum, o) => sum + (Array.isArray(o.krs) ? o.krs.length : 0), 0);
-  const taskCount = objectives.reduce((sum, o) => 
+  const taskCount = objectives.reduce((sum, o) =>
     sum + (o.krs || []).reduce((kSum, kr) => kSum + (kr.tasks || []).length, 0), 0);
 
   // Send compact list of OKRTs with IDs for UPDATE/DELETE operations
@@ -336,10 +336,10 @@ function getCoachSystemPromptForOllama(okrtContext) {
 EXISTING USER OKRTS:
 User: ${displayName}
 ${objectives.map(o => {
-  const krs = o.krs || [];
-  return `- [${o.id}] Objective: "${o.title}"
+      const krs = o.krs || [];
+      return `- [${o.id}] Objective: "${o.title}"
 ${krs.map(kr => `  - [${kr.id}] KR: "${kr.description}"`).join('\n')}`;
-}).join('\n')}
+    }).join('\n')}
 
 IMPORTANT: For UPDATE or DELETE, use the EXACT IDs shown in brackets [id] above!`
     : `
@@ -349,7 +349,7 @@ User: ${displayName} has no OKRTs yet.`;
   // Include compact Jira tickets list if present
   const jiraList = okrtContext?.jiraTickets || [];
   const jiraBlock = jiraList.length > 0
-    ? `\nEXISTING JIRA TICKETS:\n${jiraList.slice(0,10).map(j => `- [${j.key}] ${j.summary} (${j.status})`).join('\n')}\n` 
+    ? `\nEXISTING JIRA TICKETS:\n${jiraList.slice(0, 10).map(j => `- [${j.key}] ${j.summary} (${j.status})`).join('\n')}\n`
     : `\nEXISTING JIRA TICKETS: none or not connected\n`;
 
   const timeBlock = `
@@ -567,7 +567,7 @@ ACTIONS_JSON:
    ========================= */
 function getActionsTool() {
   const uuidV4 = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$';
-  const genId  = '^gen-[a-z0-9]{8}$';
+  const genId = '^gen-[a-z0-9]{8}$';
 
   return {
     type: "function",
@@ -583,26 +583,28 @@ function getActionsTool() {
             type: "object",
             required: ["intent", "endpoint", "method", "payload"],
             properties: {
-              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA", "CREATE_SUBTASK", "LINK_JIRA"] },
+              intent: { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA", "CREATE_SUBTASK", "LINK_JIRA"] },
               endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]", "/api/jira/tickets/create", "/api/jira/tickets/[key]", "/api/jira/tickets/[key]/comments", "/api/jira/tickets/[key]/transition", "/api/jira/tickets/[key]/subtasks", "/api/jira/tickets/[key]/links"] },
-              method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
+              method: { type: "string", enum: ["POST", "PUT", "DELETE"] },
               payload: {
                 type: "object",
                 properties: {
                   id: {
                     allOf: [
-                      { anyOf: [
+                      {
+                        anyOf: [
                           { type: "string", pattern: uuidV4 },
                           { type: "string", pattern: genId }
                         ]
                       }
                     ]
                   },
-                  type: { type: "string", enum: ["O","K","T"] },
+                  type: { type: "string", enum: ["O", "K", "T"] },
                   owner_id: { type: "integer" }, // (server should ignore/overwrite)
                   parent_id: {
                     allOf: [
-                      { anyOf: [
+                      {
+                        anyOf: [
                           { type: "string", pattern: uuidV4 },
                           { type: "string", pattern: genId }
                         ]
@@ -610,23 +612,23 @@ function getActionsTool() {
                     ]
                   },
                   description: { type: "string" },
-                  progress:    { type: "number" },
+                  progress: { type: "number" },
                   order_index: { type: "integer" },
-                  task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
+                  task_status: { type: "string", enum: ["todo", "in_progress", "done", "blocked"] },
                   title: { type: "string" },
-                  area:  { type: "string" },
-                  visibility: { type: "string", enum: ["private","shared"] },
-                  objective_kind: { type: "string", enum: ["committed","stretch"] },
-                  status: { type: "string", enum: ["D","A","C"] },
+                  area: { type: "string" },
+                  visibility: { type: "string", enum: ["private", "shared"] },
+                  objective_kind: { type: "string", enum: ["committed", "stretch"] },
+                  status: { type: "string", enum: ["D", "A", "C"] },
                   cycle_qtr: { type: "string" },
-                  kr_target_number:   { type: "number" },
-                  kr_unit:            { type: "string", enum: ["%","$","count","hrs"] },
+                  kr_target_number: { type: "number" },
+                  kr_unit: { type: "string", enum: ["%", "$", "count", "hrs"] },
                   kr_baseline_number: { type: "number" },
-                  weight:     { type: "number" },
-                  due_date:   { type: "string" },
+                  weight: { type: "number" },
+                  due_date: { type: "string" },
                   recurrence_json: { type: "string" },
                   blocked_by: { type: "string" },
-                  repeat: { type: "string", enum: ["Y","N"] }
+                  repeat: { type: "string", enum: ["Y", "N"] }
                   ,
                   // Jira-specific fields
                   key: { type: "string" },
@@ -685,7 +687,7 @@ export async function POST(request) {
     const userId = parseInt(session.sub, 10);
 
     const requestBody = await request.json();
-    
+
     const { messages, okrtContext: clientOkrtContext } = requestBody;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
@@ -710,7 +712,7 @@ export async function POST(request) {
         let fetchedAll = false;
         let currentStart = 0;
         const batchSize = 100;
-        
+
         while (!fetchedAll && currentStart < 1000) {
           const params = new URLSearchParams({
             jql: jql,
@@ -718,23 +720,23 @@ export async function POST(request) {
             maxResults: batchSize.toString(),
             fields: 'summary,status,assignee,reporter,priority,issuetype,project,created,updated,labels,description'
           });
-          
+
           const jiraResp = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params}`);
           const jiraJson = await jiraResp.json();
           const batch = jiraJson.issues || jiraJson.values || [];
-          
+
           if (batch.length === 0) {
             fetchedAll = true;
           } else {
             allIssues = allIssues.concat(batch);
             currentStart += batch.length;
-            
+
             if (batch.length < batchSize) {
               fetchedAll = true;
             }
           }
         }
-        
+
         const parsed = allIssues.map(parseJiraIssue).filter(i => i !== null);
         okrtContext.jiraTickets = parsed;
       } catch (e) {
@@ -742,7 +744,7 @@ export async function POST(request) {
         okrtContext.jiraTickets = clientOkrtContext.jiraTickets || [];
       }
     }
-    
+
     // Determine provider early
     const provider = process.env.LLM_PROVIDER || 'ollama';
 
@@ -759,12 +761,12 @@ export async function POST(request) {
     ];
 
     /* ===== OLLAMA (chat API + streaming) ===== */
-  if (provider === 'ollama') {
+    if (provider === 'ollama') {
       const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
       const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
 
       const ollamaPayload = { model, messages: llmMessages, stream: true };
-      
+
       // Add format reminder to user message for better compliance
       const lastUserMsg = llmMessages[llmMessages.length - 1];
       if (lastUserMsg?.role === 'user') {
@@ -804,12 +806,12 @@ export async function POST(request) {
       try {
         response = await fetch(`${ollamaUrl}/api/chat`, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(ollamaRequestBody),
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
@@ -832,7 +834,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
       function convertNestedToActions(obj) {
         const actions = [];
         const currentQuarter = getCurrentQuarter();
-        
+
         // Handle objective
         if (obj.objective) {
           const o = obj.objective;
@@ -854,16 +856,16 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
             }
           });
         }
-        
+
         // Handle key result
         if (obj.kr) {
           const kr = obj.kr;
           const parentId = obj.objective?.id || kr.parent_id;
-          
+
           // Ensure required fields for KR
           const krTargetNumber = kr.kr_target_number !== undefined ? parseFloat(kr.kr_target_number) : 100;
           const krUnit = kr.kr_unit || 'count';
-          
+
           actions.push({
             intent: 'CREATE_OKRT',
             endpoint: '/api/okrt',
@@ -881,18 +883,18 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
             }
           });
         }
-        
+
         // Handle task
         if (obj.task) {
           const t = obj.task;
           const parentId = obj.kr?.id || t.parent_id;
-          
+
           // Normalize task_status
           let taskStatus = (t.task_status || t.status || 'todo').toLowerCase().replace(/\s+/g, '_');
           if (!['todo', 'in_progress', 'done', 'blocked'].includes(taskStatus)) {
             taskStatus = 'todo';
           }
-          
+
           actions.push({
             intent: 'CREATE_OKRT',
             endpoint: '/api/okrt',
@@ -909,31 +911,31 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
             }
           });
         }
-        
+
         return actions.length > 0 ? actions : null;
       }
 
       // Helper to extract actions JSON from accumulated text output
       function tryExtractActions(raw) {
         if (!raw) return null;
-        
+
         console.log('\n🔍 EXTRACTION DEBUG:');
         console.log('Raw text length:', raw.length);
         console.log('Contains ACTIONS_JSON:', raw.includes('ACTIONS_JSON:'));
         console.log('Contains ```json:', raw.includes('```json'));
         console.log('Contains "actions":', raw.includes('"actions"'));
-        
+
         // Priority 1: ACTIONS_JSON marker with correct format
         const markerIndex = raw.indexOf('ACTIONS_JSON:');
         if (markerIndex !== -1) {
           console.log('✓ Found ACTIONS_JSON marker at position', markerIndex);
           let after = raw.slice(markerIndex + 'ACTIONS_JSON:'.length).trim();
-          
+
           // Remove markdown code fences (some models add these)
           after = after.replace(/^```json\s*/i, '').replace(/^```\s*/i, '');
           after = after.replace(/```\s*$/i, '');
           console.log('After cleaning fences, first 200 chars:', after.substring(0, 200));
-          
+
           // Find first '{' 
           const braceStart = after.indexOf('{');
           if (braceStart !== -1) {
@@ -951,21 +953,21 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                 }
               }
             }
-            
+
             if (jsonEnd !== -1) {
               const candidate = after.slice(braceStart, jsonEnd + 1).trim();
               console.log('Extracted JSON candidate length:', candidate.length);
               console.log('JSON preview:', candidate.substring(0, 150) + '...');
-              
+
               try {
                 const parsed = JSON.parse(candidate);
                 console.log('✓ JSON parsed successfully');
                 console.log('Parsed keys:', Object.keys(parsed));
-                
+
                 // Check if it has correct actions array format
                 if (parsed && Array.isArray(parsed.actions)) {
                   console.log('✅ Found correct actions array with', parsed.actions.length, 'items');
-                  
+
                   // Validate each action has required structure
                   const validActions = parsed.actions.filter(a => {
                     const hasStructure = a.intent && a.endpoint && a.method && a.payload;
@@ -974,7 +976,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                     }
                     return hasStructure;
                   });
-                  
+
                   if (validActions.length > 0) {
                     console.log('✅ Returning', validActions.length, 'valid action(s)');
                     return validActions;
@@ -982,14 +984,14 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                     console.log('❌ No valid actions found (missing intent/endpoint/method/payload)');
                   }
                 }
-                
+
                 // Check if it's the incorrect nested format
                 if (parsed && (parsed.objective || parsed.kr || parsed.task)) {
                   console.log('⚠️  Found incorrect nested format, converting...');
                   const converted = convertNestedToActions(parsed);
                   if (converted) return converted;
                 }
-                
+
                 console.log('❌ Parsed JSON has unexpected structure:', Object.keys(parsed));
               } catch (e) {
                 console.error('❌ JSON parse error:', e.message);
@@ -1004,7 +1006,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
         } else {
           console.log('❌ ACTIONS_JSON: marker not found');
         }
-        
+
         // Fallback 1: Search for correct actions array format
         if (raw.indexOf('"actions"') !== -1) {
           const idx = raw.lastIndexOf('"actions"');
@@ -1024,13 +1026,13 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                     console.log('✅ Found actions array via fallback search');
                     return parsed.actions;
                   }
-                } catch (_) {}
+                } catch (_) { }
                 break;
               }
             }
           }
         }
-        
+
         // Fallback 2: Search for nested format anywhere in text
         const objMatch = raw.match(/\{[\s\S]*?"objective"[\s\S]*?\}/);
         if (objMatch) {
@@ -1061,7 +1063,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
             console.error('Failed to parse nested format:', e);
           }
         }
-        
+
         return null;
       }
 
@@ -1085,19 +1087,19 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                 console.log('Contains "ACTIONS_JSON:":', accumText.includes('ACTIONS_JSON:'));
                 console.log('Contains "actions":', accumText.includes('"actions"'));
                 console.log('='.repeat(80) + '\n');
-                
+
                 // Final attempt at extracting actions
                 if (!actionsSent) {
                   let actions = tryExtractActions(accumText);
                   if (actions && actions.length) {
                     // FIX: Regenerate IDs if model used example IDs
                     const exampleIds = [
-                      'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2', 
+                      'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2',
                       'gen-x7m9k2p4', 'gen-w3n8q5r1', 'gen-t6y2h9v3',
                       'gen-abc12345', 'gen-u3v4w5x6', 'gen-j4k8m1n7', 'gen-p9r2s5t8'
                     ];
                     const usedIds = new Set();
-                    
+
                     actions = actions.map(action => {
                       // ONLY regenerate IDs for CREATE actions, not UPDATE/DELETE
                       if (action.intent === 'CREATE_OKRT' && action.payload && action.payload.id) {
@@ -1107,7 +1109,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                           const newId = `gen-${Math.random().toString(36).substring(2, 10)}`;
                           console.log(`⚠️  Replaced duplicate/example ID ${originalId} → ${newId}`);
                           action.payload.id = newId;
-                          
+
                           // Update parent_id references in other actions
                           actions.forEach(a => {
                             if (a.payload && a.payload.parent_id === originalId) {
@@ -1117,10 +1119,10 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                         }
                         usedIds.add(action.payload.id);
                       }
-                      
+
                       // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
                       if (((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && action.payload?.id && action.endpoint === '/api/okrt') ||
-                          ((action.intent === 'UPDATE_JIRA' || action.intent === 'DELETE_JIRA') && action.payload?.id && action.endpoint === '/api/jira/tickets')) {
+                        ((action.intent === 'UPDATE_JIRA' || action.intent === 'DELETE_JIRA') && action.payload?.id && action.endpoint === '/api/jira/tickets')) {
                         if (action.endpoint === '/api/okrt') {
                           action.endpoint = `/api/okrt/${action.payload.id}`;
                         } else if (action.endpoint === '/api/jira/tickets') {
@@ -1128,10 +1130,10 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                         }
                         console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
                       }
-                      
+
                       return action;
                     });
-                    
+
                     console.log('✅ SUCCESS: Extracted', actions.length, 'action(s)');
                     console.log(JSON.stringify(actions, null, 2));
                     controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actions }) + '\n'));
@@ -1161,12 +1163,12 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                       if (actions && actions.length) {
                         // FIX: Regenerate IDs if model used example IDs
                         const exampleIds = [
-                          'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2', 
+                          'gen-a1b2c3d4', 'gen-e5f6g7h8', 'gen-i9j0k1l2',
                           'gen-x7m9k2p4', 'gen-w3n8q5r1', 'gen-t6y2h9v3',
                           'gen-abc12345', 'gen-u3v4w5x6', 'gen-j4k8m1n7', 'gen-p9r2s5t8'
                         ];
                         const usedIds = new Set();
-                        
+
                         actions = actions.map(action => {
                           // ONLY regenerate IDs for CREATE actions, not UPDATE/DELETE
                           if (action.intent === 'CREATE_OKRT' && action.payload && action.payload.id) {
@@ -1175,7 +1177,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                               const newId = `gen-${Math.random().toString(36).substring(2, 10)}`;
                               console.log(`⚠️  Replaced duplicate/example ID ${originalId} → ${newId}`);
                               action.payload.id = newId;
-                              
+
                               // Update parent_id references
                               actions.forEach(a => {
                                 if (a.payload && a.payload.parent_id === originalId) {
@@ -1185,18 +1187,18 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                             }
                             usedIds.add(action.payload.id);
                           }
-                          
+
                           // FIX: Correct endpoint for UPDATE and DELETE if LLM forgot to add ID
-                          if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') && 
-                              action.payload?.id && 
-                              action.endpoint === '/api/okrt') {
+                          if ((action.intent === 'UPDATE_OKRT' || action.intent === 'DELETE_OKRT') &&
+                            action.payload?.id &&
+                            action.endpoint === '/api/okrt') {
                             action.endpoint = `/api/okrt/${action.payload.id}`;
                             console.log(`🔧 Corrected endpoint for ${action.intent}: ${action.endpoint}`);
                           }
-                          
+
                           return action;
                         });
-                        
+
                         console.log('=== OLLAMA EXTRACTED ACTIONS (STREAMING) ===');
                         console.log(JSON.stringify(actions, null, 2));
                         console.log('=== END OLLAMA ACTIONS ===');
@@ -1285,7 +1287,7 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
           const toolBuffers = new Map(); // id -> string[]
           const toolNames = new Map();   // id -> name
           let actionsPayloads = [];      // aggregated
-          
+
           // Logging variables
           let fullTextResponse = '';
           let hasLoggedTextResponse = false;

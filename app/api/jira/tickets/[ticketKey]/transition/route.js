@@ -20,7 +20,7 @@ export async function POST(request, { params }) {
 
     // Accept both 'status' and 'transitionName' for backwards compatibility
     const targetStatus = body.transitionName || body.status;
-    
+
     if (!targetStatus) {
       return NextResponse.json({ error: 'Status or transitionName is required' }, { status: 400 });
     }

@@ -80,7 +80,7 @@ export async function POST(request, { params }) {
       `/rest/api/3/issue/createmeta?projectKeys=${projectKey}&expand=projects.issuetypes`
     );
     const createMeta = await createMetaResponse.json();
-    
+
     // Find the subtask issue type
     const project = createMeta.projects?.[0];
     const subtaskType = project?.issuetypes?.find(

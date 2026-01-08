@@ -30,7 +30,7 @@ function useTextToSpeech(preferredVoice) {
       audioRef.current.pause();
       audioRef.current = null;
       audioQueueRef.current.forEach((item) => {
-        try { URL.revokeObjectURL(item.url); } catch (_) {}
+        try { URL.revokeObjectURL(item.url); } catch (_) { }
       });
       audioQueueRef.current = [];
       textQueueRef.current = [];
@@ -42,28 +42,28 @@ function useTextToSpeech(preferredVoice) {
 
   const extractTextContent = (content) => {
     if (!content) return '';
-    
+
     // Remove JSON blocks (tool outputs)
     let text = content.replace(/```json[\s\S]*?```/g, '');
-    
+
     // Remove code blocks
     text = text.replace(/```[\s\S]*?```/g, '');
-    
+
     // Remove inline code
     text = text.replace(/`[^`]+`/g, '');
-    
+
     // Remove ACTION_HTML tags
     text = text.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '');
-    
+
     // Remove markdown links but keep text
     text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
-    
+
     // Remove markdown formatting
     text = text.replace(/[*_~#]/g, '');
-    
+
     // Clean up extra whitespace
     text = text.replace(/\s+/g, ' ').trim();
-    
+
     return text;
   };
 
@@ -106,12 +106,12 @@ function useTextToSpeech(preferredVoice) {
       textLength: text?.length,
       text: text?.substring(0, 100)
     });
-    
+
     if (!isTTSEnabled) {
       console.log('[TTS] TTS is disabled, skipping');
       return;
     }
-    
+
     if (!text || text.trim().length === 0) {
       console.log('[TTS] No text provided, skipping');
       return;
@@ -119,7 +119,7 @@ function useTextToSpeech(preferredVoice) {
 
     const cleanText = extractTextContent(text);
     console.log('[TTS] Cleaned text:', cleanText.substring(0, 100));
-    
+
     if (!cleanText || cleanText.length === 0) {
       console.log('[TTS] No clean text after extraction, skipping');
       return;
@@ -135,26 +135,26 @@ function useTextToSpeech(preferredVoice) {
 
       try {
         console.log('[TTS] Fetching audio from API with voice:', nextItem.voice);
-        
+
         const response = await fetch('/api/text-to-speech', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: nextItem.text, model: 'tts-1', voice: nextItem.voice })
         });
-  
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[TTS] API error:', response.status, errorText);
           throw new Error('Failed to generate speech');
         }
-  
+
         console.log('[TTS] Audio received, creating blob...');
         const audioBlob = await response.blob();
         console.log('[TTS] Blob size:', audioBlob.size, 'type:', audioBlob.type);
-        
+
         const audioUrl = URL.createObjectURL(audioBlob);
         console.log('[TTS] Audio URL created:', audioUrl);
-        
+
         const audio = new Audio(audioUrl);
         audioQueueRef.current.push({ audio, url: audioUrl });
         console.log('[TTS] Enqueued audio. Queue length:', audioQueueRef.current.length);
@@ -310,7 +310,7 @@ function useVoiceRecording(onTranscriptionComplete) {
         if (blobSize === 0) {
           console.warn('Recording produced empty blob');
         }
-        
+
         // Clean up
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
@@ -341,7 +341,7 @@ function useVoiceRecording(onTranscriptionComplete) {
           }
 
           const result = await response.json();
-          
+
           // Call the callback with transcribed text
           if (onTranscriptionComplete) {
             onTranscriptionComplete(result.text);
@@ -397,7 +397,7 @@ function useVoiceRecording(onTranscriptionComplete) {
 
 function labelForAction(action) {
   const { intent, method, payload = {} } = action || {};
-  
+
   // Handle Jira intents
   if (intent === 'CREATE_JIRA') return `Create Jira Ticket: ${payload?.summary || 'New Ticket'}`;
   if (intent === 'UPDATE_JIRA') return `Update Jira Ticket`;
@@ -405,13 +405,13 @@ function labelForAction(action) {
   if (intent === 'TRANSITION_JIRA') return `Change Jira Status`;
   if (intent === 'CREATE_SUBTASK') return `Create Subtask: ${payload?.summary || 'New Subtask'}`;
   if (intent === 'LINK_JIRA') return `Link Jira Tickets`;
-  
+
   // Handle OKRT intents
   const noun =
     payload?.type === 'O' ? 'Objective' :
-    payload?.type === 'K' ? 'Key Result' :
-    payload?.type === 'T' ? 'Task' :
-    'OKRT';
+      payload?.type === 'K' ? 'Key Result' :
+        payload?.type === 'T' ? 'Task' :
+          'OKRT';
 
   if (intent === 'CREATE_OKRT') return `Create ${noun}`;
   if (intent === 'UPDATE_OKRT') {
@@ -567,22 +567,22 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
   const isUser = message.role === 'user';
 
   const htmlMatch = message.content?.match(/<ACTION_HTML>([\s\S]*?)<\/ACTION_HTML>/);
-  
+
   // Strip both ACTION_HTML tags and ACTIONS_JSON blocks from display
   let textOnly = message.content || '';
-  
+
   // Remove ACTION_HTML blocks
   textOnly = textOnly.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '');
-  
+
   // Remove ACTIONS_JSON marker and everything after it
   const actionsJsonIndex = textOnly.indexOf('ACTIONS_JSON:');
   if (actionsJsonIndex !== -1) {
     textOnly = textOnly.substring(0, actionsJsonIndex);
   }
-  
+
   // Also remove any remaining JSON blocks (just in case)
   textOnly = textOnly.replace(/\{[\s\S]*?"actions"[\s\S]*?\}/g, '');
-  
+
   textOnly = textOnly.trim();
   const htmlContent = htmlMatch ? htmlMatch[1] : null;
 
@@ -639,20 +639,20 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
 /* ---------- helpers for API ---------- */
 
 async function fetchOKRTById(id) {
- try {
-   const res = await fetch(`/api/okrt/${id}`, {
-     method: 'GET',
-     headers: { 'Content-Type': 'application/json' },
-   });
-   if (!res.ok) {
-     throw new Error(`Failed to fetch OKRT with id ${id}. Status: ${res.status}`);
-   }
-   const data = await res.json();
-   return data?.okrt || null;
- } catch (err) {
-   console.error('fetchOKRTById error:', err);
-   return null;
- }
+  try {
+    const res = await fetch(`/api/okrt/${id}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch OKRT with id ${id}. Status: ${res.status}`);
+    }
+    const data = await res.json();
+    return data?.okrt || null;
+  } catch (err) {
+    console.error('fetchOKRTById error:', err);
+    return null;
+  }
 }
 
 /* ---------- Page ---------- */
@@ -663,19 +663,19 @@ export default function CoachPage() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  
+
   // Use cached user data
   const { user, isLoading: userLoading } = useUser();
-  
+
   // Subscribe to mainTreeStore to get all OKRTs and store actions
   const { mainTree } = useMainTree();
   const { myOKRTs } = mainTree;
   const preferredVoice = mainTree?.preferences?.preferred_voice;
   const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
-  
+
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, toggleTTS, speak } = useTextToSpeech(preferredVoice);
-  
+
   // Voice recording hook with callback
   const handleTranscription = (text) => {
     if (text && text.trim()) {
@@ -686,7 +686,7 @@ export default function CoachPage() {
       }
     }
   };
-  
+
   const { isRecording, isProcessing, startRecording, stopRecording } = useVoiceRecording(handleTranscription);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -811,7 +811,7 @@ export default function CoachPage() {
       } else {
         updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
       }
-      
+
       // Flush any remaining chunk after stream ends
       if (isTTSEnabled) {
         const remaining = chunkBuffer.trim();
@@ -840,36 +840,36 @@ export default function CoachPage() {
     try {
       let payload = { ...action.body };
       let endpoint = action.endpoint;
-      
+
       // Fix incorrect Jira endpoints from LLM
       if (action.intent === 'CREATE_JIRA' && endpoint === '/api/jira/tickets') {
         endpoint = '/api/jira/tickets/create';
       }
-      
+
       // Transform Jira action payloads to match API expectations
       if (action.intent === 'CREATE_JIRA') {
         // Transform CREATE_JIRA payload from LLM format to API format
         // LLM sends: {project, summary, issueType, description?}
         // API expects: {project, summary, issueType, description?}
         let projectKey = payload.project || payload.fields?.project?.key;
-        
+
         // ALWAYS fetch available projects to validate/correct the project key
         try {
           console.log('Fetching available Jira projects...');
           const projResp = await fetch('/api/jira/projects');
           const projData = await projResp.json();
           const availableProjects = projData.projects || [];
-          
+
           console.log('Available projects:', availableProjects.map(p => `${p.key}: ${p.name}`).join(', '));
-          
+
           // Check if provided project key exists
           const projectExists = availableProjects.find(p => p.key === projectKey);
-          
+
           if (!projectExists) {
             console.log(`Project key "${projectKey}" not found, searching for alternative...`);
             // Find "90 Days" project or use first available
-            const ninetyDaysProj = availableProjects.find(p => 
-              p.name?.includes('90 Days') || 
+            const ninetyDaysProj = availableProjects.find(p =>
+              p.name?.includes('90 Days') ||
               p.name?.includes('90Days') ||
               p.name?.toLowerCase().includes('90 days')
             );
@@ -881,25 +881,25 @@ export default function CoachPage() {
         } catch (e) {
           console.error('Failed to fetch projects:', e);
         }
-        
+
         payload = {
           project: projectKey,
           summary: payload.summary || payload.fields?.summary,
           issueType: payload.issueType || payload.fields?.issuetype?.name || 'Task',
           description: payload.description || payload.fields?.description || ''
         };
-        
+
         // Validate required fields
         if (!payload.project || !payload.summary) {
           throw new Error('Project and summary are required for Jira ticket creation');
         }
-        
+
         console.log('CREATE_JIRA payload:', JSON.stringify(payload, null, 2));
       } else if (action.intent === 'UPDATE_JIRA') {
         // Transform UPDATE_JIRA payload from LLM format to API format
         // LLM might send: {fields: {...}} or {summary, description, ...}
         // API expects: {summary?, description?, assignee?, priority?, labels?}
-        
+
         // If LLM sent fields object, extract to top level
         if (payload.fields) {
           const fields = payload.fields;
@@ -915,7 +915,7 @@ export default function CoachPage() {
             if (payload[key] === undefined) delete payload[key];
           });
         }
-        
+
         console.log('UPDATE_JIRA payload:', JSON.stringify(payload, null, 2));
       } else if (action.intent === 'COMMENT_JIRA') {
         // Ensure comment is in correct format
@@ -954,24 +954,24 @@ export default function CoachPage() {
         }
         console.log('LINK_JIRA payload:', JSON.stringify(payload, null, 2));
       }
-      
+
       const res = await fetch(endpoint, {
         method: action.method,
         headers: { 'Content-Type': 'application/json' },
         body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || `API error: ${res.status}`);
       }
-      
+
       const result = await res.json();
-      
+
       // Handle cache update if provided by the API (for OKRTs)
       if (result._cacheUpdate) {
         const { action: cacheAction, data } = result._cacheUpdate;
-        
+
         if (cacheAction === 'addMyOKRT' && data) {
           addMyOKRT(data);
         } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
@@ -980,7 +980,7 @@ export default function CoachPage() {
           removeMyOKRT(data.id);
         }
       }
-      
+
       // For Jira actions, show appropriate success messages
       let successMsg = `✅ ${action.label} completed successfully!`;
       if (action.intent === 'CREATE_JIRA' && result.issue?.key) {
@@ -996,7 +996,7 @@ export default function CoachPage() {
       } else if (action.intent === 'LINK_JIRA') {
         successMsg = `✅ Jira tickets linked successfully!`;
       }
-      
+
       addMessage({ id: Date.now(), role: 'assistant', content: successMsg, timestamp: new Date() });
     } catch (err) {
       console.error('Action error:', err);
@@ -1012,12 +1012,12 @@ export default function CoachPage() {
       for (const action of actions) {
         let payload = { ...action.body };
         let endpoint = action.endpoint;
-        
+
         // Fix incorrect Jira endpoints from LLM
         if (action.intent === 'CREATE_JIRA' && endpoint === '/api/jira/tickets') {
           endpoint = '/api/jira/tickets/create';
         }
-        
+
         // Transform Jira action payloads
         if (action.intent === 'CREATE_JIRA') {
           payload = {
@@ -1026,7 +1026,7 @@ export default function CoachPage() {
             issueType: payload.issueType || payload.fields?.issuetype?.name || 'Task',
             description: payload.description || payload.fields?.description || ''
           };
-          
+
           // Validate required fields
           if (!payload.project || !payload.summary) {
             throw new Error('Project and summary are required for Jira ticket creation');
@@ -1038,24 +1038,24 @@ export default function CoachPage() {
         } else if (action.intent === 'TRANSITION_JIRA' && !payload.transitionName && payload.transition) {
           payload = { transitionName: payload.transition };
         }
-        
+
         const res = await fetch(endpoint, {
           method: action.method,
           headers: { 'Content-Type': 'application/json' },
           body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
         });
-        
+
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || `API error: ${res.status} on "${action.label}"`);
         }
-        
+
         const result = await res.json();
-        
+
         // Handle cache update if provided by the API (for OKRTs)
         if (result._cacheUpdate) {
           const { action: cacheAction, data } = result._cacheUpdate;
-          
+
           if (cacheAction === 'addMyOKRT' && data) {
             addMyOKRT(data);
           } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
@@ -1083,13 +1083,13 @@ export default function CoachPage() {
         body: method === 'DELETE' ? undefined : JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
-      
+
       const result = await res.json();
-      
+
       // Handle cache update if provided by the API
       if (result._cacheUpdate) {
         const { action: cacheAction, data: cacheData } = result._cacheUpdate;
-        
+
         if (cacheAction === 'addMyOKRT' && cacheData) {
           addMyOKRT(cacheData);
         } else if (cacheAction === 'updateMyOKRT' && cacheData?.id && cacheData?.updates) {
@@ -1098,7 +1098,7 @@ export default function CoachPage() {
           removeMyOKRT(cacheData.id);
         }
       }
-      
+
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ Request completed successfully!`, timestamp: new Date() });
     } catch (error) {
       console.error('Form submission error:', error);
