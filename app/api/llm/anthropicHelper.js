@@ -9,11 +9,13 @@ export async function handleAnthropic({
   const maxTokens = parseInt(process.env.ANTHROPIC_MAX_TOKENS || '4096', 10);
   if (!apiKey) throw new Error('Anthropic API key not configured');
 
+  // Anthropic expects the system prompt separately; client messages are only user/assistant.
   const systemText = llmMessages
     .filter(m => m.role === 'system')
     .map(m => String(m.content ?? ''))
     .join('\n\n');
 
+  // Normalize messages to Anthropic schema and drop empty content.
   const messages = llmMessages
     .filter(m => m.role !== 'system')
     .map(m => ({
@@ -22,6 +24,7 @@ export async function handleAnthropic({
     }))
     .filter(m => m.content[0].text.trim().length > 0);
 
+  // Expose a single tool (if defined) so Claude can return structured actions.
   const actionsTool = getActionsTool();
   const tools = actionsTool
     ? [
@@ -33,6 +36,7 @@ export async function handleAnthropic({
       ]
     : [];
 
+  // Streamed response is turned into JSONL chunks for the coach page (/app/coach/page.js).
   const payload = {
     model,
     max_tokens: maxTokens,
@@ -67,11 +71,14 @@ export async function handleAnthropic({
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
+      // We parse Anthropic's SSE stream and re-emit JSON lines the client expects:
+      // { type: 'content' | 'preparing_actions' | 'actions' | 'done', data?: ... }
       let pendingEvent = null;
       let dataLines = [];
       let carry = '';
       let sentPreparing = false;
 
+      // Tool input arrives in chunks; buffer by tool id so we can parse once complete.
       const toolBuffers = new Map(); // id -> string[]
       const toolNames = new Map();   // id -> name
       const toolIndexToId = new Map(); // index(string) -> id
@@ -82,6 +89,7 @@ export async function handleAnthropic({
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
 
+      // Parse and aggregate any buffered tool input into action payloads.
       const flushAllTools = () => {
         for (const [id, parts] of toolBuffers.entries()) {
           try {
@@ -144,9 +152,11 @@ export async function handleAnthropic({
           }
           case 'content_block_delta': {
             if (data?.delta?.text) {
+              // Forward text chunks to the UI stream.
               send({ type: 'content', data: data.delta.text });
             }
             if (data?.delta?.type === 'input_json_delta' && data?.delta?.partial_json != null) {
+              // Tool input JSON arrives incrementally; assemble by tool id or index.
               const bufferId =
                 data?.id ||
                 toolIndexToId.get(data?.index != null ? String(data.index) : '') ||
@@ -219,6 +229,7 @@ export async function handleAnthropic({
           const lines = (carry + chunk).split(/\r?\n/);
           carry = lines.pop() || '';
 
+          // SSE framing: event/data lines separated by blank line.
           for (const line of lines) {
             if (line.startsWith('event:')) {
               if (pendingEvent && dataLines.length) {

@@ -101,10 +101,10 @@
 
 .assistantAvatar {
   position: absolute;
-  top: -15px;
-  left: -15px;
-  width: 35px;
-  height: 35px;
+  top: -20px;
+  left: -16px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   background-image: url('/aime_profile.png');
   background-repeat: no-repeat;
