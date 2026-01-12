@@ -463,7 +463,8 @@ function TicketDetail({ ticket, jiraSiteUrl, onUpdate, onTransition, onClose }) 
   const [availableTransitions, setAvailableTransitions] = useState([]);
   const [loadingTransitions, setLoadingTransitions] = useState(false);
   const isLeaveTicket = ticket.project.name?.toLowerCase().includes('leave');
-  const canEditLeaveTicket = ticket.project.key !== 'ILT'; // ILT project has restricted permissions
+  // Use actual permissions from ticket if available, otherwise default to true (assume user can edit)
+  const canEditLeaveTicket = ticket.permissions?.canEdit !== false;
 
   // Fetch available transitions and extract custom fields when component mounts
   useEffect(() => {
@@ -751,7 +752,8 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
     if (isLeaveProject && formData.project) {
       setLoadingParents(true);
       // Fetch issues that can be parents (Entitlement type with leave options)
-      fetch(`/api/jira/tickets?project=${formData.project}&type=Entitlement`)
+      // Note: API doesn't support type parameter, so we fetch all and filter client-side
+      fetch(`/api/jira/tickets?project=${formData.project}&maxResults=100`)
         .then(res => res.json())
         .then(data => {
           if (data.error) {
@@ -779,6 +781,7 @@ function CreateTicketModal({ projects, onClose, onCreated }) {
         })
         .catch(err => {
           console.error('Failed to load parent issues:', err);
+          setParentIssues([]);
           setLoadingParents(false);
         });
     }

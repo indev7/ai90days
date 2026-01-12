@@ -17,8 +17,8 @@ export async function GET(request, { params }) {
 
     const { ticketKey } = await params;
 
-    // Fetch issue details from Jira
-    const response = await jiraFetchWithRetry(`/rest/api/3/issue/${ticketKey}`);
+    // Fetch issue details from Jira with expand parameters for permissions and metadata
+    const response = await jiraFetchWithRetry(`/rest/api/3/issue/${ticketKey}?expand=changelog,operations,editmeta`);
     const issue = await response.json();
 
     // Parse issue to simplified format
@@ -59,7 +59,7 @@ export async function PUT(request, { params }) {
     // Prepare update fields
     const updateFields = {};
 
-    if (body.summary !== undefined) {
+    if (body.summary !== undefined && String(body.summary).trim() !== '') {
       updateFields.summary = body.summary;
     }
     if (body.description !== undefined) {
