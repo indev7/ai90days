@@ -15,7 +15,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    
+
     console.log('Received Jira create request body:', JSON.stringify(body, null, 2));
 
     // Validate required fields
@@ -39,14 +39,27 @@ export async function POST(request) {
         },
       },
     };
-    
+
     console.log('Sending to Jira API - issueData:', JSON.stringify(issueData, null, 2));
 
-    // Add parent issue for subtasks
+    // Add parent issue for subtasks and leave requests
     if (body.parent) {
-      issueData.fields.parent = {
-        key: body.parent,
-      };
+      // Handle both string and object formats for parent
+      if (typeof body.parent === 'string') {
+        console.log('📎 Using string parent:', body.parent);
+        issueData.fields.parent = {
+          key: body.parent,
+        };
+      } else if (typeof body.parent === 'object' && body.parent.key) {
+        console.log('📎 Using object parent:', body.parent.key);
+        issueData.fields.parent = {
+          key: body.parent.key,
+        };
+      } else {
+        console.warn('⚠️ Invalid parent format:', body.parent);
+      }
+    } else {
+      console.log('📎 No parent provided - creating standalone issue');
     }
 
     // Add optional fields

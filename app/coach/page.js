@@ -405,6 +405,14 @@ function labelForAction(action) {
   if (intent === 'TRANSITION_JIRA') return `Change Jira Status`;
   if (intent === 'CREATE_SUBTASK') return `Create Subtask: ${payload?.summary || 'New Subtask'}`;
   if (intent === 'LINK_JIRA') return `Link Jira Tickets`;
+  if (intent === 'BULK_TRANSITION_JIRA') return `Bulk Transition Jira Tickets`;
+  if (intent === 'LIST_JIRA_TICKETS') return `List My Jira Tickets`;
+
+  // Handle Leave-related intents
+  if (intent === 'CREATE_LEAVE') return `Create Leave Request`;
+
+  // Handle unknown/deprecated intents
+  if (intent === 'LIST_LEAVES') return `List Leave Requests (Deprecated)`;
 
   // Handle OKRT intents
   const noun =
@@ -422,7 +430,9 @@ function labelForAction(action) {
     return `Update ${noun}`;
   }
   if (intent === 'DELETE_OKRT') return `Delete ${noun}`;
-  return `${method || 'POST'} ${noun}`;
+
+  // Default fallback - don't show method for OKRT
+  return `Update ${noun}`;
 }
 
 function normalizeActions(rawActions = []) {
@@ -846,6 +856,38 @@ export default function CoachPage() {
         endpoint = '/api/jira/tickets/create';
       }
 
+      // Handle LIST_JIRA_TICKETS (GET request - no body allowed)
+      if (action.intent === 'LIST_JIRA_TICKETS') {
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+          // No body for GET requests
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        // Format ticket list results
+        let successMsg = `🎫 Your Jira Tickets:\n`;
+        if (result.issues && result.issues.length > 0) {
+          result.issues.forEach(ticket => {
+            successMsg += `\n• **${ticket.key}**: ${ticket.fields?.summary || ticket.summary}`;
+            successMsg += `\n  Status: ${ticket.fields?.status?.name || ticket.status}`;
+            if (ticket.fields?.priority?.name) successMsg += ` | Priority: ${ticket.fields.priority.name}`;
+            if (ticket.fields?.issuetype?.name) successMsg += ` | Type: ${ticket.fields.issuetype.name}`;
+            successMsg += `\n`;
+          });
+        } else {
+          successMsg += `\nNo tickets found matching your criteria.`;
+        }
+
+        addMessage({ id: Date.now(), role: 'assistant', content: successMsg, timestamp: new Date() });
+        return;
+      }
+
       // Transform Jira action payloads to match API expectations
       if (action.intent === 'CREATE_JIRA') {
         // Transform CREATE_JIRA payload from LLM format to API format
@@ -958,7 +1000,7 @@ export default function CoachPage() {
       const res = await fetch(endpoint, {
         method: action.method,
         headers: { 'Content-Type': 'application/json' },
-        body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
+        body: (action.method === 'DELETE' || action.method === 'GET') ? undefined : JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -983,12 +1025,47 @@ export default function CoachPage() {
 
       // For Jira actions, show appropriate success messages
       let successMsg = `✅ ${action.label} completed successfully!`;
-      if (action.intent === 'CREATE_JIRA' && result.issue?.key) {
+      if (action.intent === 'BULK_TRANSITION_JIRA') {
+        // Show detailed results for bulk transitions
+        const { summary, results } = result;
+        let details = `Bulk Transition Results:\n`;
+        details += `✅ Success: ${summary.success}/${summary.total} tickets\n`;
+        if (summary.failed > 0) details += `❌ Failed: ${summary.failed}\n`;
+
+        // Show individual results
+        results.forEach(r => {
+          if (r.success) {
+            details += `\n✅ ${r.ticketKey}: ${r.oldStatus} → ${r.newStatus}`;
+            if (r.actualTransitionUsed !== summary.transitionName) {
+              details += ` (via "${r.actualTransitionUsed}")`;
+            }
+          } else {
+            details += `\n❌ ${r.ticketKey}: ${r.error}`;
+            if (r.currentStatus) {
+              details += ` (Current: ${r.currentStatus})`;
+            }
+            if (r.availableTransitions?.length > 0) {
+              details += `\nAvailable transitions:`;
+              r.availableTransitions.forEach(t => {
+                details += `\n  • "${t.name}" → ${t.toStatus}`;
+              });
+            }
+          }
+        });
+        successMsg = details;
+      } else if (action.intent === 'CREATE_JIRA' && result.issue?.key) {
         successMsg = `✅ Jira ticket ${result.issue.key} created successfully!`;
       } else if (action.intent === 'COMMENT_JIRA') {
         successMsg = `✅ Comment added to Jira ticket successfully!`;
-      } else if (action.intent === 'TRANSITION_JIRA' && result.newStatus) {
-        successMsg = `✅ Jira ticket status changed to "${result.newStatus}"!`;
+      } else if (action.intent === 'TRANSITION_JIRA') {
+        if (result.newStatus) {
+          successMsg = `✅ ${result.ticketKey}: ${result.oldStatus} → ${result.newStatus}`;
+          if (result.transitionUsed !== result.newStatus) {
+            successMsg += ` (via "${result.transitionUsed}")`;
+          }
+        } else {
+          successMsg = `✅ Jira ticket status changed successfully!`;
+        }
       } else if (action.intent === 'UPDATE_JIRA') {
         successMsg = `✅ Jira ticket updated successfully!`;
       } else if (action.intent === 'CREATE_SUBTASK' && result.subtask?.key) {
@@ -1000,7 +1077,31 @@ export default function CoachPage() {
       addMessage({ id: Date.now(), role: 'assistant', content: successMsg, timestamp: new Date() });
     } catch (err) {
       console.error('Action error:', err);
-      addMessage({ id: Date.now(), role: 'assistant', content: `❌ Failed to execute "${action.label}". ${err.message}`, error: true, timestamp: new Date() });
+
+      let errorMsg = `❌ Failed to execute "${action.label}". ${err.message}`;
+
+      // Handle specific Jira transition errors with available transitions
+      if ((action.intent === 'TRANSITION_JIRA' || action.intent === 'BULK_TRANSITION_JIRA') && err.response) {
+        try {
+          const errorData = await err.response.json();
+          if (errorData.availableTransitions) {
+            errorMsg = `❌ ${errorData.error || 'Transition failed'}\n`;
+            if (errorData.currentStatus) {
+              errorMsg += `Current status: ${errorData.currentStatus}\n`;
+            }
+            errorMsg += `Available transitions:\n`;
+            errorData.availableTransitions.forEach(t => {
+              errorMsg += `  • "${t.name}" → ${t.toStatus}\n`;
+            });
+          } else if (errorData.error) {
+            errorMsg = `❌ ${errorData.error}`;
+          }
+        } catch (parseErr) {
+          // Use default error message if can't parse response
+        }
+      }
+
+      addMessage({ id: Date.now(), role: 'assistant', content: errorMsg, error: true, timestamp: new Date() });
     } finally {
       setLoading(false);
     }

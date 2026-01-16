@@ -31,16 +31,33 @@ export async function POST(request, { params }) {
     );
     const transitionsData = await transitionsResponse.json();
 
-    // Find the transition that matches the desired status
-    const transition = transitionsData.transitions.find(
-      t => t.to.name.toLowerCase() === targetStatus.toLowerCase()
+    // Get current status for better error messaging
+    const currentTicketResponse = await jiraFetchWithRetry(
+      `/rest/api/3/issue/${ticketKey}?fields=status`
     );
+    const currentTicket = await currentTicketResponse.json();
+    const currentStatus = currentTicket.fields.status.name;
+
+    // Find matching transition (case-insensitive search for both transition name and destination status)
+    const transition = transitionsData.transitions.find(t => {
+      const nameMatch = t.name.toLowerCase() === targetStatus.toLowerCase();
+      const statusMatch = t.to.name.toLowerCase() === targetStatus.toLowerCase();
+      return nameMatch || statusMatch;
+    });
 
     if (!transition) {
-      return NextResponse.json(
-        { error: `No valid transition found to status: ${targetStatus}. Available: ${transitionsData.transitions.map(t => t.to.name).join(', ')}` },
-        { status: 400 }
-      );
+      const availableTransitions = transitionsData.transitions.map(t => ({
+        name: t.name,
+        toStatus: t.to.name,
+        statusCategory: t.to.statusCategory.name
+      }));
+
+      return NextResponse.json({
+        error: `Transition "${targetStatus}" not available`,
+        ticketKey,
+        currentStatus,
+        availableTransitions
+      }, { status: 400 });
     }
 
     // Execute the transition
@@ -53,7 +70,13 @@ export async function POST(request, { params }) {
       }),
     });
 
-    return NextResponse.json({ success: true, newStatus: transition.to.name });
+    return NextResponse.json({
+      success: true,
+      ticketKey,
+      oldStatus: currentStatus,
+      newStatus: transition.to.name,
+      transitionUsed: transition.name
+    });
   } catch (error) {
     if (error.message === 'Not authenticated with Jira') {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });

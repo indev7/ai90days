@@ -163,6 +163,88 @@ async function getOKRTContext(userId) {
       context.jiraTickets = [];
     }
 
+    // Fetch leave parent issue keys from Jira using dedicated API (best-effort)
+    try {
+      // Call our dedicated leave parents API
+      const leaveParentsResp = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/jira/leave-parents`);
+
+      if (leaveParentsResp.ok) {
+        const leaveParentsData = await leaveParentsResp.json();
+        console.log('📋 Fetched leave parents via API:', leaveParentsData);
+        context.leaveParents = leaveParentsData.leaveParents || {};
+      } else {
+        console.warn('⚠️ Leave parents API returned error:', leaveParentsResp.status);
+        context.leaveParents = {};
+      }
+    } catch (e) {
+      console.error('❌ Error fetching leave parents via API:', e);
+      // Fallback: try direct search with current year
+      try {
+        const currentYear = new Date().getFullYear();
+        const leaveParents = {};
+
+        const searchStrategies = [
+          {
+            type: `Medical Leaves ${currentYear}`,
+            queries: [
+              `project = "ILT" AND summary ~ "Medical Leaves ${currentYear}"`,
+              `project = "ILT" AND summary ~ "Medical Leave ${currentYear}"`,
+              `project = "ILT" AND summary ~ "Medical Leaves ${currentYear - 1}"` // Fallback to previous year
+            ]
+          },
+          {
+            type: `Casual Leaves ${currentYear}`,
+            queries: [
+              `project = "ILT" AND summary ~ "Casual Leaves ${currentYear}"`,
+              `project = "ILT" AND summary ~ "Casual Leave ${currentYear}"`,
+              `project = "ILT" AND summary ~ "Casual Leaves ${currentYear - 1}"` // Fallback to previous year
+            ]
+          },
+          {
+            type: `Annual Leaves ${currentYear}`,
+            queries: [
+              `project = "ILT" AND summary ~ "Annual Leaves ${currentYear}"`,
+              `project = "ILT" AND summary ~ "Annual Leave ${currentYear}"`,
+              `project = "ILT" AND summary ~ "Annual Leaves ${currentYear - 1}"` // Fallback to previous year
+            ]
+          }
+        ];
+
+        for (const strategy of searchStrategies) {
+          let found = false;
+
+          for (const jql of strategy.queries) {
+            if (found) break;
+
+            try {
+              const response = await jiraFetchWithRetry(
+                `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&maxResults=5&fields=key,summary,issuetype`
+              );
+              const data = await response.json();
+
+              if (data.issues && data.issues.length > 0) {
+                const parentIssue = data.issues.find(issue =>
+                  issue.fields?.issuetype?.name !== 'Leave-Request' &&
+                  issue.fields?.issuetype?.subtask !== true
+                ) || data.issues[0];
+
+                leaveParents[strategy.type] = parentIssue.key;
+                console.log(`✅ Fallback found parent for ${strategy.type}: ${parentIssue.key}`);
+                found = true;
+              }
+            } catch (searchError) {
+              console.warn(`⚠️ Fallback search failed for "${jql}":`, searchError.message);
+            }
+          }
+        }
+
+        context.leaveParents = leaveParents;
+      } catch (fallbackError) {
+        console.error('❌ Fallback leave parent search also failed:', fallbackError);
+        context.leaveParents = {};
+      }
+    }
+
     return cleanObject(context);
   } catch (error) {
     console.error('Error fetching OKRT context:', error);
@@ -199,6 +281,30 @@ No OKRTs found for this user in the current quarter.`;
     ? `\nJIRA - User's connected Jira tickets (assigned to user): ${jiraList.length}\nJSON: ${JSON.stringify(jiraList)}`
     : `\nJIRA - No connected Jira tickets or user not connected.`;
 
+  // Include dynamically fetched leave parent keys
+  const leaveParents = okrtContext?.leaveParents || {};
+  const currentYear = new Date().getFullYear();
+  const medicalParent = leaveParents[`Medical Leaves ${currentYear}`] || 'ILT-11953';
+  const casualParent = leaveParents[`Casual Leaves ${currentYear}`] || 'ILT-11602';
+  const annualParent = leaveParents[`Annual Leaves ${currentYear}`] || 'ILT-12448';
+
+  console.log('🎯 Leave parent keys being used:', {
+    currentYear,
+    medical: medicalParent,
+    casual: casualParent,
+    annual: annualParent,
+    dynamicallyFetched: leaveParents,
+    fallbacksUsed: {
+      medical: !leaveParents[`Medical Leaves ${currentYear}`],
+      casual: !leaveParents[`Casual Leaves ${currentYear}`],
+      annual: !leaveParents[`Annual Leaves ${currentYear}`]
+    }
+  });
+
+  const leaveParentBlock = Object.keys(leaveParents).length > 0
+    ? `\n\nLEAVE PARENT KEYS (from Jira):\n- Medical Leaves ${currentYear}: ${medicalParent}\n- Casual Leaves ${currentYear}: ${casualParent}\n- Annual Leaves ${currentYear}: ${annualParent}\n⚠️ Use parent: {"key": "ILT-XXXXX"} format for leave requests!`
+    : `\n\nLEAVE PARENT KEYS (fallback):\n- Medical Leaves ${currentYear}: ${medicalParent}\n- Casual Leaves ${currentYear}: ${casualParent}\n- Annual Leaves ${currentYear}: ${annualParent}\n⚠️ Using fallback keys - update if these are incorrect!`;
+
   const timeBlock = `
 TIME CONTEXT:
 - Now (ISO): ${timeCtx.nowISO}
@@ -233,9 +339,44 @@ OUTPUT CONTRACT
 1) Stream a short paragraph of coaching text.
 2) If changes are requested, call "emit_actions" once with an ordered "actions" array.
 
+⚠️ COACHING MESSAGE RULES:
+- Keep messages SHORT, RELEVANT, and action-specific
+- ONLY mention the action being performed - DO NOT mix actions
+- Examples of GOOD messages:
+  * CREATE_JIRA: "Let's create that Jira ticket!" or "I'll create that ticket for you!"
+  * UPDATE_JIRA: "I'll update that ticket for you!" or "Updating the ticket details!"
+  * TRANSITION_JIRA: "Ticket status updated!" or "I've changed the ticket status!"
+  * CREATE_LEAVE: "Let's request your leave!" or "I'll submit your leave request!"
+  * COMMENT_JIRA: "I'll add that comment!" or "Comment added to the ticket!"
+- Examples of BAD messages (NEVER do this):
+  * Mentioning transitions when creating tickets
+  * Mentioning leave requests when working on regular tickets
+  * Using unrelated action descriptions
+  * Mixing different ticket numbers or contexts
+- DO NOT mention specific ticket numbers in coaching messages (violates ID safety rules)
+
+⚠️ CRITICAL: LEAVE REQUEST DETECTION
+When user mentions ANY of these keywords, they want a Jira LEAVE request (NOT an OKRT):
+- "medical leave", "sick leave", "doctor appointment"
+- "casual leave", "personal leave", "day off"
+- "annual leave", "vacation", "holiday", "PTO"
+- "apply for leave", "request leave", "book leave", "take leave"
+- Phrases like "I need X days off", "taking X days", "off for X days"
+
+When detected, ALWAYS use CREATE_LEAVE intent with appropriate leaveType:
+- Medical/sick → "Medical Leaves ${currentYear}"
+- Casual/personal → "Casual Leaves ${currentYear}"
+- Annual/vacation → "Annual Leaves ${currentYear}"
+
+Do NOT create OKRTs for leave requests!
+
 JIRA SUPPORT
-- This coach can also manage Jira tickets in addition to OKRTs. When recommending or taking actions on Jira tickets, use these intents and endpoints:
+- This coach can manage Jira tickets in addition to OKRTs. Use these intents:
+
+REGULAR JIRA TICKETS (Tasks, Bugs, Stories, etc.):
   * CREATE_JIRA: endpoint '/api/jira/tickets/create', method: 'POST', payload: {project, summary, issueType, description?}
+    - For regular work tickets like Task, Bug, Story, Epic
+    - issueType: "Task", "Bug", "Story", "Epic" (NOT "Leave-Request")
   * UPDATE_JIRA: endpoint '/api/jira/tickets/{key}', method: 'PUT', payload: {summary?, description?, assignee?, priority?, labels?}
     - Replace {key} with the actual ticket key (e.g., '/api/jira/tickets/90D-123')
     - Only include fields you want to update
@@ -252,6 +393,37 @@ JIRA SUPPORT
     - Replace {key} with the source ticket key
     - linkType options: "blocks", "is blocked by", "relates to", "duplicates", "is duplicated by"
     - targetKey is the ticket you're linking to
+  * LIST_JIRA_TICKETS: endpoint '/api/jira/tickets?assignee=currentUser()&status=STATUS&project=PROJECT', method: 'GET'
+    - Lists Jira tickets assigned to the current user
+    - status param: "Open", "In Progress", "Done", "To Do", "Blocked", "Resolved", "Cancelled", etc.
+    - project param: "D90" (90Days project), "ILT" (Intervest Leave tracker), etc.
+    - Status keywords: "pending"/"open" → "Open", "done"/"completed" → "Done", "blocked" → "Blocked", etc.
+    - If no status mentioned by user, defaults to "Open" for pending/open queries
+    - If no project mentioned, shows tickets from all projects
+    - Example: "/api/jira/tickets?assignee=currentUser()&status=Done&project=D90"
+
+LEAVE REQUESTS (Special workflow - SEPARATE from regular tickets):
+  * CREATE_LEAVE: endpoint '/api/jira/tickets/create', method: 'POST', payload: {project, summary, issueType, description?, priority, leaveType, startDate, days, allocation, customFields, parent}
+    - ONLY for leave requests (medical, casual, annual)
+    - project: ALWAYS "ILT"
+    - issueType: ALWAYS "Leave-Request"
+    - priority: ALWAYS "Medium"
+    - leaveType Options: "Medical Leaves ${currentYear}", "Casual Leaves ${currentYear}", "Annual Leaves ${currentYear}"
+    - parent: MUST be object format {"key": "ILT-XXXXX"} (NOT a string!)
+    - Parent mapping (Leave-Request is a subtask type):
+      * "Medical Leaves ${currentYear}" → parent: {"key": "${medicalParent}"}
+      * "Casual Leaves ${currentYear}" → parent: {"key": "${casualParent}"}
+      * "Annual Leaves ${currentYear}" → parent: {"key": "${annualParent}"}
+    - customFields: {"customfield_10015": startDate, "customfield_11603": days}
+      ⚠️ CRITICAL: Custom fields are FIXED - always use these exact field IDs:
+      * customfield_10015 = startDate (e.g., "2026-01-15")
+      * customfield_11603 = days (e.g., 2)
+      * DO NOT use parent key numbers as custom field IDs!
+    - allocation: number (typically same as days for full-day leaves)
+    - DO NOT include "parentIssue" field (deprecated)
+  * BULK_TRANSITION_JIRA: endpoint '/api/jira/tickets/bulk-transition', method: 'POST', payload: {ticketKeys: ["ILT-XXX", ...], transitionName}
+    - Transitions multiple tickets to the same status
+    - Common transitions for leaves: "Approve" (→ Done), "Cancel" (→ Cancelled)
 
 ⚠️ CRITICAL: PROJECT EXTRACTION FOR JIRA
 When user wants to create a Jira ticket, you MUST extract the project KEY (not name) from their message:
@@ -274,7 +446,9 @@ User: "create jira ticket called fix login"
 → Look at existing tickets' project.key field, use that (e.g., {project: "90D", summary: "fix login", issueType: "Task"})
 
 JIRA ACTION EXAMPLES:
-1. CREATE_JIRA:
+
+REGULAR JIRA TICKETS:
+1. CREATE_JIRA (for Tasks, Bugs, Stories):
    {intent: "CREATE_JIRA", endpoint: "/api/jira/tickets/create", method: "POST", 
     payload: {project: "90D", summary: "Fix login bug", issueType: "Task", description: "User cannot login"}}
 
@@ -298,6 +472,108 @@ JIRA ACTION EXAMPLES:
    {intent: "LINK_JIRA", endpoint: "/api/jira/tickets/90D-123/links", method: "POST",
     payload: {targetKey: "90D-124", linkType: "blocks", comment: "Cannot proceed until this is done"}}
 
+7. LIST_JIRA_TICKETS:
+   {intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()", method: "GET"}
+
+⚠️ LIST_JIRA_TICKETS Examples with Status Filtering:
+User: "Show me my pending tickets" or "List my open tickets" or "Show me new tickets"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Open", method: "GET"}
+
+User: "Show my in progress tickets" or "What am I working on?" or "Current tickets"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=In Progress", method: "GET"}
+
+User: "List my done tickets" or "Show me completed tickets" or "Finished work"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Done", method: "GET"}
+
+User: "Show me todo tickets" or "What's in my backlog?" or "Planned work"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=To Do", method: "GET"}
+
+User: "Show me blocked tickets" or "What's stuck?" or "Impediments"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Blocked", method: "GET"}
+
+User: "Show me resolved tickets" or "What's been fixed?" 
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Resolved", method: "GET"}
+
+User: "Show me cancelled tickets" or "Dropped work"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Cancelled", method: "GET"}
+
+User: "Show all my tickets" (no status filter)
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()", method: "GET"}
+
+⚠️ LIST_JIRA_TICKETS Examples with Dynamic Project and Status Filtering:
+
+DYNAMIC PARSING EXAMPLES:
+User: "Show me [STATUS] tickets from [PROJECT]" - Parse status and project from user input
+User: "List my [STATUS] [PROJECT] tickets" - Parse status and project from user input  
+User: "Show me [PROJECT] [STATUS] tickets" - Parse status and project from user input
+
+PARSING RULES:
+1. Extract STATUS keywords using the mapping above (pending→Open, done→Done, etc.)
+2. Extract PROJECT keywords using the mapping above (90Days→D90, leave→ILT, etc.)  
+3. Build endpoint dynamically: "/api/jira/tickets?assignee=currentUser()&status={PARSED_STATUS}&project={PARSED_PROJECT}"
+
+EXAMPLES:
+User: "Show me blocked tickets from 90Days project"
+→ Parse: STATUS="blocked"→"Blocked", PROJECT="90Days"→"D90"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Blocked&project=D90", method: "GET"}
+
+User: "List my done leave tickets"  
+→ Parse: STATUS="done"→"Done", PROJECT="leave"→"ILT"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Done&project=ILT", method: "GET"}
+
+User: "Show me pending D90 tickets"
+→ Parse: STATUS="pending"→"Open", PROJECT="D90"→"D90"  
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Open&project=D90", method: "GET"}
+
+User: "List cancelled leave tracker tickets"
+→ Parse: STATUS="cancelled"→"Cancelled", PROJECT="leave tracker"→"ILT"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Cancelled&project=ILT", method: "GET"}
+
+SINGLE FILTER EXAMPLES:
+User: "Show me all blocked tickets" (status only)
+→ Parse: STATUS="blocked"→"Blocked"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&status=Blocked", method: "GET"}
+
+User: "Show me all leave tickets" (project only)  
+→ Parse: PROJECT="leave"→"ILT"
+{intent: "LIST_JIRA_TICKETS", endpoint: "/api/jira/tickets?assignee=currentUser()&project=ILT", method: "GET"}
+
+⚠️ STATUS KEYWORD MAPPING:
+- "pending", "open", "new", "waiting", "assigned" → "Open"
+- "in progress", "working on", "active", "current", "started", "ongoing" → "In Progress"  
+- "done", "completed", "finished", "closed", "complete", "ready", "delivered" → "Done"
+- "todo", "to do", "backlog", "planned", "queue", "upcoming" → "To Do"
+- "blocked", "stuck", "halted", "paused", "waiting on", "impediment" → "Blocked"
+- "resolved", "fixed", "solved", "addressed" → "Resolved"
+- "cancelled", "cancelled", "dropped", "abandoned", "terminated" → "Cancelled"
+
+⚠️ PROJECT NAME MAPPING:
+- "90Days", "90 Days", "90days", "D90" → project: "D90"
+- "Intervest Leave tracker", "Leave tracker", "leave tickets", "leave", "ILT" → project: "ILT"
+- If user mentions other project names, extract from existing Jira tickets context above
+
+LEAVE REQUEST EXAMPLES (Separate workflow):
+8. CREATE_LEAVE (ONLY for leave requests):
+   User: "I need casual leave for 2 days from January 15"
+   {intent: "CREATE_LEAVE", endpoint: "/api/jira/tickets/create", method: "POST",
+    payload: {"project":"ILT","summary":"2 days casual leave","description":"Casual leave from January 15-16, ${currentYear}","issueType":"Leave-Request","priority":"Medium","leaveType":"Casual Leaves ${currentYear}","startDate":"${currentYear}-01-15","days":2,"allocation":2,"customFields":{"customfield_10015":"${currentYear}-01-15","customfield_11603":2},"parent":{"key":"${casualParent}"}}}
+
+   ❌ WRONG - String parent (will cause 404 error):
+   {payload: {"parent": "KEY"}} // WRONG! Must be object: {"key": "KEY"}
+
+   ❌ WRONG - Including parentIssue field:
+   {payload: {"parentIssue": "KEY", "parent": {"key": "KEY"}}} // Remove parentIssue!
+
+   ❌ WRONG - Using CREATE_JIRA for leaves:
+   {intent: "CREATE_JIRA", payload: {"project":"ILT", "issueType":"Leave-Request"}} // Use CREATE_LEAVE!
+
+   ❌ WRONG - DO NOT create OKRT for leaves:
+   {intent: "CREATE_OKRT", payload: {"title": "Casual Leave - January 15", ...}} // NEVER DO THIS FOR LEAVES!
+
+9. BULK_TRANSITION_JIRA:
+   {intent: "BULK_TRANSITION_JIRA", endpoint: "/api/jira/tickets/bulk-transition", method: "POST",
+    payload: {"ticketKeys": ["ILT-14035", "ILT-14036"], "transitionName": "Approve"}}
+
 Jira actions follow ACTIONS_JSON format but use these specific Jira endpoints and payload structures.
 
 ID SAFETY (MANDATORY)
@@ -315,7 +591,7 @@ ID SAFETY (MANDATORY)
 - Output the entire tool_call arguments JSON in a single contiguous block (do not split keys/values across deltas).
 
 
-${timeBlock}${contextBlock}${jiraBlock}`;
+${timeBlock}${contextBlock}${jiraBlock}${leaveParentBlock}`;
 }
 
 /* =========================
@@ -352,6 +628,17 @@ User: ${displayName} has no OKRTs yet.`;
     ? `\nEXISTING JIRA TICKETS:\n${jiraList.slice(0, 10).map(j => `- [${j.key}] ${j.summary} (${j.status})`).join('\n')}\n`
     : `\nEXISTING JIRA TICKETS: none or not connected\n`;
 
+  // Include dynamically fetched leave parent keys (same as OpenAI prompt)
+  const leaveParents = okrtContext?.leaveParents || {};
+  const currentYear = new Date().getFullYear();
+  const medicalParent = leaveParents[`Medical Leaves ${currentYear}`] || 'ILT-11953';
+  const casualParent = leaveParents[`Casual Leaves ${currentYear}`] || 'ILT-11602';
+  const annualParent = leaveParents[`Annual Leaves ${currentYear}`] || 'ILT-12448';
+
+  const leaveParentBlock = Object.keys(leaveParents).length > 0
+    ? `\nLEAVE PARENTS: Medical=${medicalParent}, Casual=${casualParent}, Annual=${annualParent}\nUse: parent:{"key":"KEY"} format for leave requests!`
+    : `\nLEAVE PARENTS (fallback): Medical=${medicalParent}, Casual=${casualParent}, Annual=${annualParent}\nUpdate keys if these are incorrect!`;
+
   const timeBlock = `
 TIME: Quarter ${timeCtx.currentQuarter} (${timeCtx.quarterStart} to ${timeCtx.quarterEnd})`;
 
@@ -361,6 +648,7 @@ TIME: Quarter ${timeCtx.currentQuarter} (${timeCtx.quarterStart} to ${timeCtx.qu
 ${timeBlock}
 ${contextBlock}
 ${jiraBlock}
+${leaveParentBlock}
 
 CRITICAL: When user wants to create/update/delete OKRTs, you MUST output EXACTLY this format:
 
@@ -369,8 +657,28 @@ CRITICAL: When user wants to create/update/delete OKRTs, you MUST output EXACTLY
 ACTIONS_JSON:
 {"actions":[{"intent":"CREATE_OKRT","endpoint":"/api/okrt","method":"POST","payload":{...fields...}}]}
 
+⚠️ COACHING MESSAGE RULES:
+- Keep messages SHORT and action-specific
+- ONLY mention the action being performed
+- Good examples:
+  * CREATE_JIRA: "Let's create that Jira ticket!"
+  * UPDATE_JIRA: "I'll update that ticket!"
+  * TRANSITION_JIRA: "Ticket status updated!"
+  * CREATE_LEAVE: "Let's request your leave!"
+- NEVER mix different actions in one message
+- NEVER mention unrelated ticket numbers or contexts
+
 DATA MODEL:
 O (Objective) → K (Key Result) → T (Task) linked by parent_id
+
+⚠️ LEAVE REQUEST DETECTION:
+Keywords that mean LEAVE (use CREATE_LEAVE, NOT CREATE_OKRT):
+- "medical leave", "sick leave" → Medical Leaves ${currentYear} + ${medicalParent}
+- "casual leave", "personal leave", "day off" → Casual Leaves ${currentYear} + ${casualParent}
+- "annual leave", "vacation" → Annual Leaves ${currentYear} + ${annualParent}
+- Phrases: "apply for leave", "need X days off", "taking leave"
+
+NEVER create OKRT for leaves! Always use CREATE_LEAVE intent.
 
 JIRA SUPPORT:
 - This coach can also propose and emit actions for Jira tickets. Use these intents:
@@ -380,6 +688,22 @@ JIRA SUPPORT:
   * TRANSITION_JIRA: endpoint '/api/jira/tickets/{key}/transition', payload: {transitionName: 'Done'}
   * CREATE_SUBTASK: endpoint '/api/jira/tickets/{parentKey}/subtasks', payload: {summary, description?}
   * LINK_JIRA: endpoint '/api/jira/tickets/{key}/links', payload: {targetKey, linkType}
+  * CREATE_LEAVE: endpoint '/api/jira/tickets/create', payload must have: project ("ILT"), summary, issueType ("Leave-Request"), description, priority ("Medium"), leaveType, startDate, days, allocation, customFields, parent
+    - parent: {"key": "ILT-XXXXX"} format required
+    - Medical parent: {"key": "${medicalParent}"}
+    - Casual parent: {"key": "${casualParent}"}
+    - Annual parent: {"key": "${annualParent}"}
+    - customFields: ALWAYS use {"customfield_10015": startDate, "customfield_11603": days}
+    - Object format required! NOT a string!
+    - DO NOT include "parentIssue" field!
+    - DO NOT use parent key numbers in custom field names!
+  * LIST_JIRA_TICKETS: endpoint '/api/jira/tickets?assignee=currentUser()&status=STATUS&project=PROJECT', method GET, use to list user's assigned Jira tickets by status and project
+    - status param: "Open" (default), "In Progress", "Done", "To Do", "Blocked", etc.
+    - project param: "D90" (90Days), "ILT" (Leave tracker), etc.
+    - Project name mapping: "90Days"/"90 Days" → "D90", "Intervest Leave tracker"/"leave tickets" → "ILT"
+    - For all tickets: omit status parameter
+    - For all projects: omit project parameter
+  * BULK_TRANSITION_JIRA: endpoint '/api/jira/tickets/bulk-transition', method POST, payload: {ticketKeys: [], transitionName}, use to approve/cancel multiple leaves
 
 ⚠️ TICKET KEY FORMAT:
 - User might say "D90-529" or "90D-529" - BOTH refer to same ticket
@@ -539,6 +863,27 @@ I'll create that link!
 ACTIONS_JSON:
 {"actions":[{"intent":"LINK_JIRA","endpoint":"/api/jira/tickets/D90-529/links","method":"POST","payload":{"targetKey":"D90-530","linkType":"blocks"}}]}
 
+Example 7 - CREATE LEAVE (CORRECT):
+User: "I need casual leave for 2 days from January 15"
+
+Your response:
+Let's request your casual leave!
+
+ACTIONS_JSON:
+{"actions":[{"intent":"CREATE_LEAVE","endpoint":"/api/jira/tickets/create","method":"POST","payload":{"project":"ILT","summary":"2 days casual leave","description":"Casual leave from January 15-16, ${currentYear}","issueType":"Leave-Request","priority":"Medium","leaveType":"Casual Leaves ${currentYear}","startDate":"${currentYear}-01-15","days":2,"allocation":2,"customFields":{"customfield_10015":"${currentYear}-01-15","customfield_11603":2},"parent":{"key":"${casualParent}"}}}]}
+
+❌ Example 7 WRONG - String parent:
+WRONG: {"parent":"${casualParent}"} // 400 error! Must be: {"parent":{"key":"${casualParent}"}}
+
+❌ Example 7 WRONG - Including parentIssue:
+WRONG: {"parentIssue":"${casualParent}","parent":{"key":"${casualParent}"}} // Remove parentIssue!
+
+❌ Example 7 WRONG - Using parent key in custom fields:
+WRONG: {"customFields":{"customfield_12448":2}} // Always use customfield_11603 for days!
+
+❌ Example 7 WRONG - Creating OKRT:
+WRONG: {"intent":"CREATE_OKRT","payload":{"title":"Casual Leave"...}} // NEVER for leaves!
+
 IMPORTANT: IDs in examples are gen-x7m9k2p4, gen-w3n8q5r1, gen-t6y2h9v3, gen-abc12345
 YOUR IDs must be DIFFERENT! Generate random combinations like: gen-j4k8m1n7, gen-p9r2s5t8, etc.
 
@@ -583,8 +928,8 @@ function getActionsTool() {
             type: "object",
             required: ["intent", "endpoint", "method", "payload"],
             properties: {
-              intent: { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA", "CREATE_SUBTASK", "LINK_JIRA"] },
-              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]", "/api/jira/tickets/create", "/api/jira/tickets/[key]", "/api/jira/tickets/[key]/comments", "/api/jira/tickets/[key]/transition", "/api/jira/tickets/[key]/subtasks", "/api/jira/tickets/[key]/links"] },
+              intent: { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT", "CREATE_JIRA", "UPDATE_JIRA", "COMMENT_JIRA", "TRANSITION_JIRA", "CREATE_SUBTASK", "LINK_JIRA", "CREATE_LEAVE", "LIST_JIRA_TICKETS", "BULK_TRANSITION_JIRA"] },
+              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]", "/api/jira/tickets/create", "/api/jira/tickets/[key]", "/api/jira/tickets/[key]/comments", "/api/jira/tickets/[key]/transition", "/api/jira/tickets/[key]/subtasks", "/api/jira/tickets/[key]/links", "/api/jira/leaves", "/api/jira/tickets/bulk-transition"] },
               method: { type: "string", enum: ["POST", "PUT", "DELETE"] },
               payload: {
                 type: "object",
@@ -640,7 +985,19 @@ function getActionsTool() {
                   issueType: { type: "string" },
                   parent: { type: "string" },
                   targetKey: { type: "string" },
-                  linkType: { type: "string" }
+                  linkType: { type: "string" },
+                  // Leave-specific fields
+                  leaveType: { type: "string" },
+                  startDate: { type: "string" },
+                  days: { type: "number" },
+                  allocation: { type: "number" },
+                  parentIssue: { type: "string" },
+                  customFields: { type: "object" },
+                  ticketKeys: { type: "array", items: { type: "string" } },
+                  transitionName: { type: "string" },
+                  projectKey: { type: "string" },
+                  parentKey: { type: "string" },
+                  status: { type: "string" }
                 },
                 additionalProperties: true
               }
@@ -915,6 +1272,82 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
         return actions.length > 0 ? actions : null;
       }
 
+      // Helper to validate JSON structure comprehensively
+      function validateJsonStructure(text) {
+        const validation = {
+          isValid: true,
+          errors: [],
+          braceCount: 0,
+          bracketCount: 0,
+          isComplete: false
+        };
+
+        let braceDepth = 0;
+        let bracketDepth = 0;
+        let inString = false;
+        let escapeNext = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+
+          if (char === '"' && !escapeNext) {
+            inString = !inString;
+            continue;
+          }
+
+          if (char === '\\' && inString) {
+            escapeNext = true;
+            continue;
+          }
+
+          if (inString) continue;
+
+          switch (char) {
+            case '{':
+              braceDepth++;
+              validation.braceCount++;
+              break;
+            case '}':
+              braceDepth--;
+              if (braceDepth < 0) {
+                validation.isValid = false;
+                validation.errors.push(`Unmatched closing brace at position ${i}`);
+              }
+              break;
+            case '[':
+              bracketDepth++;
+              validation.bracketCount++;
+              break;
+            case ']':
+              bracketDepth--;
+              if (bracketDepth < 0) {
+                validation.isValid = false;
+                validation.errors.push(`Unmatched closing bracket at position ${i}`);
+              }
+              break;
+          }
+        }
+
+        if (braceDepth > 0) {
+          validation.isValid = false;
+          validation.errors.push(`${braceDepth} unclosed brace(s)`);
+        }
+
+        if (bracketDepth > 0) {
+          validation.isValid = false;
+          validation.errors.push(`${bracketDepth} unclosed bracket(s)`);
+        }
+
+        validation.isComplete = braceDepth === 0 && bracketDepth === 0;
+
+        return validation;
+      }
+
       // Helper to extract actions JSON from accumulated text output
       function tryExtractActions(raw) {
         if (!raw) return null;
@@ -942,8 +1375,29 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
             console.log('✓ Found opening brace at position', braceStart);
             let depth = 0;
             let jsonEnd = -1;
+            let inString = false;
+            let escapeNext = false;
+
             for (let i = braceStart; i < after.length; i++) {
               const ch = after[i];
+
+              if (escapeNext) {
+                escapeNext = false;
+                continue;
+              }
+
+              if (ch === '"' && !escapeNext) {
+                inString = !inString;
+                continue;
+              }
+
+              if (ch === '\\' && inString) {
+                escapeNext = true;
+                continue;
+              }
+
+              if (inString) continue;
+
               if (ch === '{') depth++;
               else if (ch === '}') {
                 depth--;
@@ -959,9 +1413,27 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
               console.log('Extracted JSON candidate length:', candidate.length);
               console.log('JSON preview:', candidate.substring(0, 150) + '...');
 
+              // Comprehensive JSON structure validation
+              const structureValidation = validateJsonStructure(candidate);
+              console.log('📋 JSON Structure Validation:');
+              console.log('✓ Properly formatted and complete:', structureValidation.isValid && structureValidation.isComplete);
+              console.log('✓ All opening braces { have matching closing braces }:', structureValidation.braceCount > 0 && structureValidation.isComplete);
+              console.log('✓ All opening brackets [ have matching closing brackets ]:', structureValidation.isComplete);
+              console.log('✓ JSON structure errors:', structureValidation.errors.length === 0 ? 'None' : structureValidation.errors.join(', '));
+
+              if (!structureValidation.isValid) {
+                console.error('❌ JSON structure validation failed:', structureValidation.errors);
+                return null;
+              }
+
+              if (!structureValidation.isComplete) {
+                console.error('❌ JSON is incomplete - missing closing braces or brackets');
+                return null;
+              }
+
               try {
                 const parsed = JSON.parse(candidate);
-                console.log('✓ JSON parsed successfully');
+                console.log('✓ JSON is valid and can be parsed successfully');
                 console.log('Parsed keys:', Object.keys(parsed));
 
                 // Check if it has correct actions array format
@@ -996,9 +1468,58 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
               } catch (e) {
                 console.error('❌ JSON parse error:', e.message);
                 console.error('Failed candidate first 300 chars:', candidate.substring(0, 300));
+                console.error('❌ The JSON is NOT valid and cannot be parsed');
               }
             } else {
-              console.log('❌ Could not find closing brace for JSON');
+              // Handle case where JSON is incomplete due to missing final brace
+              console.log('❌ Could not find closing brace - trying to handle incomplete JSON');
+              const restOfText = after.slice(braceStart);
+              console.log('Attempting to fix incomplete JSON, length:', restOfText.length);
+
+              // Check if it looks like valid JSON that just needs a final closing brace
+              if (restOfText.includes('"actions"') && restOfText.includes('[') && restOfText.includes(']')) {
+                console.log('🔧 Detected incomplete JSON with actions array, attempting repair...');
+                const fixedCandidate = restOfText.trim() + '}';
+                console.log('Fixed candidate preview:', fixedCandidate.substring(0, 150) + '...');
+
+                // Validate the fixed JSON
+                const fixedValidation = validateJsonStructure(fixedCandidate);
+                console.log('📋 Fixed JSON Structure Validation:');
+                console.log('✓ Properly formatted and complete:', fixedValidation.isValid && fixedValidation.isComplete);
+                console.log('✓ Structure errors:', fixedValidation.errors.length === 0 ? 'None' : fixedValidation.errors.join(', '));
+
+                if (fixedValidation.isValid && fixedValidation.isComplete) {
+                  try {
+                    const parsed = JSON.parse(fixedCandidate);
+                    console.log('✅ Fixed JSON is valid and can be parsed successfully');
+                    console.log('Parsed keys:', Object.keys(parsed));
+
+                    // Check if it has correct actions array format
+                    if (parsed && Array.isArray(parsed.actions)) {
+                      console.log('✅ Found correct actions array with', parsed.actions.length, 'items');
+
+                      // Validate each action has required structure
+                      const validActions = parsed.actions.filter(a => {
+                        const hasStructure = a.intent && a.endpoint && a.method && a.payload;
+                        if (!hasStructure) {
+                          console.warn('⚠️  Action missing required fields:', Object.keys(a));
+                        }
+                        return hasStructure;
+                      });
+
+                      if (validActions.length > 0) {
+                        console.log('✅ Returning', validActions.length, 'valid action(s) from fixed JSON');
+                        return validActions;
+                      }
+                    }
+                  } catch (e) {
+                    console.error('❌ Fixed JSON parse error:', e.message);
+                  }
+                } else {
+                  console.log('❌ Fixed JSON structure validation failed');
+                }
+              }
+              console.log('❌ Could not find or fix closing brace for JSON');
             }
           } else {
             console.log('❌ Could not find opening brace after ACTIONS_JSON:');
@@ -1009,24 +1530,60 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
 
         // Fallback 1: Search for correct actions array format
         if (raw.indexOf('"actions"') !== -1) {
+          console.log('🔍 FALLBACK: Searching for actions array format...');
           const idx = raw.lastIndexOf('"actions"');
           let start = idx;
           while (start > 0 && raw[start] !== '{') start--;
           if (raw[start] === '{') {
             let depth = 0;
+            let inString = false;
+            let escapeNext = false;
+
             for (let i = start; i < raw.length; i++) {
               const ch = raw[i];
+
+              if (escapeNext) {
+                escapeNext = false;
+                continue;
+              }
+
+              if (ch === '"' && !escapeNext) {
+                inString = !inString;
+                continue;
+              }
+
+              if (ch === '\\' && inString) {
+                escapeNext = true;
+                continue;
+              }
+
+              if (inString) continue;
+
               if (ch === '{') depth++;
               else if (ch === '}') depth--;
               if (depth === 0) {
                 const candidate = raw.slice(start, i + 1).trim();
+
+                // Apply comprehensive validation to fallback candidate
+                const structureValidation = validateJsonStructure(candidate);
+                console.log('📋 FALLBACK JSON Structure Validation:');
+                console.log('✓ Properly formatted and complete:', structureValidation.isValid && structureValidation.isComplete);
+                console.log('✓ Structure errors:', structureValidation.errors.length === 0 ? 'None' : structureValidation.errors.join(', '));
+
+                if (!structureValidation.isValid || !structureValidation.isComplete) {
+                  console.log('❌ FALLBACK: JSON structure validation failed');
+                  break;
+                }
+
                 try {
                   const parsed = JSON.parse(candidate);
                   if (parsed && Array.isArray(parsed.actions)) {
-                    console.log('✅ Found actions array via fallback search');
+                    console.log('✅ Found actions array via fallback search with valid structure');
                     return parsed.actions;
                   }
-                } catch (_) { }
+                } catch (e) {
+                  console.log('❌ FALLBACK: JSON parse failed:', e.message);
+                }
                 break;
               }
             }
@@ -1036,13 +1593,35 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
         // Fallback 2: Search for nested format anywhere in text
         const objMatch = raw.match(/\{[\s\S]*?"objective"[\s\S]*?\}/);
         if (objMatch) {
+          console.log('🔍 FALLBACK 2: Found potential nested format...');
           try {
             // Find the complete balanced object
             const startIdx = raw.indexOf(objMatch[0]);
             let depth = 0;
             let endIdx = startIdx;
+            let inString = false;
+            let escapeNext = false;
+
             for (let i = startIdx; i < raw.length; i++) {
               const ch = raw[i];
+
+              if (escapeNext) {
+                escapeNext = false;
+                continue;
+              }
+
+              if (ch === '"' && !escapeNext) {
+                inString = !inString;
+                continue;
+              }
+
+              if (ch === '\\' && inString) {
+                escapeNext = true;
+                continue;
+              }
+
+              if (inString) continue;
+
               if (ch === '{') depth++;
               else if (ch === '}') {
                 depth--;
@@ -1053,14 +1632,29 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
               }
             }
             const candidate = raw.slice(startIdx, endIdx);
+
+            // Apply comprehensive validation to nested format candidate
+            const structureValidation = validateJsonStructure(candidate);
+            console.log('📋 NESTED FORMAT JSON Structure Validation:');
+            console.log('✓ Properly formatted and complete:', structureValidation.isValid && structureValidation.isComplete);
+            console.log('✓ Structure errors:', structureValidation.errors.length === 0 ? 'None' : structureValidation.errors.join(', '));
+
+            if (!structureValidation.isValid || !structureValidation.isComplete) {
+              console.log('❌ NESTED FORMAT: JSON structure validation failed');
+              return null;
+            }
+
             const parsed = JSON.parse(candidate);
+            console.log('✓ Nested format JSON is valid and can be parsed');
+
             if (parsed && (parsed.objective || parsed.kr || parsed.task)) {
               console.log('⚠️  Found nested format via fallback, converting...');
               const converted = convertNestedToActions(parsed);
               if (converted) return converted;
             }
           } catch (e) {
-            console.error('Failed to parse nested format:', e);
+            console.error('❌ Failed to parse nested format:', e.message);
+            console.error('❌ The nested format JSON is NOT valid and cannot be parsed');
           }
         }
 
@@ -1139,10 +1733,16 @@ Recommended: Use llama3.2:latest (3B, fast and efficient)`);
                     controller.enqueue(encoder.encode(JSON.stringify({ type: 'actions', data: actions }) + '\n'));
                   } else {
                     console.log('❌ FAILED: No actions could be extracted');
-                    console.log('This usually means:');
+                    console.log('This usually means one of the following issues:');
                     console.log('1. Model did not output ACTIONS_JSON: marker');
-                    console.log('2. JSON was malformed');
-                    console.log('3. Model used wrong format');
+                    console.log('2. JSON was malformed or incomplete');
+                    console.log('3. JSON structure validation failed:');
+                    console.log('   - Missing closing braces { }');
+                    console.log('   - Missing closing brackets [ ]');
+                    console.log('   - Unmatched opening/closing characters');
+                    console.log('   - Invalid JSON syntax that cannot be parsed');
+                    console.log('4. Model used wrong format (not actions array)');
+                    console.log('5. Actions array was empty or missing required fields');
                   }
                 }
                 controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
