@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { handleOpenAI } from './openAIHelper';
 import { handleOllama } from './ollamaHelper';
 import { handleAnthropic } from './anthropicHelper';
+import fs from 'fs';
+import path from 'path';
 
 /* =========================
    Utility functions
@@ -228,79 +230,14 @@ ${timeBlock}${contextBlock}`;
    Tool (Responses API shape)
    ========================= */
 function getActionsTool() {
-  const uuidV4 = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$';
-  const genId  = '^gen-[a-z0-9]{8}$';
-
-  return {
-    type: "function",
-    name: "emit_actions",
-    description: "Emit an ordered list of OKRT actions (create, update, delete).",
-    parameters: {
-      type: "object",
-      properties: {
-        actions: {
-          type: "array",
-          minItems: 1,
-          items: {
-            type: "object",
-            required: ["intent", "endpoint", "method", "payload"],
-            properties: {
-              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
-              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
-              method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
-              payload: {
-                type: "object",
-                properties: {
-                  id: {
-                    allOf: [
-                      { anyOf: [
-                          { type: "string", pattern: uuidV4 },
-                          { type: "string", pattern: genId }
-                        ]
-                      }
-                    ]
-                  },
-                  type: { type: "string", enum: ["O","K","T"] },
-                  owner_id: { type: "integer" }, // (server should ignore/overwrite)
-                  parent_id: {
-                    allOf: [
-                      { anyOf: [
-                          { type: "string", pattern: uuidV4 },
-                          { type: "string", pattern: genId }
-                        ]
-                      }
-                    ]
-                  },
-                  description: { type: "string" },
-                  progress:    { type: "number" },
-                  order_index: { type: "integer" },
-                  task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
-                  title: { type: "string" },
-                  area:  { type: "string" },
-                  visibility: { type: "string", enum: ["private","shared"] },
-                  objective_kind: { type: "string", enum: ["committed","stretch"] },
-                  status: { type: "string", enum: ["A","C","R"] },
-                  cycle_qtr: { type: "string" },
-                  kr_target_number:   { type: "number" },
-                  kr_unit:            { type: "string", enum: ["%","$","count","hrs"] },
-                  kr_baseline_number: { type: "number" },
-                  weight:     { type: "number" },
-                  due_date:   { type: "string" },
-                  recurrence_json: { type: "string" },
-                  blocked_by: { type: "string" },
-                  repeat: { type: "string", enum: ["Y","N"] }
-                },
-                additionalProperties: true
-              }
-            },
-            additionalProperties: true
-          }
-        }
-      },
-      required: ["actions"],
-      additionalProperties: true
-    }
-  };
+  const filePath = path.join(process.cwd(), 'ToolSchemas/okrt_actions.json');
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Failed to load tool schema file:', filePath, error);
+    return null;
+  }
 }
 
 
@@ -336,7 +273,6 @@ export async function POST(request) {
     const userId = parseInt(session.sub, 10);
 
     const requestBody = await request.json();
-    logHumanReadable('COMPLETE API REQUEST JSON', requestBody);
     
     const { messages, okrtContext: clientOkrtContext } = requestBody;
     if (!messages || !Array.isArray(messages)) {
