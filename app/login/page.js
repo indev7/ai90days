@@ -85,13 +85,13 @@ export default function LoginPage() {
         <div className={styles.logoWrap}>
           <img
             src={logoSrc}
-            alt="DreamBig"
+            alt="Aime"
             className={styles.logo}
           />
         </div>
         <div className={styles.header}>
           <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.subtitle}>Sign in to your DreamBig account</p>
+          <p className={styles.subtitle}>Sign in to your Aime account</p>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
