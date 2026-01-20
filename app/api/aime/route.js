@@ -5,9 +5,10 @@ import { logLlmApiInteraction } from '@/lib/llmApiLogger';
 import { handleOpenAI } from './llm/openAIHelper';
 import { handleOllama } from './llm/ollamaHelper';
 import { handleAnthropic } from './llm/anthropicHelper';
-import fs from 'fs';
-import fsp from 'fs/promises';
-import path from 'path';
+import { AIME_APP_OVERVIEW } from '@/lib/knowledgeBase/aimeAppOverview';
+import { OKRT_DOMAIN } from '@/lib/knowledgeBase/okrtDomain';
+import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
+import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 
 const knowledgeBaseMap = new Map([
   [
@@ -15,7 +16,7 @@ const knowledgeBaseMap = new Map([
     {
       id: 'aime-overview',
       description: 'Help, About Aime web app, how to, navigation guide',
-      fileName: 'KnowlegeBase/AIME_APP_OVERVIEW.md'
+      content: AIME_APP_OVERVIEW
     }
   ],
   [
@@ -23,7 +24,7 @@ const knowledgeBaseMap = new Map([
     {
       id: 'okrt-domain',
       description: 'OKRT domain rules, output contract, and ID safety guidance.',
-      fileName: 'KnowlegeBase/OKRT_DOMAIN.md'
+      content: OKRT_DOMAIN
     }
   ]
 ]);
@@ -34,7 +35,7 @@ const toolMap = new Map([
     {
       id: 'emit_okrt_actions',
       description: 'OKRT actions tool schema for create/update/delete operations.',
-      fileName: 'ToolSchemas/okrt_actions.json'
+      schema: OKRT_ACTIONS_SCHEMA
     }
   ],
   [
@@ -42,7 +43,7 @@ const toolMap = new Map([
     {
       id: 'emit_okrt_share_actions',
       description: 'OKRT share actions tool schema for share/unshare operations.',
-      fileName: 'ToolSchemas/okrt_share_actions.json'
+      schema: OKRT_SHARE_ACTIONS_SCHEMA
     }
   ]
 ]);
@@ -102,28 +103,13 @@ const dataSectionMap = new Map([
 async function loadKnowledgeBaseEntry(intentId) {
   if (!intentId) return '';
   const entry = knowledgeBaseMap.get(intentId);
-  if (!entry?.fileName) return '';
-  const filePath = path.join(process.cwd(), entry.fileName);
-  try {
-    return await fsp.readFile(filePath, 'utf8');
-  } catch (error) {
-    console.error('Failed to load knowledge base file:', filePath, error);
-    return '';
-  }
+  return entry?.content || '';
 }
 
 function loadToolSchema(toolId) {
   if (!toolId) return null;
   const entry = toolMap.get(toolId);
-  if (!entry?.fileName) return null;
-  const filePath = path.join(process.cwd(), entry.fileName);
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(raw);
-  } catch (error) {
-    console.error('Failed to load tool schema file:', filePath, error);
-    return null;
-  }
+  return entry?.schema || null;
 }
 
 /* =========================

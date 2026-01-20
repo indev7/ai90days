@@ -534,11 +534,14 @@ export default function AimePage() {
   const lastPromptFingerprintRef = useRef('');
   const autoRetryCountRef = useRef(0);
   const duplicateReqMoreInfoRef = useRef(0);
+  const reqMoreInfoErrorRetryRef = useRef(0);
   const accumulatedReqMoreInfoRef = useRef({
     sections: new Map(),
     knowledgeIds: new Set(),
     toolIds: new Set()
   });
+  const INVALID_REQ_MORE_INFO_MESSAGE =
+    'Sorry, I could not process the req_more_info tool call because its arguments were invalid. Please retry.';
 
   /** Send a user message to the backend, stream responses, and handle retries/actions; called by submit/key/quick-reply/retry flows. */
   // PSEUDOCODE: push user message, POST to API, stream response, handle actions and retries.
@@ -568,6 +571,7 @@ export default function AimePage() {
       lastPromptFingerprintRef.current = '';
       autoRetryCountRef.current = 0;
       duplicateReqMoreInfoRef.current = 0;
+      reqMoreInfoErrorRetryRef.current = 0;
       outboundMessages = [...messages, userMessage];
     }
 
@@ -694,6 +698,30 @@ export default function AimePage() {
         } else {
           updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
         }
+      }
+
+      const hasInvalidReqMoreInfo =
+        textBuffer.includes(INVALID_REQ_MORE_INFO_MESSAGE);
+      const shouldAutoRetryInvalidReqMoreInfo =
+        hasInvalidReqMoreInfo &&
+        !pendingReqMoreInfo &&
+        pendingActions.length === 0 &&
+        !stopRequestedRef.current &&
+        reqMoreInfoErrorRetryRef.current < 1;
+      if (shouldAutoRetryInvalidReqMoreInfo) {
+        reqMoreInfoErrorRetryRef.current += 1;
+        const errorNotice =
+          'SYSTEM NOTICE: Empty or invalid req_more_info received. Do not call req_more_info again; answer using available context.';
+        const nextSystemPromptData = systemPromptData
+          ? `${systemPromptData}\n\n${errorNotice}`
+          : errorNotice;
+        await sendMessage(trimmedContent, {
+          skipAddUserMessage: true,
+          messageHistoryOverride: outboundMessages,
+          systemPromptData: nextSystemPromptData,
+          forceSend: true
+        });
+        return;
       }
       
       // Flush any remaining chunk after stream ends
