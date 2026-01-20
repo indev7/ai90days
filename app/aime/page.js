@@ -584,7 +584,6 @@ export default function AimePage() {
 
     try {
       const displayName = user?.displayName || 'User';
-
       // LLM step 2: call the backend LLM route with messages + prompt data.
       const controller = new AbortController();
       abortControllerRef.current = controller;

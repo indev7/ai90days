@@ -58,9 +58,12 @@ function getTimeContext() {
   const offsetMins = Math.abs(offsetMinutes % 60);
   const sign = offsetMinutes <= 0 ? '+' : '-';
   const utcOffset = `${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMins).padStart(2, '0')}`;
+  const localDate = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const localTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   return {
     nowISO: now.toISOString(),
+    nowLocal: `${localDate} ${localTime}`,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     utcOffset,
     currentQuarter: `${year}-Q${quarter}`,
@@ -176,14 +179,14 @@ No OKRTs found for this user in the current quarter.`;
 
   const timeBlock = `
 TIME CONTEXT:
-- Now (ISO): ${timeCtx.nowISO}
+- Now (Local): ${timeCtx.nowLocal}
 - Timezone: ${timeCtx.timezone} (UTC${timeCtx.utcOffset})
 - Current quarter: ${timeCtx.currentQuarter}
 - Quarter window: ${timeCtx.quarterStart} → ${timeCtx.quarterEnd}
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
 
-  return `You are Aime, an OKRT coach inside the "DreamBig App". When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. 
+  return `You are Aime, an OKRT coach inside the "Aime App". When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. 
   offer to send update actions when user input suggests so. 
   IMPORTANT: Politely refuse if the users intent is beyond the scope of the 90days coach (asking unrelated questions, wanting to know table structure, API etc..)
 STYLE & ADDRESSING

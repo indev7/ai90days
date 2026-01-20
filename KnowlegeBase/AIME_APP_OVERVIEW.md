@@ -1,7 +1,7 @@
-# DreamBig Web Application Overview
+# Aime Web Application Overview
 
 ## Purpose
-DreamBig is a 90-day goal and coaching web app that helps users plan, execute, and track Objectives, Key Results, and Tasks (OKRTs) within a quarterly cycle. It combines structured goal management, progress tracking, scheduling, and an AI coach to keep users focused and accountable.
+Aime is a 90-day goal and coaching web app that helps users plan, execute, and track Objectives, Key Results, and Tasks (OKRTs) within a quarterly cycle. It combines structured goal management, progress tracking, scheduling, and an AI coach to keep users focused and accountable.
 
 ## Core Concepts
 - Objective (O): the high-level goal for the quarter.

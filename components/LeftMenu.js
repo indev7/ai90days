@@ -68,7 +68,7 @@ const getTopMenuItems = (userRole) => {
 };
 
 const bottomMenuItems = [
-  { href: '/aime', label: 'Aime', icon: 'coach', disabled: false },
+  { href: '/aime', label: 'Chat', icon: 'coach', disabled: false },
 ];
 
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {

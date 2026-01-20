@@ -136,11 +136,11 @@
   background-image: url('/AIME.png');
   background-repeat: no-repeat;
   background-size: contain;
-  width: 140px;
-  height: 43px;
+  width: 100px;
+  height: 34px;
   display: inline-block;
-  margin-top: 5px;
-  margin-left: 5px;
+  margin-top: 15px;
+  margin-left: 20px;
 }
 
 :global(html[data-theme="nature"]) .logoIcon {
