@@ -155,7 +155,10 @@ export async function handleAnthropic({
             const fullStr = (parts || []).join('');
             if (!fullStr) continue;
             const toolName = toolNames.get(id);
-              if (toolName === 'emit_okrt_actions' || toolName === 'emit_actions') {
+              if (
+                toolName === 'emit_okrt_actions' ||
+                toolName === 'emit_okrt_share_actions'
+              ) {
                 const actions = extractActionsFromArgs(fullStr);
                 if (actions.length) {
                   actionsPayloads.push(...actions);
@@ -203,7 +206,12 @@ export async function handleAnthropic({
                 toolBuffers.set(block.id, [JSON.stringify(block.input)]);
                 toolHasSeededInput.set(block.id, true);
               }
-              if (block?.name === 'emit_okrt_actions' || block?.name === 'emit_actions') prep();
+              if (
+                block?.name === 'emit_okrt_actions' ||
+                block?.name === 'emit_okrt_share_actions'
+              ) {
+                prep();
+              }
               // Note: We don't block req_more_info here at content_block_start because we need to see the full arguments first
               // The blocking logic is in flushAllTools() where we can inspect what's being requested
             }
@@ -228,7 +236,12 @@ export async function handleAnthropic({
                 arr.push(String(data.delta.partial_json));
                 toolBuffers.set(bufferId, arr);
                 const toolName = toolNames.get(bufferId);
-                if (toolName === 'emit_okrt_actions' || toolName === 'emit_actions') prep();
+                if (
+                  toolName === 'emit_okrt_actions' ||
+                  toolName === 'emit_okrt_share_actions'
+                ) {
+                  prep();
+                }
               }
             }
             break;

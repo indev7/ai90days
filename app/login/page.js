@@ -12,14 +12,14 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
-  const [logoSrc, setLogoSrc] = useState('/DB_logo_light.png');
+  const [logoSrc, setLogoSrc] = useState('/AIME.png');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const currentTheme = getCurrentTheme();
-    setLogoSrc(currentTheme === 'nature' ? '/DB_logo_dark.png' : '/DB_logo_light.png');
+    setLogoSrc('/AIME.png');
   }, []);
 
   const handleChange = (e) => {

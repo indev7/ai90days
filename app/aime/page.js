@@ -91,6 +91,54 @@ const hasMeaningfulValue = (value) => {
   return false;
 };
 
+/** Drop null/undefined values recursively so LLM context stays compact without touching UI state. */
+// PSEUDOCODE: walk arrays/objects and omit nullish entries, preserving other values.
+const pruneNullish = (value) => {
+  if (value === null || value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => pruneNullish(item))
+      .filter((item) => item !== undefined);
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [key, child]) => {
+      const cleaned = pruneNullish(child);
+      if (cleaned !== undefined) {
+        acc[key] = cleaned;
+      }
+      return acc;
+    }, {});
+  }
+  return value;
+};
+
+const truncateDateOnly = (value) => {
+  if (typeof value !== 'string') return value;
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
+};
+
+/** Normalize date fields for LLM payloads without affecting timeBlocks data. */
+// PSEUDOCODE: for non-timeBlocks sections, traverse and truncate due_date to YYYY-MM-DD.
+const normalizeDatesForLLM = (sectionId, value) => {
+  if (value === null || value === undefined) return value;
+  if (sectionId === 'timeBlocks') return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeDatesForLLM(sectionId, item));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).reduce((acc, [key, child]) => {
+      if (key === 'due_date' || key === 'created_at' || key === 'updated_at') {
+        acc[key] = truncateDateOnly(child);
+      } else {
+        acc[key] = normalizeDatesForLLM(sectionId, child);
+      }
+      return acc;
+    }, {});
+  }
+  return value;
+};
+
 /** Construct system prompt payload text plus a fingerprint to detect duplicate retries; called in sendMessage when req_more_info arrives. */
 // PSEUDOCODE: filter requested sections, build <DATA> blocks, and hash the payload into a fingerprint.
 const buildSystemPromptPayload = (reqMoreInfo, mainTree, displayName) => {
@@ -157,7 +205,9 @@ const buildSystemPromptPayload = (reqMoreInfo, mainTree, displayName) => {
   const fingerprintEntries = [];
   let hasData = false;
   for (const entry of merged.values()) {
-    const data = (mainTree || {})[entry.sectionId];
+    const rawData = (mainTree || {})[entry.sectionId];
+    let data = rawData === null || rawData === undefined ? rawData : pruneNullish(rawData);
+    data = normalizeDatesForLLM(entry.sectionId, data);
     if (hasMeaningfulValue(data)) hasData = true;
     const payload = {
       sectionId: entry.sectionId,
@@ -208,6 +258,8 @@ function labelForAction(action) {
     return `Update ${noun}`;
   }
   if (intent === 'DELETE_OKRT') return `Delete ${noun}`;
+  if (intent === 'SHARE_OKRT') return 'Share Objective';
+  if (intent === 'UNSHARE_OKRT') return 'Unshare Objective';
   return `${method || 'POST'} ${noun}`;
 }
 
@@ -216,9 +268,17 @@ function labelForAction(action) {
 function normalizeActions(rawActions = []) {
   return rawActions.map((a, idx) => {
     const idFromPayload = a?.payload?.id;
-    const endpoint = a?.endpoint?.includes('[id]')
+    const baseEndpoint = a?.endpoint?.includes('[id]')
       ? a.endpoint.replace('[id]', idFromPayload || '')
       : a?.endpoint || '/api/okrt';
+    const needsShareQuery =
+      a?.method === 'DELETE' &&
+      baseEndpoint.includes('/share') &&
+      a?.payload?.target &&
+      a?.payload?.share_type;
+    const endpoint = needsShareQuery
+      ? `${baseEndpoint}?target=${encodeURIComponent(a.payload.target)}&type=${encodeURIComponent(a.payload.share_type)}`
+      : baseEndpoint;
     const label = labelForAction(a);
     return {
       key: `act-${idx}-${idFromPayload || Math.random().toString(36).slice(2)}`,
@@ -294,10 +354,22 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
             if (action.body?.type === 'O') description = `Create Objective: ${action.body?.title || ''}`;
             else if (action.body?.type === 'K') description = `Create KR: ${action.body?.description || ''}`;
             else if (action.body?.type === 'T') description = `Create Task: ${action.body?.description || ''}`;
+            else if (action.intent === 'SHARE_OKRT') {
+              description = action.body?.visibility === 'private'
+                ? 'Unshare Objective (make private)'
+                : 'Share Objective';
+            } else if (action.intent === 'UNSHARE_OKRT') {
+              description = action.body?.visibility === 'private'
+                ? 'Unshare Objective (make private)'
+                : 'Unshare Objective';
+            }
           } else if (action.method === 'PUT' || action.method === 'DELETE') {
             description =
               descriptions[action.key] ||
               `${action.method === 'PUT' ? 'Update' : 'Delete'} ${action.body?.title || action.body?.description || 'OKRT'}`;
+            if (action.intent === 'UNSHARE_OKRT') {
+              description = 'Unshare Objective';
+            }
           }
           return (
             <tr key={action.key}>
@@ -413,7 +485,7 @@ export default function AimePage() {
   const { user, isLoading: userLoading } = useUser();
   
   // Subscribe to mainTreeStore to get all OKRTs and store actions
-  const { mainTree } = useMainTree();
+  const { mainTree, refreshMainTree } = useMainTree();
   const { myOKRTs } = mainTree;
   const okrtById = useMemo(
     () => new Map((myOKRTs || []).map((okrt) => [String(okrt.id), okrt])),
@@ -461,6 +533,7 @@ export default function AimePage() {
   const stopRequestedRef = useRef(false);
   const lastPromptFingerprintRef = useRef('');
   const autoRetryCountRef = useRef(0);
+  const duplicateReqMoreInfoRef = useRef(0);
   const accumulatedReqMoreInfoRef = useRef({
     sections: new Map(),
     knowledgeIds: new Set(),
@@ -494,6 +567,7 @@ export default function AimePage() {
       addMessage(userMessage);
       lastPromptFingerprintRef.current = '';
       autoRetryCountRef.current = 0;
+      duplicateReqMoreInfoRef.current = 0;
       outboundMessages = [...messages, userMessage];
     }
 
@@ -658,7 +732,9 @@ export default function AimePage() {
           nextPayload.fingerprint === lastPromptFingerprintRef.current;
         const shouldRetry =
           nextPayload.hasData || nextPayload.hasToolRequest || nextPayload.hasKnowledgeRequest;
-        const shouldBlockForDuplicate = nextPayload.hasData && isDuplicate;
+        const shouldWarnDuplicate =
+          nextPayload.hasData && isDuplicate && duplicateReqMoreInfoRef.current === 0;
+        const shouldBlockForDuplicate = nextPayload.hasData && isDuplicate && !shouldWarnDuplicate;
         const shouldBlockForRetries = exceededRetries;
         if (!shouldRetry || shouldBlockForDuplicate || shouldBlockForRetries) {
           addMessage({
@@ -669,11 +745,20 @@ export default function AimePage() {
           });
         } else {
           autoRetryCountRef.current += 1;
+          if (shouldWarnDuplicate) {
+            duplicateReqMoreInfoRef.current += 1;
+          }
           lastPromptFingerprintRef.current = nextPayload.fingerprint;
+          const duplicateNotice = shouldWarnDuplicate
+            ? 'SYSTEM NOTICE: The previous req_more_info requested sections already present in CONTEXT. Do not call req_more_info again unless new sections are missing; answer using existing context.'
+            : '';
+          const systemPromptData = duplicateNotice
+            ? `${nextPayload.text}\n\n${duplicateNotice}`
+            : nextPayload.text;
           await sendMessage(trimmedContent, {
             skipAddUserMessage: true,
             messageHistoryOverride: nextMessages,
-            systemPromptData: nextPayload.text,
+            systemPromptData,
             forceSend: true
           });
         }
@@ -739,19 +824,40 @@ export default function AimePage() {
       
       const result = await res.json();
       
+      let appliedCacheUpdate = false;
       // Handle cache update if provided by the API
       if (result._cacheUpdate) {
         const { action: cacheAction, data } = result._cacheUpdate;
         
         if (cacheAction === 'addMyOKRT' && data) {
           addMyOKRT(data);
+          appliedCacheUpdate = true;
         } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
           updateMyOKRT(data.id, data.updates);
+          appliedCacheUpdate = true;
         } else if (cacheAction === 'removeMyOKRT' && data?.id) {
           removeMyOKRT(data.id);
+          appliedCacheUpdate = true;
         }
       }
+
+      if (
+        !appliedCacheUpdate &&
+        (action.intent === 'SHARE_OKRT' || action.intent === 'UNSHARE_OKRT') &&
+        action.body?.id &&
+        action.body?.visibility
+      ) {
+        const visibility = action.body.visibility;
+        const sharedGroups =
+          visibility === 'shared'
+            ? (result?.shared_groups || action.body?.shared_groups || action.body?.sharedGroups || [])
+            : [];
+        updateMyOKRT(action.body.id, { visibility, shared_groups: sharedGroups });
+      }
       
+      if (action.intent === 'SHARE_OKRT' || action.intent === 'UNSHARE_OKRT') {
+        await refreshMainTree();
+      }
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ ${action.label} completed successfully!`, timestamp: new Date() });
     } catch (err) {
       console.error('Action error:', err);
@@ -777,18 +883,39 @@ export default function AimePage() {
         
         const result = await res.json();
         
+        let appliedCacheUpdate = false;
         // Handle cache update if provided by the API
         if (result._cacheUpdate) {
           const { action: cacheAction, data } = result._cacheUpdate;
           
           if (cacheAction === 'addMyOKRT' && data) {
             addMyOKRT(data);
+            appliedCacheUpdate = true;
           } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
             updateMyOKRT(data.id, data.updates);
+            appliedCacheUpdate = true;
           } else if (cacheAction === 'removeMyOKRT' && data?.id) {
             removeMyOKRT(data.id);
+            appliedCacheUpdate = true;
           }
         }
+
+        if (
+          !appliedCacheUpdate &&
+          (action.intent === 'SHARE_OKRT' || action.intent === 'UNSHARE_OKRT') &&
+          action.body?.id &&
+          action.body?.visibility
+        ) {
+          const visibility = action.body.visibility;
+          const sharedGroups =
+            visibility === 'shared'
+              ? (result?.shared_groups || action.body?.shared_groups || action.body?.sharedGroups || [])
+              : [];
+          updateMyOKRT(action.body.id, { visibility, shared_groups: sharedGroups });
+        }
+      }
+      if (actions.some((action) => action.intent === 'SHARE_OKRT' || action.intent === 'UNSHARE_OKRT')) {
+        await refreshMainTree();
       }
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ All actions completed successfully!`, timestamp: new Date() });
     } catch (err) {
@@ -819,6 +946,7 @@ export default function AimePage() {
     lastPendingIdRef.current = null;
     lastPromptFingerprintRef.current = '';
     autoRetryCountRef.current = 0;
+    duplicateReqMoreInfoRef.current = 0;
     accumulatedReqMoreInfoRef.current = {
       sections: new Map(),
       knowledgeIds: new Set(),

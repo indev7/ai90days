@@ -23,7 +23,9 @@ export async function handleOpenAI({
   // Build Responses API payload with tools enabled and streaming on.
   const activeTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
   const blockReqMoreInfo = activeTools.some(
-    (tool) => tool?.name === 'emit_okrt_actions' || tool?.name === 'emit_actions'
+    (tool) =>
+      tool?.name === 'emit_okrt_actions' ||
+      tool?.name === 'emit_okrt_share_actions'
   );
   const openaiPayload = {
     model,
@@ -143,7 +145,10 @@ export async function handleOpenAI({
           try {
             const fullStr = (parts || []).join('');
             const toolName = toolNames.get(id);
-            if (toolName === 'emit_okrt_actions' || toolName === 'emit_actions') {
+            if (
+              toolName === 'emit_okrt_actions' ||
+              toolName === 'emit_okrt_share_actions'
+            ) {
               const actions = extractActionsFromArgs(fullStr);
               if (actions.length) {
                 actionsPayloads.push(...actions);
@@ -171,7 +176,10 @@ export async function handleOpenAI({
       const handleFunctionCallItem = (item) => {
         if (!item) return;
         if (item.type !== 'function_call') return;
-        if (item.name === 'emit_okrt_actions' || item.name === 'emit_actions') {
+        if (
+          item.name === 'emit_okrt_actions' ||
+          item.name === 'emit_okrt_share_actions'
+        ) {
           const actions = extractActionsFromArgs(item.arguments || '{}');
           if (actions.length) {
             actionsPayloads.push(...actions);
@@ -237,7 +245,12 @@ export async function handleOpenAI({
               toolBuffers.set(id, []);
               if (type === 'function' && name) toolNames.set(id, name);
             }
-            if (name === 'emit_okrt_actions' || name === 'emit_actions') prep();
+            if (
+              name === 'emit_okrt_actions' ||
+              name === 'emit_okrt_share_actions'
+            ) {
+              prep();
+            }
             if (name === 'req_more_info' && blockReqMoreInfo) {
               sendReqMoreInfoError(
                 'I already have the tool schema I need, so I cannot request more info. Please retry.'
@@ -277,7 +290,12 @@ export async function handleOpenAI({
               arr.push(String(delta));
               toolBuffers.set(item_id, arr);
               const toolName = toolNames.get(item_id);
-              if (toolName === 'emit_okrt_actions' || toolName === 'emit_actions') prep();
+              if (
+                toolName === 'emit_okrt_actions' ||
+                toolName === 'emit_okrt_share_actions'
+              ) {
+                prep();
+              }
             }
             break;
           }

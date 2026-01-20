@@ -36,6 +36,14 @@ const toolMap = new Map([
       description: 'OKRT actions tool schema for create/update/delete operations.',
       fileName: 'ToolSchemas/okrt_actions.json'
     }
+  ],
+  [
+    'emit_okrt_share_actions',
+    {
+      id: 'emit_okrt_share_actions',
+      description: 'OKRT share actions tool schema for share/unshare operations.',
+      fileName: 'ToolSchemas/okrt_share_actions.json'
+    }
   ]
 ]);
 
@@ -237,6 +245,9 @@ domain knowlege on entities, tool schemas and mainTree sections to your context.
 req_more_info must include at least one of: data, domainKnowledge, tools.
 - data.sections[] items must include sectionId only (no paths).
 - Request only the minimal section(s) needed to answer the user.
+!IMPORTANT: Do not request data sections that are already present in the current CONTEXT; if needed sections are present, answer directly.
+!IMPORTANT:If a field is missing from provided data, treat it as null/unknown (not "does not exist").
+!IMPORTANT: Before stating "I don't have that information," first check whether the answer is available in the current CONTEXT; if missing, request only the minimal additional data or KB needed to answer.
 !IMPORTANT: If you request a tool schema that depends on domain rules, include the relevant KB id(s) in the same req_more_info call (e.g., request okrt-domain when requesting emit_okrt_actions).
 !IMPORTANT: Tool arguments must be valid JSON objects only. Do not emit XML/HTML or quoted blobs. If unsure, return a req_more_info and all other tool calls with strict JSON.
 
@@ -283,7 +294,7 @@ CONTEXT - Selected mainTree Sections:
 User Display Name: ${displayName}
 Sections Included: ${sectionNames}
 Section Counts: ${counts.join(', ')}
-Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions tool calls:
+Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions or emit_okrt_share_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
   }
@@ -296,7 +307,7 @@ Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
 CONTEXT - Current User's Information and OKRTs:
 User Display Name: ${displayName}
 Number of Objectives: ${objectives.length}
-Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions tool calls:
+Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions or emit_okrt_share_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has ${objectives.length} objective(s) with ${krCount} key result(s).`
     : `
