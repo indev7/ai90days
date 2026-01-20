@@ -133,17 +133,18 @@
 }
 
 .logoIcon {
-  width: 175px;
-  height: 49px;
-  display: inline-block;
-  background-image: url('/DB_logo_light.png');
+  background-image: url('/AIME.png');
   background-repeat: no-repeat;
-  background-position: center;
   background-size: contain;
+  width: 100px;
+  height: 34px;
+  display: inline-block;
+  margin-top: 15px;
+  margin-left: 20px;
 }
 
 :global(html[data-theme="nature"]) .logoIcon {
-  background-image: url('/DB_logo_dark.png');
+  background-image: url('/AIME.png');
 }
 
 @media (max-width: 500px) {

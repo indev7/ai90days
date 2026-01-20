@@ -41,3 +41,4 @@ Phase1/DB/app.db
 
 # Prisma
 /lib/generated/
+llm_api_req_res.txt

@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { handleOpenAI } from './openAIHelper';
 import { handleOllama } from './ollamaHelper';
 import { handleAnthropic } from './anthropicHelper';
+import fs from 'fs';
+import path from 'path';
 
 /* =========================
    Utility functions
@@ -56,9 +58,12 @@ function getTimeContext() {
   const offsetMins = Math.abs(offsetMinutes % 60);
   const sign = offsetMinutes <= 0 ? '+' : '-';
   const utcOffset = `${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMins).padStart(2, '0')}`;
+  const localDate = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const localTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   return {
     nowISO: now.toISOString(),
+    nowLocal: `${localDate} ${localTime}`,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     utcOffset,
     currentQuarter: `${year}-Q${quarter}`,
@@ -174,14 +179,14 @@ No OKRTs found for this user in the current quarter.`;
 
   const timeBlock = `
 TIME CONTEXT:
-- Now (ISO): ${timeCtx.nowISO}
+- Now (Local): ${timeCtx.nowLocal}
 - Timezone: ${timeCtx.timezone} (UTC${timeCtx.utcOffset})
 - Current quarter: ${timeCtx.currentQuarter}
 - Quarter window: ${timeCtx.quarterStart} → ${timeCtx.quarterEnd}
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
 
-  return `You are Aime, an OKRT coach inside the "DreamBig App". When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. 
+  return `You are Aime, an OKRT coach inside the "Aime App". When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. 
   offer to send update actions when user input suggests so. 
   IMPORTANT: Politely refuse if the users intent is beyond the scope of the 90days coach (asking unrelated questions, wanting to know table structure, API etc..)
 STYLE & ADDRESSING
@@ -228,79 +233,14 @@ ${timeBlock}${contextBlock}`;
    Tool (Responses API shape)
    ========================= */
 function getActionsTool() {
-  const uuidV4 = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$';
-  const genId  = '^gen-[a-z0-9]{8}$';
-
-  return {
-    type: "function",
-    name: "emit_actions",
-    description: "Emit an ordered list of OKRT actions (create, update, delete).",
-    parameters: {
-      type: "object",
-      properties: {
-        actions: {
-          type: "array",
-          minItems: 1,
-          items: {
-            type: "object",
-            required: ["intent", "endpoint", "method", "payload"],
-            properties: {
-              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
-              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
-              method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
-              payload: {
-                type: "object",
-                properties: {
-                  id: {
-                    allOf: [
-                      { anyOf: [
-                          { type: "string", pattern: uuidV4 },
-                          { type: "string", pattern: genId }
-                        ]
-                      }
-                    ]
-                  },
-                  type: { type: "string", enum: ["O","K","T"] },
-                  owner_id: { type: "integer" }, // (server should ignore/overwrite)
-                  parent_id: {
-                    allOf: [
-                      { anyOf: [
-                          { type: "string", pattern: uuidV4 },
-                          { type: "string", pattern: genId }
-                        ]
-                      }
-                    ]
-                  },
-                  description: { type: "string" },
-                  progress:    { type: "number" },
-                  order_index: { type: "integer" },
-                  task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
-                  title: { type: "string" },
-                  area:  { type: "string" },
-                  visibility: { type: "string", enum: ["private","shared"] },
-                  objective_kind: { type: "string", enum: ["committed","stretch"] },
-                  status: { type: "string", enum: ["A","C","R"] },
-                  cycle_qtr: { type: "string" },
-                  kr_target_number:   { type: "number" },
-                  kr_unit:            { type: "string", enum: ["%","$","count","hrs"] },
-                  kr_baseline_number: { type: "number" },
-                  weight:     { type: "number" },
-                  due_date:   { type: "string" },
-                  recurrence_json: { type: "string" },
-                  blocked_by: { type: "string" },
-                  repeat: { type: "string", enum: ["Y","N"] }
-                },
-                additionalProperties: true
-              }
-            },
-            additionalProperties: true
-          }
-        }
-      },
-      required: ["actions"],
-      additionalProperties: true
-    }
-  };
+  const filePath = path.join(process.cwd(), 'ToolSchemas/okrt_actions.json');
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Failed to load tool schema file:', filePath, error);
+    return null;
+  }
 }
 
 
@@ -336,7 +276,6 @@ export async function POST(request) {
     const userId = parseInt(session.sub, 10);
 
     const requestBody = await request.json();
-    logHumanReadable('COMPLETE API REQUEST JSON', requestBody);
     
     const { messages, okrtContext: clientOkrtContext } = requestBody;
     if (!messages || !Array.isArray(messages)) {

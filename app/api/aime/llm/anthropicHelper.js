@@ -1,8 +1,9 @@
 export async function handleAnthropic({
   llmMessages,
   logHumanReadable,
-  getActionsTool,
+  tools,
   extractActionsFromArgs,
+  extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -25,26 +26,21 @@ export async function handleAnthropic({
     }))
     .filter(m => m.content[0].text.trim().length > 0);
 
-  // Expose a single tool (if defined) so Claude can return structured actions.
-  const actionsTool = getActionsTool();
-  const tools = actionsTool
-    ? [
-        {
-          name: actionsTool.name,
-          description: actionsTool.description,
-          input_schema: actionsTool.parameters
-        }
-      ]
-    : [];
-
+  // Expose tools so Claude can return structured actions or req_more_info.
+  const activeTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
+  const toolsPayload = activeTools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    input_schema: tool.parameters
+  }));
   // Streamed response is turned into JSONL chunks for the coach page (/app/coach/page.js).
   const payload = {
     model,
     max_tokens: maxTokens,
     system: systemText,
     messages,
-    tools,
-    tool_choice: tools.length ? { type: 'auto' } : undefined,
+    tools: toolsPayload,
+    tool_choice: toolsPayload.length ? { type: 'auto' } : undefined,
     stream: true
   };
   const requestBody = JSON.stringify(payload);
@@ -104,12 +100,30 @@ export async function handleAnthropic({
       const toolIndexToId = new Map(); // index(string) -> id
       const toolHasSeededInput = new Map(); // id -> boolean
       let actionsPayloads = [];      // aggregated actions
+      let latestReqMoreInfo = null;
+      let hasSentReqMoreInfo = false;
+      let hasReqMoreInfoError = false;
       let rawResponse = '';
       let hasLoggedRawResponse = false;
 
       const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
+      const sendReqMoreInfo = () => {
+        if (hasSentReqMoreInfo || !latestReqMoreInfo || hasReqMoreInfoError) return;
+        send({ type: 'req_more_info', data: latestReqMoreInfo });
+        hasSentReqMoreInfo = true;
+      };
+      const sendReqMoreInfoError = (reason) => {
+        if (hasReqMoreInfoError) return;
+        hasReqMoreInfoError = true;
+        send({
+          type: 'content',
+          data:
+            reason ||
+            'Sorry, I could not process the req_more_info tool call because its arguments were invalid. Please retry.'
+        });
+      };
       const logRawResponse = () => {
         if (hasLoggedRawResponse) return;
         void logLlmApiInteraction?.({
@@ -140,10 +154,23 @@ export async function handleAnthropic({
           try {
             const fullStr = (parts || []).join('');
             if (!fullStr) continue;
-            const actions = extractActionsFromArgs(fullStr);
-            if (actions.length) {
-              actionsPayloads.push(...actions);
-            }
+            const toolName = toolNames.get(id);
+              if (
+                toolName === 'emit_okrt_actions' ||
+                toolName === 'emit_okrt_share_actions'
+              ) {
+                const actions = extractActionsFromArgs(fullStr);
+                if (actions.length) {
+                  actionsPayloads.push(...actions);
+                }
+              } else if (toolName === 'req_more_info') {
+                const info = extractReqMoreInfoFromArgs?.(fullStr);
+                if (info?.__invalid) {
+                  sendReqMoreInfoError();
+                } else if (info) {
+                  latestReqMoreInfo = info;
+                }
+              }
           } catch (e) {
             console.error('Tool JSON parse error for', id, e);
           }
@@ -155,6 +182,7 @@ export async function handleAnthropic({
         if (payloadStr === '[DONE]') {
           flushAllTools();
           if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+          sendReqMoreInfo();
           logRawResponse();
           send({ type: 'done' });
           return 'CLOSE';
@@ -178,7 +206,14 @@ export async function handleAnthropic({
                 toolBuffers.set(block.id, [JSON.stringify(block.input)]);
                 toolHasSeededInput.set(block.id, true);
               }
-              prep();
+              if (
+                block?.name === 'emit_okrt_actions' ||
+                block?.name === 'emit_okrt_share_actions'
+              ) {
+                prep();
+              }
+              // Note: We don't block req_more_info here at content_block_start because we need to see the full arguments first
+              // The blocking logic is in flushAllTools() where we can inspect what's being requested
             }
             break;
           }
@@ -200,7 +235,13 @@ export async function handleAnthropic({
                 const arr = toolBuffers.get(bufferId) || [];
                 arr.push(String(data.delta.partial_json));
                 toolBuffers.set(bufferId, arr);
-                prep();
+                const toolName = toolNames.get(bufferId);
+                if (
+                  toolName === 'emit_okrt_actions' ||
+                  toolName === 'emit_okrt_share_actions'
+                ) {
+                  prep();
+                }
               }
             }
             break;
@@ -208,11 +249,13 @@ export async function handleAnthropic({
           case 'content_block_stop': {
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendReqMoreInfo();
             break;
           }
           case 'message_stop': {
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });
             return 'CLOSE';
@@ -225,6 +268,7 @@ export async function handleAnthropic({
           case 'error': {
             console.error('Anthropic stream error:', data);
             logRawResponse();
+            sendReqMoreInfo();
             send({ type: 'done' });
             return 'CLOSE';
           }
@@ -244,6 +288,7 @@ export async function handleAnthropic({
               if (res === 'CLOSE') break;
             }
             logRawResponse();
+            sendReqMoreInfo();
             send({ type: 'done' });
             controller.close();
             break;

@@ -7,7 +7,7 @@ import HamburgerButton from './HamburgerButton';
 import AvatarDropdown from './AvatarDropdown';
 import LoadingIndicators from './LoadingIndicators';
 import styles from './HeaderBar.module.css';
-import { useCoach } from '@/contexts/CoachContext';
+import useAimeStore from '@/store/aimeStore';
 import useVoiceRecording from '@/hooks/useVoiceRecording';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
@@ -48,7 +48,7 @@ export default function HeaderBar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isLoading, setPendingMessage } = useCoach();
+  const { isLoading, setPendingMessage } = useAimeStore();
   const unreadFromStore = useMainTreeStore(
     (state) => state.mainTree.notifications.filter((notification) => !notification.is_read).length
   );
@@ -146,8 +146,8 @@ export default function HeaderBar({
     if (!trimmed || isLoading) return;
     setPendingMessage({ id: Date.now(), text: trimmed });
     setQuery('');
-    if (pathname !== '/coach') {
-      router.push('/coach');
+    if (pathname !== '/aime') {
+      router.push('/aime');
     }
   };
 
@@ -200,7 +200,7 @@ export default function HeaderBar({
         </div>
 
         <div className={styles.center}>
-          {pathname !== '/coach' && (
+          {pathname !== '/aime' && (
             <form className={styles.searchForm} onSubmit={handleSubmit}>
               <div className={styles.searchBar}>
                 <input
@@ -236,7 +236,7 @@ export default function HeaderBar({
                   type="submit"
                   className={styles.searchIconButton}
                   disabled={isLoading || !query.trim()}
-                  aria-label="Send to coach"
+                  aria-label="Send to Aime"
                   title="Ask Aime"
                 >
                   <FiSearch size={20} />
