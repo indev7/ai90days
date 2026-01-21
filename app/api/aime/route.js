@@ -241,6 +241,7 @@ req_more_info must include at least one of: data, domainKnowledge, tools.
 !IMPORTANT: Do not request data sections that are already present in the current CONTEXT; if needed sections are present, answer directly.
 !IMPORTANT:If a field is missing from provided data, treat it as null/unknown (not "does not exist").
 !IMPORTANT: Before stating "I don't have that information," first check whether the answer is available in the current CONTEXT; if missing, request only the minimal additional data or KB needed to answer.
+!IMPORTANT: For navigation, page locations, or app feature questions, if the answer is not in the current CONTEXT, call req_more_info with domainKnowledge ids (use "aime-overview" first) instead of saying you don't know.
 !IMPORTANT: If you request a tool schema that depends on domain rules, include the relevant KB id(s) in the same req_more_info call (e.g., request okrt-domain when requesting emit_okrt_actions).
 !IMPORTANT: Tool arguments must be valid JSON objects only. Do not emit XML/HTML or quoted blobs. If unsure, return a req_more_info and all other tool calls with strict JSON.
 
