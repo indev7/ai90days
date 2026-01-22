@@ -97,7 +97,40 @@ export default function DailyInspirationCard() {
                 style={{
                   backgroundImage: `url(${backgroundImageUrl})`
                 }}
-              />
+              >
+                <div className={styles.aiLabel} aria-label="Includes Content by AI">
+                  <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 0 104 30">
+                    <rect
+                      x="0.6"
+                      y="0.6"
+                      width="102.8"
+                      height="28.8"
+                      rx="14.4"
+                      ry="14.4"
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth="1.2"
+                    />
+                    <text
+                      x="52"
+                      y="12.4"
+                      textAnchor="middle"
+                      fontFamily="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+                      fontSize="9.2"
+                      fontWeight="600"
+                      letterSpacing="0.1"
+                      fill="#FFF"
+                    >
+                      <tspan x="52" dy="0">
+                        AI Generated
+                      </tspan>
+                      <tspan x="52" dy="9.0">
+                        Content Included
+                      </tspan>
+                    </text>
+                  </svg>
+                </div>
+              </div>
             )}
             <button
               className={styles.closeBtn}
