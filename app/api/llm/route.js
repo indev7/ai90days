@@ -1,6 +1,11 @@
 // app/api/llm/route.js
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { handleOpenAI } from './openAIHelper';
+import { handleOllama } from './ollamaHelper';
+import { handleAnthropic } from './anthropicHelper';
+import fs from 'fs';
+import path from 'path';
 
 /* =========================
    Utility functions
@@ -53,9 +58,12 @@ function getTimeContext() {
   const offsetMins = Math.abs(offsetMinutes % 60);
   const sign = offsetMinutes <= 0 ? '+' : '-';
   const utcOffset = `${sign}${String(offsetHours).padStart(2, '0')}:${String(offsetMins).padStart(2, '0')}`;
+  const localDate = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const localTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   return {
     nowISO: now.toISOString(),
+    nowLocal: `${localDate} ${localTime}`,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     utcOffset,
     currentQuarter: `${year}-Q${quarter}`,
@@ -171,14 +179,14 @@ No OKRTs found for this user in the current quarter.`;
 
   const timeBlock = `
 TIME CONTEXT:
-- Now (ISO): ${timeCtx.nowISO}
+- Now (Local): ${timeCtx.nowLocal}
 - Timezone: ${timeCtx.timezone} (UTC${timeCtx.utcOffset})
 - Current quarter: ${timeCtx.currentQuarter}
 - Quarter window: ${timeCtx.quarterStart} → ${timeCtx.quarterEnd}
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
 
-  return `You are Aime, an OKRT coach inside the "DreamBig App". When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. 
+  return `You are Aime, an OKRT coach inside the "Aime App". When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. 
   offer to send update actions when user input suggests so. 
   IMPORTANT: Politely refuse if the users intent is beyond the scope of the 90days coach (asking unrelated questions, wanting to know table structure, API etc..)
 STYLE & ADDRESSING
@@ -225,79 +233,14 @@ ${timeBlock}${contextBlock}`;
    Tool (Responses API shape)
    ========================= */
 function getActionsTool() {
-  const uuidV4 = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$';
-  const genId  = '^gen-[a-z0-9]{8}$';
-
-  return {
-    type: "function",
-    name: "emit_actions",
-    description: "Emit an ordered list of OKRT actions (create, update, delete).",
-    parameters: {
-      type: "object",
-      properties: {
-        actions: {
-          type: "array",
-          minItems: 1,
-          items: {
-            type: "object",
-            required: ["intent", "endpoint", "method", "payload"],
-            properties: {
-              intent:   { type: "string", enum: ["CREATE_OKRT", "UPDATE_OKRT", "DELETE_OKRT"] },
-              endpoint: { type: "string", enum: ["/api/okrt", "/api/okrt/[id]"] },
-              method:   { type: "string", enum: ["POST", "PUT", "DELETE"] },
-              payload: {
-                type: "object",
-                properties: {
-                  id: {
-                    allOf: [
-                      { anyOf: [
-                          { type: "string", pattern: uuidV4 },
-                          { type: "string", pattern: genId }
-                        ]
-                      }
-                    ]
-                  },
-                  type: { type: "string", enum: ["O","K","T"] },
-                  owner_id: { type: "integer" }, // (server should ignore/overwrite)
-                  parent_id: {
-                    allOf: [
-                      { anyOf: [
-                          { type: "string", pattern: uuidV4 },
-                          { type: "string", pattern: genId }
-                        ]
-                      }
-                    ]
-                  },
-                  description: { type: "string" },
-                  progress:    { type: "number" },
-                  order_index: { type: "integer" },
-                  task_status: { type: "string", enum: ["todo","in_progress","done","blocked"] },
-                  title: { type: "string" },
-                  area:  { type: "string" },
-                  visibility: { type: "string", enum: ["private","shared"] },
-                  objective_kind: { type: "string", enum: ["committed","stretch"] },
-                  status: { type: "string", enum: ["A","C","R"] },
-                  cycle_qtr: { type: "string" },
-                  kr_target_number:   { type: "number" },
-                  kr_unit:            { type: "string", enum: ["%","$","count","hrs"] },
-                  kr_baseline_number: { type: "number" },
-                  weight:     { type: "number" },
-                  due_date:   { type: "string" },
-                  recurrence_json: { type: "string" },
-                  blocked_by: { type: "string" },
-                  repeat: { type: "string", enum: ["Y","N"] }
-                },
-                additionalProperties: true
-              }
-            },
-            additionalProperties: true
-          }
-        }
-      },
-      required: ["actions"],
-      additionalProperties: true
-    }
-  };
+  const filePath = path.join(process.cwd(), 'ToolSchemas/okrt_actions.json');
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Failed to load tool schema file:', filePath, error);
+    return null;
+  }
 }
 
 
@@ -325,6 +268,7 @@ function extractActionsFromArgs(argsStr) {
    ========================= */
 export async function POST(request) {
   try {
+    // LLM step 3 (server): validate session and incoming payload from the client.
     const session = await getSession();
     if (!session?.sub) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -332,7 +276,6 @@ export async function POST(request) {
     const userId = parseInt(session.sub, 10);
 
     const requestBody = await request.json();
-    logHumanReadable('COMPLETE API REQUEST JSON', requestBody);
     
     const { messages, okrtContext: clientOkrtContext } = requestBody;
     if (!messages || !Array.isArray(messages)) {
@@ -356,358 +299,31 @@ export async function POST(request) {
       ...messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
     ];
 
+    // LLM step 4 (server): select provider and stream the model response back to the client.
     const provider = process.env.LLM_PROVIDER || 'ollama';
 
     /* ===== OLLAMA (chat API + streaming) ===== */
     if (provider === 'ollama') {
-      const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-      const model = process.env.LLM_MODEL_NAME || process.env.LLM_CHAT_MODEL || 'llama3:latest';
-
-      const ollamaPayload = { model, messages: llmMessages, stream: true };
-      logHumanReadable('OLLAMA API PAYLOAD', ollamaPayload);
-
-      const response = await fetch(`${ollamaUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ollamaPayload)
-      });
-      if (!response.ok) throw new Error(`Ollama API error: ${response.status}`);
-
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        async start(controller) {
-          const reader = response.body.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
-                controller.close();
-                break;
-              }
-              const chunk = new TextDecoder().decode(value);
-              const lines = chunk.split('\n').filter(l => l.trim());
-              for (const line of lines) {
-                try {
-                  const data = JSON.parse(line);
-                  if (data.message?.content) {
-                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'content', data: data.message.content }) + '\n'));
-                  }
-                  if (data.done) {
-                    controller.enqueue(encoder.encode(JSON.stringify({ type: 'done' }) + '\n'));
-                  }
-                } catch (e) {
-                  console.error('Ollama chunk parse error:', e);
-                }
-              }
-            }
-          } catch (err) {
-            console.error('Ollama streaming error:', err);
-            controller.error(err);
-          }
-        }
-      });
-
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        }
-      });
+      return handleOllama({ llmMessages, logHumanReadable });
     }
 
     /* ===== OPENAI (Responses API + tools) ===== */
     if (provider === 'openai') {
-      const apiKey = process.env.OPENAI_API_KEY || process.env.OPEN_AI_API_KEY;
-      const model = process.env.LLM_MODEL_NAME || 'gpt-4o-mini';
-      if (!apiKey) throw new Error('OpenAI API key not configured');
-
-      // Convert ChatCompletion-style messages -> Responses input
-      const input = llmMessages.map(m => {
-        const role = m.role === 'assistant' ? 'assistant' : (m.role === 'system' ? 'system' : 'user');
-        const partType = role === 'assistant' ? 'output_text' : 'input_text';
-        return { role, content: [{ type: partType, text: String(m.content ?? '') }] };
+      return handleOpenAI({
+        llmMessages,
+        logHumanReadable,
+        getActionsTool,
+        extractActionsFromArgs
       });
+    }
 
-      const openaiPayload = { model, input, tools: [getActionsTool()], tool_choice: "auto", stream: true };
-      logHumanReadable('OPENAI API PAYLOAD', openaiPayload);
-
-      const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(openaiPayload)
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('OpenAI API Error Details:', errorBody);
-        throw new Error(`OpenAI API error: ${response.status} - ${errorBody}`);
-      }
-
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        async start(controller) {
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-
-          // Proper SSE framing: collect multi-line data blocks until a blank line ends the event
-          let pendingEvent = null;
-          let dataLines = [];
-          let carry = '';
-          let sentPreparing = false;
-
-          const toolBuffers = new Map(); // id -> string[]
-          const toolNames = new Map();   // id -> name
-          let actionsPayloads = [];      // aggregated
-          
-          // Logging variables
-          let fullTextResponse = '';
-          let hasLoggedTextResponse = false;
-
-          const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
-          const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
-          const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
-
-          const flushAllTools = () => {
-            for (const [id, parts] of toolBuffers.entries()) {
-              try {
-                const fullStr = (parts || []).join('');
-                const actions = extractActionsFromArgs(fullStr);
-                if (actions.length) {
-                  actionsPayloads.push(...actions);
-                }
-              } catch (e) {
-                console.error('Tool JSON parse error for', id, e);
-              }
-            }
-            actionsPayloads = dedupe(actionsPayloads);
-          };
-
-          const handleFunctionCallItem = (item) => {
-            if (!item) return;
-            if (item.type === 'function_call' && item.name === 'emit_actions') {
-              const actions = extractActionsFromArgs(item.arguments || '{}');
-              if (actions.length) {
-                actionsPayloads.push(...actions);
-              }
-            }
-          };
-
-          const handleResponseCompletedOutput = (payloadObj) => {
-            const out = payloadObj?.response?.output;
-            if (Array.isArray(out)) {
-              for (const item of out) handleFunctionCallItem(item);
-            }
-          };
-
-          const handleEvent = (eventName, payloadStr) => {
-            if (payloadStr === '[DONE]') {
-              flushAllTools();
-              if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
-              send({ type: 'done' });
-              return 'CLOSE';
-            }
-
-            let data;
-            try { data = JSON.parse(payloadStr); } catch { data = payloadStr; }
-
-            switch (eventName) {
-              case 'response.output_text.delta': {
-                const textDelta = typeof data === 'string' ? (() => {
-                  try { const inner = JSON.parse(data); return inner?.delta ?? data; } catch { return data; }
-                })() : (data?.delta ?? '');
-                if (textDelta) {
-                  fullTextResponse += textDelta;
-                  send({ type: 'content', data: textDelta });
-                }
-                break;
-              }
-              case 'response.output_text.done': {
-                // Log complete text response when text generation is done
-                if (fullTextResponse.trim() && !hasLoggedTextResponse) {
-                  console.log('=== OPENAI FULL TEXT RESPONSE ===');
-                  console.log(fullTextResponse);
-                  console.log('=== END OPENAI TEXT RESPONSE ===');
-                  hasLoggedTextResponse = true;
-                }
-                break;
-              }
-
-              case 'response.tool_call.created': {
-                const { id, type, name } = (typeof data === 'object' && data) || {};
-                if (id) {
-                  toolBuffers.set(id, []);
-                  if (type === 'function' && name) toolNames.set(id, name);
-                }
-                prep();
-                break;
-              }
-              case 'response.tool_call.delta': {
-                const { id, delta } = (typeof data === 'object' && data) || {};
-                if (id && delta?.arguments != null) {
-                  const arr = toolBuffers.get(id) || [];
-                  arr.push(String(delta.arguments));
-                  toolBuffers.set(id, arr);
-                }
-                break;
-              }
-              case 'response.tool_call.completed': {
-                const { id, name, arguments: finalArgs } = (typeof data === 'object' && data) || {};
-                if (id && finalArgs != null) toolBuffers.set(id, [String(finalArgs)]);
-                if (id && name) toolNames.set(id, name);
-                flushAllTools();
-                if (actionsPayloads.length) {
-                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
-                  console.log(JSON.stringify(actionsPayloads, null, 2));
-                  console.log('=== END OPENAI TOOL RESPONSE ===');
-                  prep();
-                  send({ type: 'actions', data: actionsPayloads });
-                }
-                break;
-              }
-
-              // v2 style
-              case 'response.function_call_arguments.delta': {
-                const { item_id, delta } = (typeof data === 'object' && data) || {};
-                if (item_id && delta != null) {
-                  const arr = toolBuffers.get(item_id) || [];
-                  arr.push(String(delta));
-                  toolBuffers.set(item_id, arr);
-                  prep();
-                }
-                break;
-              }
-              case 'response.function_call_arguments.done': {
-                const { item_id, arguments: finalArgs } = (typeof data === 'object' && data) || {};
-                if (item_id && finalArgs != null) toolBuffers.set(item_id, [String(finalArgs)]);
-                flushAllTools();
-                if (actionsPayloads.length) {
-                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
-                  console.log(JSON.stringify(actionsPayloads, null, 2));
-                  console.log('=== END OPENAI TOOL RESPONSE ===');
-                  prep();
-                  send({ type: 'actions', data: actionsPayloads });
-                }
-                break;
-              }
-
-              // Some models send function call as an output item
-              case 'response.output_item.done': {
-                const item = (typeof data === 'object' && (data.item || data)) || null;
-                handleFunctionCallItem(item);
-                if (actionsPayloads.length) {
-                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
-                  console.log(JSON.stringify(dedupe(actionsPayloads), null, 2));
-                  console.log('=== END OPENAI TOOL RESPONSE ===');
-                  prep();
-                  send({ type: 'actions', data: dedupe(actionsPayloads) });
-                }
-                break;
-              }
-
-              case 'response.completed': {
-                if (typeof data === 'object' && data) {
-                  handleResponseCompletedOutput(data);
-                }
-                flushAllTools();
-                if (actionsPayloads.length) {
-                  console.log('=== OPENAI COMPLETE TOOL RESPONSE ===');
-                  console.log(JSON.stringify(dedupe(actionsPayloads), null, 2));
-                  console.log('=== END OPENAI TOOL RESPONSE ===');
-                  prep();
-                  send({ type: 'actions', data: dedupe(actionsPayloads) });
-                }
-                // Log complete text response if not already logged
-                if (fullTextResponse.trim() && !hasLoggedTextResponse) {
-                  console.log('=== OPENAI FULL TEXT RESPONSE ===');
-                  console.log(fullTextResponse);
-                  console.log('=== END OPENAI TEXT RESPONSE ===');
-                }
-                send({ type: 'done' });
-                return 'CLOSE';
-              }
-
-              case 'response.error': {
-                console.error('Responses stream error:', data);
-                flushAllTools();
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
-                send({ type: 'done' });
-                return 'CLOSE';
-              }
-
-              default: break;
-            }
-            return 'CONTINUE';
-          };
-
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                // flush any buffered event
-                if (pendingEvent && dataLines.length) {
-                  const joined = dataLines.join('\n');
-                  const res = handleEvent(pendingEvent, joined);
-                  if (res === 'CLOSE') break;
-                }
-                flushAllTools();
-                if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
-                send({ type: 'done' });
-                controller.close();
-                break;
-              }
-
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = (carry + chunk).split(/\r?\n/);
-              carry = lines.pop() || '';
-
-              for (const line of lines) {
-                if (line.startsWith('event:')) {
-                  // finalize previous event
-                  if (pendingEvent && dataLines.length) {
-                    const joined = dataLines.join('\n');
-                    const res = handleEvent(pendingEvent, joined);
-                    if (res === 'CLOSE') {
-                      controller.close();
-                      return;
-                    }
-                  }
-                  pendingEvent = line.slice(6).trim();
-                  dataLines = [];
-                  continue;
-                }
-                if (line.startsWith('data:')) { dataLines.push(line.slice(5)); continue; }
-                if (line === '') {
-                  if (pendingEvent) {
-                    const joined = dataLines.join('\n');
-                    const res = handleEvent(pendingEvent, joined);
-                    pendingEvent = null;
-                    dataLines = [];
-                    if (res === 'CLOSE') {
-                      controller.close();
-                      return;
-                    }
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.error('OpenAI streaming error:', err);
-            controller.error(err);
-          }
-        }
-      });
-
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        }
+    /* ===== ANTHROPIC (Messages API + streaming) ===== */
+    if (provider === 'anthropic') {
+      return handleAnthropic({
+        llmMessages,
+        logHumanReadable,
+        getActionsTool,
+        extractActionsFromArgs
       });
     }
 

@@ -13,7 +13,7 @@ const topMenuItems = [
 ];
 
 const bottomMenuItems = [
-  { href: '/coach', label: 'Coach', icon: 'coach', disabled: true },
+  { href: '/aime', label: 'Aime', icon: 'coach', disabled: false },
   { href: '/notifications', label: 'Notifications', icon: 'notifications', disabled: true },
 ];
 

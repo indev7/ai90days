@@ -12,14 +12,14 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
-  const [logoSrc, setLogoSrc] = useState('/DB_logo_light.png');
+  const [logoSrc, setLogoSrc] = useState('/aime_profile.png');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const currentTheme = getCurrentTheme();
-    setLogoSrc(currentTheme === 'nature' ? '/DB_logo_dark.png' : '/DB_logo_light.png');
+    setLogoSrc('/aime_profile.png');
   }, []);
 
   const handleChange = (e) => {
@@ -85,13 +85,13 @@ export default function LoginPage() {
         <div className={styles.logoWrap}>
           <img
             src={logoSrc}
-            alt="DreamBig"
+            alt="Aime"
             className={styles.logo}
           />
         </div>
         <div className={styles.header}>
           <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.subtitle}>Sign in to your DreamBig account</p>
+          <p className={styles.subtitle}>Sign in to your Aime account</p>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -163,13 +163,12 @@ export default function LoginPage() {
         </button>
 
         <div className={styles.footer}>
-          {/* Signup link intentionally disabled */}
-          {/* <p className={styles.footerText}>
+          <p className={styles.footerText}>
             Don't have an account?{' '}
             <Link href="/signup" className={styles.footerLink}>
               Sign up
             </Link>
-          </p> */}
+          </p>
         </div>
       </div>
     </div>

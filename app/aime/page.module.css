@@ -526,6 +526,85 @@
   min-width: 70px;
 }
 
+.stopButton {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--muted-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 11;
+  transform: translateY(-50%);
+}
+
+.resetButton {
+  position: absolute;
+  right: 52px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--surface-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 11;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transform: translateY(-50%);
+}
+
+.resetButton:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stopButton:hover:not(:disabled) {
+  border-color: var(--accent-color);
+}
+
+.stopButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stopButtonActive {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.12);
+}
+
+.stopIcon {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--border-light);
+}
+
+.stopButtonActive .stopIcon {
+  background: var(--accent-color);
+  animation: stopIconPulse 1s ease-in-out infinite;
+}
+
+@keyframes stopIconPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
 .sendButton:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
@@ -587,6 +666,10 @@
   
   .mobileSendButton {
     display: flex;
+  }
+
+  .stopButton {
+    right: 52px;
   }
   
   .sendButton {

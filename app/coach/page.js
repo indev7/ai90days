@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCoach } from '@/contexts/CoachContext';
 import { useUser } from '@/hooks/useUser';
@@ -297,7 +297,7 @@ function normalizeActions(rawActions = []) {
 
 /* ---------- components ---------- */
 
-function ActionButtons({ actions, onActionClick, onRunAll }) {
+function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
   if (!actions || actions.length === 0) return null;
   const [descriptions, setDescriptions] = useState({});
   const [disabledButtons, setDisabledButtons] = useState({});
@@ -308,7 +308,7 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
       const newDescriptions = {};
       for (const action of actions) {
         if ((action.method === 'PUT' || action.method === 'DELETE') && action.body?.id) {
-          const okrt = await fetchOKRTById(action.body.id);
+          const okrt = okrtById.get(String(action.body.id));
           if (okrt) {
             let typeLabel = 'OKRT';
             if (okrt.type === 'T') typeLabel = 'Task';
@@ -391,38 +391,9 @@ function ActionButtons({ actions, onActionClick, onRunAll }) {
   );
 }
 
-function HtmlFormHandler({ htmlContent, onFormSubmit }) {
-  const containerRef = useRef(null);
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const handleFormSubmit = async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      let endpoint = form.dataset.endpoint;
-      const method = form.dataset.method || 'POST';
-      const formData = new FormData(form);
-      const data = {};
-      for (const [key, value] of formData.entries()) data[key] = value;
-      if (method === 'POST' && data.type && endpoint !== '/api/okrt') endpoint = '/api/okrt';
-      onFormSubmit(endpoint, method, data);
-    };
-    const forms = containerRef.current.querySelectorAll('form.coach-form');
-    forms.forEach((form) => form.addEventListener('submit', handleFormSubmit));
-    return () => forms.forEach((form) => form.removeEventListener('submit', handleFormSubmit));
-  }, [htmlContent, onFormSubmit]);
-  return (
-    <div ref={containerRef} className={styles.actionForms} dangerouslySetInnerHTML={{ __html: htmlContent }} />
-  );
-}
-
-function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQuickReply }) {
+function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickReply }) {
   const isUser = message.role === 'user';
-
-  const htmlMatch = message.content?.match(/<ACTION_HTML>([\s\S]*?)<\/ACTION_HTML>/);
-  const textOnly = htmlMatch
-    ? message.content.replace(/<ACTION_HTML>[\s\S]*?<\/ACTION_HTML>/g, '').trim()
-    : message.content;
-  const htmlContent = htmlMatch ? htmlMatch[1] : null;
+  const textOnly = message.content;
 
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
@@ -459,39 +430,16 @@ function Message({ message, onActionClick, onRunAll, onRetry, onFormSubmit, onQu
             {!isUser && message.actions?.length > 0 && (
               <ActionButtons
                 actions={message.actions}
+                okrtById={okrtById}
                 onActionClick={onActionClick}
                 onRunAll={onRunAll}
               />
-            )}
-
-            {/* Legacy HTML fallback */}
-            {!isUser && htmlContent && (
-              <HtmlFormHandler htmlContent={htmlContent} onFormSubmit={onFormSubmit} />
             )}
           </>
         )}
       </div>
     </div>
   );
-}
-
-/* ---------- helpers for API ---------- */
-
-async function fetchOKRTById(id) {
- try {
-   const res = await fetch(`/api/okrt/${id}`, {
-     method: 'GET',
-     headers: { 'Content-Type': 'application/json' },
-   });
-   if (!res.ok) {
-     throw new Error(`Failed to fetch OKRT with id ${id}. Status: ${res.status}`);
-   }
-   const data = await res.json();
-   return data?.okrt || null;
- } catch (err) {
-   console.error('fetchOKRTById error:', err);
-   return null;
- }
 }
 
 /* ---------- Page ---------- */
@@ -510,13 +458,17 @@ export default function CoachPage() {
   // Subscribe to mainTreeStore to get all OKRTs and store actions
   const { mainTree } = useMainTree();
   const { myOKRTs } = mainTree;
+  const okrtById = useMemo(
+    () => new Map((myOKRTs || []).map((okrt) => [String(okrt.id), okrt])),
+    [myOKRTs]
+  );
   const preferredVoice = mainTree?.preferences?.preferred_voice;
   const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
   
-  // Voice recording hook with callback
+  // Voice-to-text: microphone capture + transcription callback from useVoiceRecording
   const handleTranscription = (text) => {
     if (text && text.trim()) {
       setInput(text);
@@ -550,6 +502,7 @@ export default function CoachPage() {
   const sendMessage = async (messageContent = input) => {
     if (!messageContent.trim() || isLoading) return;
 
+    // LLM step 1: push user message into local chat state.
     const userMessage = {
       id: Date.now(),
       role: 'user',
@@ -563,7 +516,7 @@ export default function CoachPage() {
     setLLMActivity(true);
 
     try {
-      // Prepare OKRT context from mainTreeStore
+      // LLM step 2: build OKRT context to send with the prompt.
       const displayName = user?.displayName || 'User';
       const okrtContext = {
         user: { displayName },
@@ -582,6 +535,7 @@ export default function CoachPage() {
         })
       };
 
+      // LLM step 3: call the backend LLM route with messages + context.
       const response = await fetch('/api/llm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -622,6 +576,7 @@ export default function CoachPage() {
         }
       };
 
+      // LLM step 4: stream response chunks and update the UI as text arrives.
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -756,40 +711,6 @@ export default function CoachPage() {
     }
   };
 
-  const handleFormSubmit = async (endpoint, method, data) => {
-    setLoading(true);
-    try {
-      const res = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: method === 'DELETE' ? undefined : JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      
-      const result = await res.json();
-      
-      // Handle cache update if provided by the API
-      if (result._cacheUpdate) {
-        const { action: cacheAction, data: cacheData } = result._cacheUpdate;
-        
-        if (cacheAction === 'addMyOKRT' && cacheData) {
-          addMyOKRT(cacheData);
-        } else if (cacheAction === 'updateMyOKRT' && cacheData?.id && cacheData?.updates) {
-          updateMyOKRT(cacheData.id, cacheData.updates);
-        } else if (cacheAction === 'removeMyOKRT' && cacheData?.id) {
-          removeMyOKRT(cacheData.id);
-        }
-      }
-      
-      addMessage({ id: Date.now(), role: 'assistant', content: `✅ Request completed successfully!`, timestamp: new Date() });
-    } catch (error) {
-      console.error('Form submission error:', error);
-      addMessage({ id: Date.now(), role: 'assistant', content: `❌ ${error.message}`, error: true, timestamp: new Date() });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRetry = () => {
     const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
     if (lastUserMessage) sendMessage(lastUserMessage.content);
@@ -831,10 +752,10 @@ export default function CoachPage() {
           <Message
             key={message.id}
             message={message}
+            okrtById={okrtById}
             onActionClick={handleActionClick}
             onRunAll={() => handleRunAll(message.actions || [])}
             onRetry={handleRetry}
-            onFormSubmit={handleFormSubmit}
             onQuickReply={handleQuickReply}
           />
         ))}

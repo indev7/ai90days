@@ -1,0 +1,212 @@
+{
+  "model": "gpt-4.1",
+  "input": [
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "You are Aime, an OKRT coach. When the user has only an outline of an idea, you will help to well define OKRTs. You will also offer motivation, planing, updating the OKRTs, timing of tasks, when a child task makes progress, offer inspiration and motivational stories, links and videos. \n  offer to send update actions when user input suggests so. \n  IMPORTANT: Politely refuse if the users intent is beyond the scope of the 90days coach (asking unrelated questions, wanting to know table structure, API etc..)\nSTYLE & ADDRESSING\n- Address the user EXACTLY as \"indev test\".\nACTION GUARDRAILS\n- Ask clarifying questions before proposing Objectives/KRs/Tasks. Do not exceed three clafifications.\n\nSTRICT JSON CONTRACT FOR ACTIONS\n- Emit via the tool only: { \"actions\": [ ... ] } with required keys.\n\nSCOPE & DATA MODEL\n- Single table \"okrt\" with types O/K/T and parent_id hierarchy.\n- If the user intend to update task progress, then propagate progress upwards to KR and to Objective using weighted sum.\n- Types: Objective (O), Key Result (K), Task (T). Hierarchy via parent_id.\n- Objective (O): title, description, area (Life/Work/Health), cycle_qtr, status (A-Active/C-Complete/R-Archived), visibility (private/shared), objective_kind (committed/stretch), progress (0–100).\n- Key Result (K): description (required), kr_target_number, kr_unit ∈ {count, %, $, hrs}, kr_baseline_number?, weight (default 1.0), progress (0–100).\n- Task (T): description (required), due_date?, task_status ∈ {todo, in_progress, done, blocked}, weight (default 1.0), progress (0–100).\n- Progress propagation: parent_progress = Σ(child_progress × child_weight). Sibling weights under one parent should sum to 1.0.\n\n\nOUTPUT CONTRACT\n1) Stream a short paragraph of coaching text.\n2) If changes are requested, call \"emit_actions\" once with an ordered \"actions\" array.\n\nID SAFETY (MANDATORY)\n- Use IDs only inside emit_actions; never surface them in user-facing text.\n- IDs/UUIDs (id, parent_id, owner_id, gen-* tokens) must not appear in the coaching paragraph. If a sentence would contain an ID, rewrite it without the ID. Before sending text, scan and remove any token matching a UUID (\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b) or gen-[a-z0-9]{8}. Do not remove numeric values like weights or progress percentages.\n- For UPDATE_OKRT and DELETE_OKRT you MUST copy IDs exactly as they appear in CONTEXT. Never modify, shorten, or reformat IDs.\n- For every CREATE_OKRT payload you MUST include an \"id\".\n- New IDs must be in gen-XXXXXXXX format where X is a lowercase letter or digit.\n- When creating new OKRTs for an existing parent, use the exact parent id and set it in childrens parent_id field \n- Parent chaining for a newly created tree:\n  - Objective: id = gen-XXXXXXXX\n  - Each KR:   id = gen-XXXXXXXX, parent_id = <Objective's gen-XXXXXXXX>\n  - Each Task: id = gen-XXXXXXXX, parent_id = <its KR's gen-XXXXXXXX>\n- Emit actions in strict parent→child order (Objective, then its KRs, then their Tasks).\n- Output the entire tool_call arguments JSON in a single contiguous block (do not split keys/values across deltas).\n\n\n\nTIME CONTEXT:\n- Now (ISO): 2026-01-07T05:14:31.594Z\n- Timezone: Asia/Colombo (UTC+05:30)\n- Current quarter: 2026-Q1\n- Quarter window: 2025-12-31 → 2026-03-30\n- Day in cycle: 7/90\n- Quarter months: Jan–Mar\nCONTEXT - Current User's Information and OKRTs:\nUser Display Name: indev test\nNumber of Objectives: 3\nFull OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_actions tool calls:\n{\"user\":{\"displayName\":\"indev test\"},\"objectives\":[{\"id\":\"gen-betarels\",\"type\":\"O\",\"owner_id\":3,\"parent_id\":null,\"title\":\"Finish and launch 90 Days app\",\"description\":\"Complete all core work for the 90 Days app and release a public beta by end of the quarter.\",\"progress\":75,\"status\":\"A\",\"area\":\"Work\",\"cycle_qtr\":\"2026-Q1\",\"order_index\":0,\"visibility\":\"shared\",\"objective_kind\":\"committed\",\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":null,\"task_status\":null,\"due_date\":null,\"created_at\":\"2025-10-30T00:11:29.260Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"comments\":[{\"id\":17,\"comment\":\"Well done\",\"parent_comment_id\":null,\"type\":\"text\",\"count\":1,\"sending_user\":4,\"receiving_user\":3,\"okrt_id\":\"gen-betarels\",\"created_at\":\"2025-11-12T05:06:06.236Z\",\"updated_at\":\"2025-11-12T05:06:06.236Z\",\"sender_name\":\"amith\",\"sender_first_name\":\"amith\",\"sender_last_name\":\"\",\"sender_avatar\":null,\"receiver_name\":\"indev test\",\"receiver_first_name\":\"indev\",\"receiver_last_name\":\"test\",\"receiver_avatar\":null},{\"id\":18,\"comment\":\"Sent 5 stars\",\"parent_comment_id\":null,\"type\":\"star\",\"count\":5,\"sending_user\":4,\"receiving_user\":3,\"okrt_id\":\"gen-betarels\",\"created_at\":\"2025-11-12T05:06:28.682Z\",\"updated_at\":\"2025-11-12T05:06:28.682Z\",\"sender_name\":\"amith\",\"sender_first_name\":\"amith\",\"sender_last_name\":\"\",\"sender_avatar\":null,\"receiver_name\":\"indev test\",\"receiver_first_name\":\"indev\",\"receiver_last_name\":\"test\",\"receiver_avatar\":null},{\"id\":28,\"comment\":\"test\",\"parent_comment_id\":null,\"type\":\"text\",\"count\":1,\"sending_user\":3,\"receiving_user\":3,\"okrt_id\":\"gen-betarels\",\"created_at\":\"2025-12-16T16:23:39.665Z\",\"updated_at\":\"2025-12-16T16:23:39.665Z\",\"sender_name\":\"indev test\",\"sender_first_name\":\"indev\",\"sender_last_name\":\"test\",\"sender_avatar\":null,\"receiver_name\":\"indev test\",\"receiver_first_name\":\"indev\",\"receiver_last_name\":\"test\",\"receiver_avatar\":null},{\"id\":29,\"comment\":\"abcd\",\"parent_comment_id\":null,\"type\":\"text\",\"count\":1,\"sending_user\":3,\"receiving_user\":3,\"okrt_id\":\"gen-betarels\",\"created_at\":\"2025-12-16T16:38:11.151Z\",\"updated_at\":\"2025-12-16T16:38:11.151Z\",\"sender_name\":\"indev test\",\"sender_first_name\":\"indev\",\"sender_last_name\":\"test\",\"sender_avatar\":null,\"receiver_name\":\"indev test\",\"receiver_first_name\":\"indev\",\"receiver_last_name\":\"test\",\"receiver_avatar\":null},{\"id\":30,\"comment\":\"efgh\",\"parent_comment_id\":29,\"type\":\"text\",\"count\":1,\"sending_user\":3,\"receiving_user\":3,\"okrt_id\":\"gen-betarels\",\"created_at\":\"2025-12-16T16:38:23.661Z\",\"updated_at\":\"2025-12-16T16:38:23.661Z\",\"sender_name\":\"indev test\",\"sender_first_name\":\"indev\",\"sender_last_name\":\"test\",\"sender_avatar\":null,\"receiver_name\":\"indev test\",\"receiver_first_name\":\"indev\",\"receiver_last_name\":\"test\",\"receiver_avatar\":null}],\"shared_groups\":[{\"id\":\"y0jLrjypxE7bgmyQRMerG\",\"name\":\"Tech\"},{\"id\":\"8WpdANHv_2pO46XBp-dA9\",\"name\":\"UI\"}],\"krs\":[{\"id\":\"gen-bugs002\",\"type\":\"K\",\"owner_id\":3,\"parent_id\":\"gen-betarels\",\"title\":\"\",\"description\":\"Resolve all remaining bugs before beta release.\",\"progress\":0,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":1,\"kr_unit\":\"count\",\"kr_baseline_number\":null,\"weight\":0.5,\"task_status\":null,\"due_date\":\"2025-12-30T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:30.379Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"tasks\":[{\"id\":\"gen-bglst001\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-bugs002\",\"title\":null,\"description\":\"Compile a list of all remaining bugs and issues\",\"progress\":0,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":0.25,\"task_status\":\"todo\",\"due_date\":\"2025-11-21T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:32.459Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null},{\"id\":\"gen-vrfybug2\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-bugs002\",\"title\":null,\"description\":\"Verify all fixed bugs and retest core workflows\",\"progress\":0,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":0.25,\"task_status\":\"todo\",\"due_date\":\"2025-12-06T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:33.499Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null},{\"id\":\"gen-flxbgs01\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-bugs002\",\"title\":null,\"description\":\"Fix critical/blocker bugs for beta launch\",\"progress\":0,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":0.5,\"task_status\":\"todo\",\"due_date\":\"2025-11-29T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:32.939Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null}]},{\"id\":\"gen-respui01\",\"type\":\"K\",\"owner_id\":3,\"parent_id\":\"gen-betarels\",\"title\":null,\"description\":\"Deliver a fully responsive UI that works on Android phones, iPhones, and iPads.\",\"progress\":33.3,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":3,\"kr_unit\":\"count\",\"kr_baseline_number\":null,\"weight\":0.5,\"task_status\":null,\"due_date\":\"2025-11-18T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:29.780Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"tasks\":[{\"id\":\"gen-tstipd07\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-respui01\",\"title\":\"\",\"description\":\"Test UI and app performance on iPads\",\"progress\":100,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":0.334,\"task_status\":\"todo\",\"due_date\":\"2025-12-30T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:31.940Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null},{\"id\":\"gen-tstandr1\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-respui01\",\"title\":null,\"description\":\"Test UI and app performance on Android devices\",\"progress\":100,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":0.333,\"task_status\":\"done\",\"due_date\":\"2025-10-31T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:31.020Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null},{\"id\":\"42c6efd2-b9f4-4f5d-b297-7d2d6a48e90f\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-respui01\",\"title\":\"\",\"description\":\"test\",\"progress\":0,\"status\":\"A\",\"area\":null,\"cycle_qtr\":\"2025-Q4\",\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":1,\"task_status\":\"todo\",\"due_date\":null,\"created_at\":\"2025-11-03T01:32:34.391Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null},{\"id\":\"gen-tstiph05\",\"type\":\"T\",\"owner_id\":3,\"parent_id\":\"gen-respui01\",\"title\":\"\",\"description\":\"Test UI and app performance on iPhones\",\"progress\":100,\"status\":\"A\",\"area\":null,\"cycle_qtr\":null,\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":0.333,\"task_status\":\"todo\",\"due_date\":\"2025-12-30T18:30:00.000Z\",\"created_at\":\"2025-10-30T00:11:31.450Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null}]}]},{\"id\":\"c0494a6b-282c-45c7-b103-9650e14082b0\",\"type\":\"O\",\"owner_id\":3,\"parent_id\":null,\"title\":\"test4\",\"description\":\"test\",\"progress\":12,\"status\":\"A\",\"area\":\"Work\",\"cycle_qtr\":\"2026-Q1\",\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":\"committed\",\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":null,\"task_status\":null,\"due_date\":\"2025-12-30T18:30:00.000Z\",\"created_at\":\"2025-12-16T23:25:37.351Z\",\"updated_at\":\"2026-01-04T22:41:58.304Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"comments\":[],\"shared_groups\":[],\"krs\":[{\"id\":\"255c5e38-9a1c-4925-a934-b77f08a1a29f\",\"type\":\"K\",\"owner_id\":3,\"parent_id\":\"c0494a6b-282c-45c7-b103-9650e14082b0\",\"title\":\"\",\"description\":\"test3\",\"progress\":10,\"status\":\"A\",\"area\":\"Work\",\"cycle_qtr\":\"2025-Q4\",\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":12,\"kr_unit\":\"%\",\"kr_baseline_number\":5,\"weight\":1,\"task_status\":null,\"due_date\":\"2025-12-30T18:30:00.000Z\",\"created_at\":\"2025-12-16T23:31:46.549Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"tasks\":[]},{\"id\":\"c840e7ce-9227-41cd-b44d-062c3c2c4c02\",\"type\":\"K\",\"owner_id\":3,\"parent_id\":\"c0494a6b-282c-45c7-b103-9650e14082b0\",\"title\":\"\",\"description\":\"test\",\"progress\":15,\"status\":\"A\",\"area\":\"Work\",\"cycle_qtr\":\"2025-Q4\",\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":null,\"kr_target_number\":1,\"kr_unit\":\"%\",\"kr_baseline_number\":5,\"weight\":1,\"task_status\":null,\"due_date\":\"2025-12-30T18:30:00.000Z\",\"created_at\":\"2025-12-16T23:26:44.160Z\",\"updated_at\":\"2026-01-02T06:39:25.816Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"tasks\":[]}]},{\"id\":\"b625e371-8e9d-4c2d-94cb-61e204ab92dc\",\"type\":\"O\",\"owner_id\":3,\"parent_id\":\"gen-betarels\",\"title\":\"test2\",\"description\":\"test2\",\"progress\":80,\"status\":\"A\",\"area\":null,\"cycle_qtr\":\"2026-Q1\",\"order_index\":0,\"visibility\":\"private\",\"objective_kind\":\"committed\",\"kr_target_number\":null,\"kr_unit\":null,\"kr_baseline_number\":null,\"weight\":null,\"task_status\":null,\"due_date\":null,\"created_at\":\"2025-11-25T06:41:17.927Z\",\"updated_at\":\"2026-01-04T22:41:49.604Z\",\"owner_name\":\"indev test\",\"owner_first_name\":\"indev\",\"owner_last_name\":\"test\",\"owner_avatar\":null,\"comments\":[],\"shared_groups\":[],\"krs\":[]}]}\nSummary: indev test has 3 objective(s) with 4 key result(s)."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "hi"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "emit_actions",
+      "description": "Emit an ordered list of OKRT actions (create, update, delete).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "intent",
+                "endpoint",
+                "method",
+                "payload"
+              ],
+              "properties": {
+                "intent": {
+                  "type": "string",
+                  "enum": [
+                    "CREATE_OKRT",
+                    "UPDATE_OKRT",
+                    "DELETE_OKRT"
+                  ]
+                },
+                "endpoint": {
+                  "type": "string",
+                  "enum": [
+                    "/api/okrt",
+                    "/api/okrt/[id]"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "enum": [
+                    "POST",
+                    "PUT",
+                    "DELETE"
+                  ]
+                },
+                "payload": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "allOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^gen-[a-z0-9]{8}$"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "O",
+                        "K",
+                        "T"
+                      ]
+                    },
+                    "owner_id": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "allOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^gen-[a-z0-9]{8}$"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "progress": {
+                      "type": "number"
+                    },
+                    "order_index": {
+                      "type": "integer"
+                    },
+                    "task_status": {
+                      "type": "string",
+                      "enum": [
+                        "todo",
+                        "in_progress",
+                        "done",
+                        "blocked"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "area": {
+                      "type": "string"
+                    },
+                    "visibility": {
+                      "type": "string",
+                      "enum": [
+                        "private",
+                        "shared"
+                      ]
+                    },
+                    "objective_kind": {
+                      "type": "string",
+                      "enum": [
+                        "committed",
+                        "stretch"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "A",
+                        "C",
+                        "R"
+                      ]
+                    },
+                    "cycle_qtr": {
+                      "type": "string"
+                    },
+                    "kr_target_number": {
+                      "type": "number"
+                    },
+                    "kr_unit": {
+                      "type": "string",
+                      "enum": [
+                        "%",
+                        "$",
+                        "count",
+                        "hrs"
+                      ]
+                    },
+                    "kr_baseline_number": {
+                      "type": "number"
+                    },
+                    "weight": {
+                      "type": "number"
+                    },
+                    "due_date": {
+                      "type": "string"
+                    },
+                    "recurrence_json": {
+                      "type": "string"
+                    },
+                    "blocked_by": {
+                      "type": "string"
+                    },
+                    "repeat": {
+                      "type": "string",
+                      "enum": [
+                        "Y",
+                        "N"
+                      ]
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "actions"
+        ],
+        "additionalProperties": true
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "stream": true
+}

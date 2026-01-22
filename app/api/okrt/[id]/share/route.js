@@ -156,7 +156,27 @@ export async function DELETE(request, { params }) {
 
     // Return updated sharing info
     const shares = await getOKRTShares(id);
-    return NextResponse.json({ shares });
+    let visibility = okrt.visibility;
+    let cacheUpdate = null;
+    if (shares.length === 0 && okrt.visibility !== 'private') {
+      visibility = 'private';
+      await updateOKRT(id, { visibility });
+      cacheUpdate = {
+        action: 'updateMyOKRT',
+        data: {
+          id,
+          updates: {
+            visibility,
+            shared_groups: []
+          }
+        }
+      };
+    }
+    return NextResponse.json({
+      shares,
+      visibility,
+      ...(cacheUpdate ? { _cacheUpdate: cacheUpdate } : {})
+    });
   } catch (error) {
     console.error('Error removing OKRT share:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
