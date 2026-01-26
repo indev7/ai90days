@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { handleOpenAI } from './openAIHelper';
 import { handleOllama } from './ollamaHelper';
 import { handleAnthropic } from './anthropicHelper';
+import { handleBedrock } from './bedrockHelper';
 import fs from 'fs';
 import path from 'path';
 
@@ -320,6 +321,16 @@ export async function POST(request) {
     /* ===== ANTHROPIC (Messages API + streaming) ===== */
     if (provider === 'anthropic') {
       return handleAnthropic({
+        llmMessages,
+        logHumanReadable,
+        getActionsTool,
+        extractActionsFromArgs
+      });
+    }
+
+    /* ===== BEDROCK (Anthropic Messages API wrapper) ===== */
+    if (provider === 'bedrock') {
+      return handleBedrock({
         llmMessages,
         logHumanReadable,
         getActionsTool,
