@@ -5,6 +5,7 @@ import { logLlmApiInteraction } from '@/lib/llmApiLogger';
 import { handleOpenAI } from './llm/openAIHelper';
 import { handleOllama } from './llm/ollamaHelper';
 import { handleAnthropic } from './llm/anthropicHelper';
+import { handleBedrock } from './llm/bedrockHelper';
 import { AIME_APP_OVERVIEW } from '@/lib/knowledgeBase/aimeAppOverview';
 import { OKRT_DOMAIN } from '@/lib/knowledgeBase/okrtDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
@@ -537,6 +538,18 @@ export async function POST(request) {
     /* ===== ANTHROPIC (Messages API + streaming) ===== */
     if (provider === 'anthropic') {
       return handleAnthropic({
+        llmMessages,
+        logHumanReadable,
+        tools,
+        extractActionsFromArgs,
+        extractReqMoreInfoFromArgs,
+        logLlmApiInteraction
+      });
+    }
+
+    /* ===== BEDROCK (Anthropic Messages API wrapper) ===== */
+    if (provider === 'bedrock') {
+      return handleBedrock({
         llmMessages,
         logHumanReadable,
         tools,
