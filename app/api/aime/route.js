@@ -518,7 +518,13 @@ export async function POST(request) {
 
     /* ===== OLLAMA (chat API + streaming) ===== */
     if (provider === 'ollama') {
-      return handleOllama({ llmMessages, logHumanReadable, logLlmApiInteraction });
+      return handleOllama({ 
+        llmMessages, 
+        logHumanReadable, 
+        logLlmApiInteraction,
+        extractActionsFromArgs,
+        extractReqMoreInfoFromArgs
+      });
     }
 
     /* ===== OPENAI (Responses API + tools) ===== */
