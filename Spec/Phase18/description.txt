@@ -1,8 +1,0 @@
-I would like to add two new fields to Group table in the DB (use node scripts to update the Postgress DB and connection details are in .env.local)
-new fieds 1. vision 2.mission
-
-Then add them to the group details data section in mainTree under "groups" parent node. 
-Also updaet teh API to fetch those two new group attributes
-
-Also modify the create/update Group modal popup to include and save two new text filds with labels "Vision" and "Mission"
-Add those above "Choose Strategic Obgectives" section

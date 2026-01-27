@@ -1,9 +1,0 @@
-Phase17: Strategic Objectives. System must be able to assign Strategic Objectives for Groups
-
-Create new database table "Strategic_Objectives" update the (postgress database using a node script, DB connection details are in .env.local)
-It should be a mapping table between Group tabel and OKRT table. 
-
-On the UI, modify the Group create/update modal popup to add Strategic Objectives. 
-Add this new selection area before Add new Members area in the modal.
-This will be similar to how teh add user field is currntly implemented, where the user can type in part of the objective title, and matching suggestions - the Objective Titles (truncated to max 20 characters) and the owner avatar and ownere full name will be shown to choose from . Up to a maximum of 5 such strategic objectives can be added.
-"You can select upto 5 Strategic Objectives for this group" must be displayed in small print near by

@@ -1,7 +1,0 @@
-I have noticed that non streaming mode of LLM response is taking a long time for the user to see a response. I would therefore like to modify the Coach function to steam response from the LLM. I have also modified the system prompt to include action next to each OKRT that the coach is going to suggest. I want to achieve this by LLM returning HTML markup (html form and content) for each action and the UI rendering code buffering the LLM response to see if there are embedded HTML and dangerously rendering them to just show the button. When the button is pressed the action will be submitted along with input params in hidden fields. The UUIDs of existing OKRTs are needed incase of updates and deletions. Therefore when sending the OKRTs already setup by the user to LLM, include that information
-
-Goal
-	•	Switch the Coach to streaming responses.
-	•	The LLM will include HTML forms (hidden inputs only + one visible button) for each suggested OKRT action.
-	•	The UI buffers the streamed text, then injects the HTML block if present.
-	•	Include UUIDs for existing OKRTs in the prompt context so updates/deletes work.

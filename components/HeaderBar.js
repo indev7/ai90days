@@ -37,9 +37,9 @@ import { IoMdNotificationsOutline } from 'react-icons/io';
  * Main header bar component
  * @param {HeaderBarProps} props
  */
-export default function HeaderBar({ 
-  user = null, 
-  isDesktopMenuCollapsed = false, 
+export default function HeaderBar({
+  user = null,
+  isDesktopMenuCollapsed = false,
   onDesktopMenuToggle,
   isLeftMenuCollapsed = false,
   onLeftMenuToggle,
@@ -78,7 +78,7 @@ export default function HeaderBar({
       };
 
       eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
+        console.error('SSE connection error:', error, 'readyState:', eventSource.readyState);
         eventSource.close();
         setTimeout(setupSSE, 5000);
       };
@@ -163,13 +163,13 @@ export default function HeaderBar({
               aria-label={isDesktopMenuCollapsed ? "Expand menu" : "Collapse menu"}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
           )}
-          
+
           {/* Mid-range hamburger for left menu control */}
           {onLeftMenuToggle && !onDesktopMenuToggle && (
             <button
@@ -178,13 +178,13 @@ export default function HeaderBar({
               aria-label={isLeftMenuCollapsed ? "Expand menu" : "Collapse menu"}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
           )}
-          
+
           {/* Mobile hamburger for mobile menu */}
           {!onDesktopMenuToggle && !onLeftMenuToggle && onMobileMenuToggle && (
             <HamburgerButton
@@ -193,7 +193,7 @@ export default function HeaderBar({
               className={styles.mobileHamburger}
             />
           )}
-          
+
           <Link href="/" className={styles.logoLink} aria-label="Aime" onClick={handleLogoClick}>
             <span className={styles.logoIcon} role="img" aria-hidden="true" />
           </Link>

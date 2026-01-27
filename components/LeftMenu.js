@@ -75,7 +75,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
   const iconSize = isCollapsed ? 24 : 20;
   const coachIconSize = 32;
   const icons = {
-    dashboard: <GoClock  size={iconSize} />,
+    dashboard: <GoClock size={iconSize} />,
     goals: <MdOutlineSelfImprovement size={iconSize} />,
     calendar: <RiCalendarScheduleLine size={iconSize} />,
     shared: <RiUserSharedLine size={iconSize} />,
@@ -123,12 +123,12 @@ function getIconWrapperClass(iconName) {
  * Left navigation menu for tablet/desktop
  * @param {LeftMenuProps} props
  */
-export default function LeftMenu({ 
-  isCollapsed = false, 
-  onToggle, 
-  isDesktopCollapsed = false, 
+export default function LeftMenu({
+  isCollapsed = false,
+  onToggle,
+  isDesktopCollapsed = false,
   isMobileSlideIn = false,
-  onMobileClose 
+  onMobileClose
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -152,10 +152,10 @@ export default function LeftMenu({
 
   // Load mainTree data (will use cached data if available)
   useMainTree();
-  
+
   // Get current user
   const { user: currentUser } = useUser();
-  
+
   // Get mainTree from Zustand store
   const { mainTree, getUnreadNotificationCount } = useMainTreeStore();
 
@@ -178,20 +178,20 @@ export default function LeftMenu({
 
     // Process scheduled tasks from mainTree
     const timeBlocks = mainTree.timeBlocks || [];
-    
+
     // Get current date and one week from now for filtering
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const oneWeekFromNow = new Date(today);
     oneWeekFromNow.setDate(today.getDate() + 7);
-    
+
     // Transform time blocks into task format with additional info
     const tasksWithSchedule = timeBlocks
       .map((block) => {
         // Find the task in myOKRTs
         const task = myOKRTs.find(okrt => okrt.id === block.task_id);
         if (!task) return null;
-        
+
         return {
           ...task,
           timeBlockId: block.id,
@@ -205,15 +205,15 @@ export default function LeftMenu({
       })
       .filter(task => {
         if (task === null) return false;
-        
+
         const taskDate = new Date(task.scheduledDateTime);
         const taskDateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
-        
+
         // Include tasks from today up to one week from now
         return taskDateOnly >= today && taskDateOnly <= oneWeekFromNow;
       })
       .sort((a, b) => new Date(a.scheduledDateTime) - new Date(b.scheduledDateTime));
-    
+
     setScheduledTasks(tasksWithSchedule);
 
     // Get unread notification count from store
@@ -225,7 +225,7 @@ export default function LeftMenu({
   useEffect(() => {
     const setupSSE = () => {
       const eventSource = new EventSource('/api/notifications/sse');
-      
+
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -238,7 +238,7 @@ export default function LeftMenu({
       };
 
       eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
+        console.error('SSE connection error:', error, 'readyState:', eventSource.readyState);
         eventSource.close();
         // Retry connection after 5 seconds
         setTimeout(setupSSE, 5000);
@@ -299,7 +299,7 @@ export default function LeftMenu({
     e?.preventDefault();
     e?.stopPropagation();
     console.log('Add OKR clicked! pathname:', pathname);
-    
+
     setIsGroupsListExpanded(false);
     // Close all expanded items when clicking New
     setExpandedItems(new Set());
@@ -311,7 +311,7 @@ export default function LeftMenu({
       parentOkrt: null
     });
 
-    
+
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -328,7 +328,7 @@ export default function LeftMenu({
       // Navigate to organisation page and show modal after navigation
       router.push('/organisation?showAddModal=true');
     }
-    
+
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -343,7 +343,7 @@ export default function LeftMenu({
     } else {
       router.push(`/organisation?editGroup=${groupId}`);
     }
-    
+
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -354,7 +354,7 @@ export default function LeftMenu({
     e.preventDefault();
     e.stopPropagation();
     router.push(`/organisation?view=groups&groupId=${encodeURIComponent(groupId)}`);
-    
+
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -366,7 +366,7 @@ export default function LeftMenu({
     setIsGroupsListExpanded(false);
     // Navigate to OKRT page with specific objective
     router.push(`/okrt?objective=${objectiveId}`);
-    
+
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -384,19 +384,19 @@ export default function LeftMenu({
       minute: '2-digit',
       hour12: true
     });
-    
+
     // Format: "Mon 13 4:30pm, 30min"
     const timeDisplay = `${dayName} ${dayNum} ${timeString}, ${task.duration}min`;
-    
+
     // Get task status
     const getTaskStatus = (progress) => {
       if (progress === 0) return 'ToDo';
       if (progress === 100) return 'Done';
       return 'In Progress';
     };
-    
+
     const status = getTaskStatus(task.progress || 0);
-    
+
     return {
       timeDisplay,
       status,
@@ -412,7 +412,7 @@ export default function LeftMenu({
       isOpen: true,
       task: task
     });
-    
+
     // Close mobile menu
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -470,9 +470,9 @@ export default function LeftMenu({
       const url = okrtModalState.mode === 'edit'
         ? `/api/okrt/${okrtModalState.okrt.id}`
         : '/api/okrt';
-      
+
       const method = okrtModalState.mode === 'edit' ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -504,7 +504,7 @@ export default function LeftMenu({
   const handleDeleteOkrt = async () => {
     try {
       const url = `/api/okrt/${okrtModalState.okrt.id}`;
-      
+
       const response = await fetch(url, {
         method: 'DELETE',
         headers: {
@@ -555,7 +555,7 @@ export default function LeftMenu({
     if (href !== '/organisation') {
       setIsGroupsListExpanded(false);
     }
-    
+
     // Close mobile menu when navigating
     if (isMobileSlideIn && onMobileClose) {
       onMobileClose();
@@ -715,7 +715,7 @@ export default function LeftMenu({
                       <ul className={`${styles.childMenuList} ${item.href === '/okrt' ? styles.objectiveTreeRoot : ''}`}>
                         {/* Show objectives for My Goals menu */}
                         {item.href === '/okrt' && renderObjectiveTree()}
-                        
+
                         {/* Show scheduled tasks for Schedule menu */}
                         {item.href === '/calendar' && scheduledTasks.map((task) => {
                           const taskDisplay = formatScheduledTaskDisplay(task);
@@ -738,19 +738,19 @@ export default function LeftMenu({
                             </li>
                           );
                         })}
-                        
+
                         {/* Show original children (action buttons) */}
                         {item.children.map((child) => {
                           const isChildActiveLink = pathname === child.href;
                           const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
                           const isGroupsLink = child.href === '/organisation?view=groups';
-                          
+
                           // Only show Add Group for Admin, Owner, or Leader roles
                           if (isAddGroup && currentUser?.role && !['Admin', 'Owner', 'Leader'].includes(currentUser.role)) {
                             return null;
                           }
-                          
+
                           return (
                             <li key={child.href} className={styles.childMenuItem}>
                               {isAddGroup ? (
@@ -758,10 +758,10 @@ export default function LeftMenu({
                                   onClick={handleAddGroupClick}
                                   className={`${styles.childMenuLink} ${isChildActiveLink ? styles.active : ''}`}
                                 >
-                        <span className={getIconWrapperClass(child.icon)}>
-                          {getIcon(child.icon, false)}
-                        </span>
-                        <span className={styles.label}>{child.label}</span>
+                                  <span className={getIconWrapperClass(child.icon)}>
+                                    {getIcon(child.icon, false)}
+                                  </span>
+                                  <span className={styles.label}>{child.label}</span>
                                 </button>
                               ) : isAddOKR ? (
                                 <button
@@ -770,10 +770,10 @@ export default function LeftMenu({
                                   className={styles.childMenuLink}
                                   title="Create New Objective"
                                 >
-                        <span className={getIconWrapperClass(child.icon)}>
-                          {getIcon(child.icon, false)}
-                        </span>
-                        <span className={styles.label}>{child.label}</span>
+                                  <span className={getIconWrapperClass(child.icon)}>
+                                    {getIcon(child.icon, false)}
+                                  </span>
+                                  <span className={styles.label}>{child.label}</span>
                                 </button>
                               ) : (
                                 <Link
@@ -784,10 +784,10 @@ export default function LeftMenu({
                                     handleBusinessChildClick(isGroupsLink);
                                   }}
                                 >
-                        <span className={getIconWrapperClass(child.icon)}>
-                          {getIcon(child.icon, false)}
-                        </span>
-                        <span className={styles.label}>{child.label}</span>
+                                  <span className={getIconWrapperClass(child.icon)}>
+                                    {getIcon(child.icon, false)}
+                                  </span>
+                                  <span className={styles.label}>{child.label}</span>
                                 </Link>
                               )}
                               {isGroupsLink && isGroupsListExpanded && memberGroups.length > 0 && (
@@ -818,7 +818,7 @@ export default function LeftMenu({
           })}
         </ul>
       </div>
-      
+
       <div className={styles.bottomMenu}>
         <ul className={styles.menuList}>
           {bottomMenuItems.map((item) => {
@@ -858,7 +858,7 @@ export default function LeftMenu({
           })}
         </ul>
       </div>
-      
+
       {/* Toggle button for tablet portrait */}
       {onToggle && (
         <button
@@ -886,7 +886,7 @@ export default function LeftMenu({
   return (
     <>
       {menuContent}
-      
+
       {/* Task Update Modal */}
       <TaskUpdateModal
         isOpen={taskUpdateModalState.isOpen}
