@@ -1,5 +1,0 @@
-Phase 10 - Dahshbord.
-Remove the place holder (remove page title) that we curently have and replace it with a number of widgets.
-We will star with the first widget - The 12 week Clock.
-The code is attached here: Spec/Phase10/clock.jsx
-and the structure of the props that need to pass (retrieve currently logged in users OKR data and prepare props, also pick suitable color from theme and populate color list in the props) in can be found here: Spec/Phase10/props.json
