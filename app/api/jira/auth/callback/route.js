@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { getDatabase } from '@/lib/pgdb';
+import { getSession } from '@/lib/auth';
 
 /**
  * GET handler for OAuth callback - exchanges code for tokens
@@ -8,6 +10,14 @@ import { cookies } from 'next/headers';
  */
 export async function GET(request) {
   try {
+    // Check if user is logged in
+    const session = await getSession();
+    if (!session || !session.sub) {
+      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/login?error=not_authenticated`);
+    }
+
+    const userId = parseInt(session.sub);
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
@@ -67,34 +77,25 @@ export async function GET(request) {
       }
     }
 
-    // Store tokens in cookies (set to 90 days to persist, refresh handles token renewal)
-    cookieStore.set('jira_access_token', tokenData.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 90 * 24 * 60 * 60, // 90 days
-      path: '/'
-    });
+    // Store tokens in database for this specific user
+    const db = await getDatabase();
+    const expiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000);
 
-    if (tokenData.refresh_token) {
-      cookieStore.set('jira_refresh_token', tokenData.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 90 * 24 * 60 * 60, // 90 days
-        path: '/'
-      });
-    }
-
-    if (cloudId) {
-      cookieStore.set('jira_cloud_id', cloudId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 90 * 24 * 60 * 60, // 90 days
-        path: '/'
-      });
-    }
+    await db.query(
+      `UPDATE users 
+       SET jira_access_token = $1,
+           jira_refresh_token = $2,
+           jira_cloud_id = $3,
+           jira_token_expires_at = $4
+       WHERE id = $5`,
+      [
+        tokenData.access_token,
+        tokenData.refresh_token || null,
+        cloudId,
+        expiresAt,
+        userId
+      ]
+    );
 
     // Clean up state cookie
     cookieStore.delete('jira_oauth_state');

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getJiraAuth } from '@/lib/jiraAuth';
 
 /**
  * GET handler to check Jira authentication status
@@ -8,11 +8,9 @@ import { cookies } from 'next/headers';
  */
 export async function GET(request) {
   try {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('jira_access_token')?.value;
-    const cloudId = cookieStore.get('jira_cloud_id')?.value;
+    const { accessToken, cloudId, isAuthenticated } = await getJiraAuth();
 
-    if (!accessToken) {
+    if (!isAuthenticated) {
       return NextResponse.json({
         authenticated: false,
         cloudId: null

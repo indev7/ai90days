@@ -12,6 +12,7 @@ import { RiArchiveLine, RiOrganizationChart, RiUserSharedLine } from "react-icon
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { GiGreekTemple } from "react-icons/gi";
+import { SiJira } from "react-icons/si";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoAdd } from 'react-icons/io5';
@@ -86,6 +87,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     archive: <RiArchiveLine size={iconSize} />,
+    jira: <SiJira size={iconSize} />,
     coach: (
       <span
         className={styles.aimeIcon}
