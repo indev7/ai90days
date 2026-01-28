@@ -68,6 +68,7 @@ const getTopMenuItems = (userRole) => {
 };
 
 const bottomMenuItems = [
+  { href: '/jira', label: 'Jira Tickets', icon: 'jira', disabled: false },
   { href: '/aime', label: 'Chat', icon: 'coach', disabled: false },
 ];
 
