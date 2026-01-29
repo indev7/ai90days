@@ -11,8 +11,10 @@ import useAimeStore from '@/store/aimeStore';
 import useVoiceRecording from '@/hooks/useVoiceRecording';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import FavouritePromptsModal from './FavouritePromptsModal';
 import { TiMicrophoneOutline } from 'react-icons/ti';
 import { FiSearch, FiX } from 'react-icons/fi';
+import { LuNotebookText } from 'react-icons/lu';
 import { IoMdNotificationsOutline } from 'react-icons/io';
 
 /**
@@ -54,6 +56,7 @@ export default function HeaderBar({
   );
   const [unreadCount, setUnreadCount] = useState(unreadFromStore);
   const [query, setQuery] = useState('');
+  const [isFavouritePromptsOpen, setIsFavouritePromptsOpen] = useState(false);
   const inputRef = useRef(null);
 
   useMainTree();
@@ -151,6 +154,13 @@ export default function HeaderBar({
     }
   };
 
+  const handlePromptPlay = (promptText) => {
+    if (!promptText || isLoading) return;
+    setPendingMessage({ id: Date.now(), text: promptText });
+    setIsFavouritePromptsOpen(false);
+    router.push('/aime');
+  };
+
 
   return (
     <>
@@ -200,55 +210,69 @@ export default function HeaderBar({
         </div>
 
         <div className={styles.center}>
-          {pathname !== '/aime' && (
-            <form className={styles.searchForm} onSubmit={handleSubmit}>
-              <div className={styles.searchBar}>
-                <input
-                  ref={inputRef}
-                  className={styles.searchInput}
-                  type="text"
-                  placeholder="Ask Aime..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  disabled={isLoading}
-                />
-                {query.trim() && (
+          <div className={styles.centerActions}>
+            {pathname !== '/aime' && (
+              <form className={styles.searchForm} onSubmit={handleSubmit}>
+                <div className={styles.searchBar}>
+                  <input
+                    ref={inputRef}
+                    className={styles.searchInput}
+                    type="text"
+                    placeholder="Ask Aime..."
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  {query.trim() && (
+                    <button
+                      type="button"
+                      className={styles.searchIconButton}
+                      onClick={() => setQuery('')}
+                      aria-label="Clear input"
+                    >
+                      <FiX size={20} />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className={styles.searchIconButton}
-                    onClick={() => setQuery('')}
-                    aria-label="Clear input"
+                    className={`${styles.searchIconButton} ${styles.micButton} ${isRecording ? styles.micButtonRecording : ''}`}
+                    onClick={handleMicrophoneClick}
+                    disabled={isLoading || isProcessing}
+                    aria-label={isRecording ? 'Stop voice input' : 'Start voice input'}
+                    title="Voice Input"
                   >
-                    <FiX size={20} />
+                    <TiMicrophoneOutline size={22} />
                   </button>
-                )}
-                <button
-                  type="button"
-                  className={`${styles.searchIconButton} ${styles.micButton} ${isRecording ? styles.micButtonRecording : ''}`}
-                  onClick={handleMicrophoneClick}
-                  disabled={isLoading || isProcessing}
-                  aria-label={isRecording ? 'Stop voice input' : 'Start voice input'}
-                  title="Voice Input"
-                >
-                  <TiMicrophoneOutline size={22} />
-                </button>
-                <button
-                  type="submit"
-                  className={styles.searchIconButton}
-                  disabled={isLoading || !query.trim()}
-                  aria-label="Send to Aime"
-                  title="Ask Aime"
-                >
-                  <FiSearch size={20} />
-                </button>
-              </div>
-            </form>
-          )}
+                  <button
+                    type="submit"
+                    className={styles.searchIconButton}
+                    disabled={isLoading || !query.trim()}
+                    aria-label="Send to Aime"
+                    title="Ask Aime"
+                  >
+                    <FiSearch size={20} />
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
 
         <div className={styles.right}>
           {user ? (
             <div className={styles.userMenu}>
+              <Link
+                href="#"
+                className={styles.favoritePromptsLink}
+                aria-label="Favourite Prompts"
+                title="Favourite Prompts"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setIsFavouritePromptsOpen(true);
+                }}
+              >
+                <span className={styles.favoritePromptsIcon} aria-hidden="true" />
+              </Link>
               <Link href="/notifications" className={styles.notificationLink} aria-label="Notifications">
                 <IoMdNotificationsOutline size={22} />
                 {unreadCount > 0 && (
@@ -277,7 +301,12 @@ export default function HeaderBar({
         </div>
       </header>
 
-
+      <FavouritePromptsModal
+        isOpen={isFavouritePromptsOpen}
+        onClose={() => setIsFavouritePromptsOpen(false)}
+        onPlay={handlePromptPlay}
+        isLoading={isLoading}
+      />
     </>
   );
 }

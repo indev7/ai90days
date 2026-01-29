@@ -12,14 +12,14 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
-  const [logoSrc, setLogoSrc] = useState('/aime_profile.png');
+  const [logoSrc, setLogoSrc] = useState('/aime_app_icon.svg');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const currentTheme = getCurrentTheme();
-    setLogoSrc('/aime_profile.png');
+    setLogoSrc('/aime_app_icon.svg');
   }, []);
 
   const handleChange = (e) => {

@@ -296,15 +296,16 @@
 
 .aimeIcon {
   display: block;
-  background-image: url('/aime_profile.png');
+  background-color: var(--brand-100);
+  background-image: url('/aime_app_icon.svg');
   background-repeat: no-repeat;
   background-position: center;
-  background-size: contain;
+  background-size: 75%;
   border-radius: 50%;
 }
 
 :global(html[data-theme="nature"]) .aimeIcon {
-  background-image: url('/aime_profile.png');
+  background-image: url('/aime_app_icon.svg');
 }
 
 .label {

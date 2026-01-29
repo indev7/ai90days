@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="-8 -8 1040 1040"
+     role="img"
+     aria-label="Aime app icon">
+  <defs>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#43b4ff"/>
+      <stop offset="35%" stop-color="#736dff"/>
+      <stop offset="70%" stop-color="#ff7ad9"/>
+      <stop offset="100%" stop-color="#ffc857"/>
+    </linearGradient>
+
+    <linearGradient id="aGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#37b5ff"/>
+      <stop offset="40%" stop-color="#7b6cff"/>
+      <stop offset="80%" stop-color="#ff70c8"/>
+      <stop offset="100%" stop-color="#ffb347"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="960" rx="220"
+        fill="#ffffff"
+        stroke="url(#borderGrad)"
+        stroke-width="75" />
+
+  <path d="
+      M 440 550
+      L 546 550
+      L 573 620
+      L 415 620      Z
+    "
+    fill="url(#aGrad)" />
+
+  <path d="M 320 760 L 512 260 L 704 760"
+        fill="none"
+        stroke="url(#aGrad)"
+        stroke-width="80"
+        stroke-linecap="round"
+        stroke-linejoin="round" />
+</svg>

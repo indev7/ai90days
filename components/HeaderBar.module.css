@@ -168,6 +168,13 @@
   flex: 1;
 }
 
+.centerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(740px, 100%);
+}
+
 .searchForm {
   width: min(640px, 100%);
   margin-right: 0px;
@@ -266,6 +273,35 @@
 
 .notificationLink:hover {
   background: var(--header-hover, var(--border-light));
+}
+
+.favoritePromptsLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--header-icon, var(--text));
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  transition: background 0.2s ease, color 0.2s ease;
+  transform: translateY(0);
+}
+
+.favoritePromptsLink:hover {
+  background: var(--header-hover, var(--border-light));
+}
+
+.favoritePromptsIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: url('/aime_app_icon.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
 }
 
 .notificationBadge {
@@ -400,6 +436,10 @@
   .center {
     order: 3;
     flex-basis: 100%;
+  }
+
+  .centerActions {
+    width: 100%;
   }
 
   .searchForm {
