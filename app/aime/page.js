@@ -22,7 +22,8 @@ const DATA_SECTION_IDS = new Set([
   'timeBlocks',
   'notifications',
   'preferences',
-  'calendar'
+  'calendar',
+  'jiraTickets'
 ]);
 
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
@@ -239,15 +240,29 @@ const buildSystemPromptPayload = (reqMoreInfo, mainTree, displayName) => {
 
 /* ---------- helpers ---------- */
 
-/** Map an OKRT action to a concise, human-readable label for UI buttons; called by normalizeActions. */
+/** Map an action to a concise, human-readable label for UI buttons; called by normalizeActions. */
 // PSEUDOCODE: infer noun/type from payload and map intent to a label string.
 function labelForAction(action) {
   const { intent, method, payload = {} } = action || {};
+
+  // JIRA actions
+  if (intent === 'CREATE_JIRA') return `Create JIRA ${payload?.issueType || 'Ticket'}`;
+  if (intent === 'CREATE_LEAVE') return `Create Leave Request`;
+  if (intent === 'UPDATE_JIRA') return `Update JIRA ${payload?.key || 'Ticket'}`;
+  if (intent === 'JIRA_ASSIGN_USER') return `Assign JIRA ${payload?.ticketKey || 'Ticket'}`;
+  if (intent === 'COMMENT_JIRA') return `Comment on JIRA ${payload?.key || 'Ticket'}`;
+  if (intent === 'TRANSITION_JIRA') return `Transition JIRA ${payload?.key || 'Ticket'}`;
+  if (intent === 'CREATE_SUBTASK') return `Create JIRA Subtask`;
+  if (intent === 'LINK_JIRA') return `Link JIRA Tickets`;
+  if (intent === 'LIST_JIRA_TICKETS') return `List JIRA Tickets`;
+  if (intent === 'BULK_TRANSITION_JIRA') return `Bulk Transition JIRA Tickets`;
+
+  // OKRT actions
   const noun =
     payload?.type === 'O' ? 'Objective' :
-    payload?.type === 'K' ? 'Key Result' :
-    payload?.type === 'T' ? 'Task' :
-    'OKRT';
+      payload?.type === 'K' ? 'Key Result' :
+        payload?.type === 'T' ? 'Task' :
+          'OKRT';
 
   if (intent === 'CREATE_OKRT') return `Create ${noun}`;
   if (intent === 'UPDATE_OKRT') {
@@ -351,6 +366,7 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
         {actions.map((action) => {
           let description = '';
           if (action.method === 'POST') {
+            // OKRT actions
             if (action.body?.type === 'O') description = `Create Objective: ${action.body?.title || ''}`;
             else if (action.body?.type === 'K') description = `Create KR: ${action.body?.description || ''}`;
             else if (action.body?.type === 'T') description = `Create Task: ${action.body?.description || ''}`;
@@ -363,12 +379,32 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
                 ? 'Unshare Objective (make private)'
                 : 'Unshare Objective';
             }
+            // JIRA actions
+            else if (action.intent === 'CREATE_JIRA') {
+              description = `Create JIRA ${action.body?.issueType || 'Ticket'}: ${action.body?.summary || ''}`;
+            } else if (action.intent === 'CREATE_LEAVE') {
+              description = `Create Leave Request: ${action.body?.leaveType || ''} (${action.body?.days || 0} days)`;
+            } else if (action.intent === 'JIRA_ASSIGN_USER') {
+              description = `Assign ${action.body?.ticketKey || ''} to ${action.body?.assigneeEmail || action.body?.assigneeDisplayName || ''}`;
+            } else if (action.intent === 'COMMENT_JIRA') {
+              description = `Add Comment to ${action.body?.key || ''}`;
+            } else if (action.intent === 'TRANSITION_JIRA') {
+              description = `Change ${action.body?.key || ''} to ${action.body?.transitionName || ''}`;
+            } else if (action.intent === 'CREATE_SUBTASK') {
+              description = `Create Subtask: ${action.body?.summary || ''}`;
+            } else if (action.intent === 'LINK_JIRA') {
+              description = `Link ${action.body?.key || ''} ${action.body?.linkType || ''} ${action.body?.targetKey || ''}`;
+            } else if (action.intent === 'LIST_JIRA_TICKETS') {
+              description = `List JIRA Tickets`;
+            }
           } else if (action.method === 'PUT' || action.method === 'DELETE') {
             description =
               descriptions[action.key] ||
               `${action.method === 'PUT' ? 'Update' : 'Delete'} ${action.body?.title || action.body?.description || 'OKRT'}`;
             if (action.intent === 'UNSHARE_OKRT') {
               description = 'Unshare Objective';
+            } else if (action.intent === 'UPDATE_JIRA') {
+              description = `Update JIRA ${action.body?.key || ''}`;
             }
           }
           return (
@@ -480,10 +516,10 @@ export default function AimePage() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  
+
   // Use cached user data
   const { user, isLoading: userLoading } = useUser();
-  
+
   // Subscribe to mainTreeStore to get all OKRTs and store actions
   const { mainTree, refreshMainTree } = useMainTree();
   const { myOKRTs } = mainTree;
@@ -493,10 +529,10 @@ export default function AimePage() {
   );
   const preferredVoice = mainTree?.preferences?.preferred_voice;
   const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
-  
+
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
-  
+
   // Voice-to-text: microphone capture + transcription callback.
   const { isRecording, isProcessing, handleMicrophoneClick } = useVoiceInput({
     setInput,
@@ -723,7 +759,7 @@ export default function AimePage() {
         });
         return;
       }
-      
+
       // Flush any remaining chunk after stream ends
       if (isTTSEnabled && assistantMessageId) {
         const remaining = chunkBuffer.trim();
@@ -842,20 +878,34 @@ export default function AimePage() {
         }
       }
       const payload = { ...action.body };
-      const res = await fetch(action.endpoint, {
+      const shouldSendBody = action.method !== 'DELETE' && action.method !== 'GET' && action.method !== 'HEAD';
+
+      // For GET/HEAD requests, convert payload to query parameters
+      let endpoint = action.endpoint;
+      if ((action.method === 'GET' || action.method === 'HEAD') && payload && Object.keys(payload).length > 0) {
+        const params = new URLSearchParams();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            params.append(key, String(value));
+          }
+        });
+        endpoint = `${endpoint}?${params.toString()}`;
+      }
+
+      const res = await fetch(endpoint, {
         method: action.method,
         headers: { 'Content-Type': 'application/json' },
-        body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
+        body: shouldSendBody ? JSON.stringify(payload) : undefined,
       });
       if (!res.ok) throw new Error(`API error: ${res.status}`);
-      
+
       const result = await res.json();
-      
+
       let appliedCacheUpdate = false;
       // Handle cache update if provided by the API
       if (result._cacheUpdate) {
         const { action: cacheAction, data } = result._cacheUpdate;
-        
+
         if (cacheAction === 'addMyOKRT' && data) {
           addMyOKRT(data);
           appliedCacheUpdate = true;
@@ -881,11 +931,35 @@ export default function AimePage() {
             : [];
         updateMyOKRT(action.body.id, { visibility, shared_groups: sharedGroups });
       }
-      
+
       if (action.intent === 'SHARE_OKRT' || action.intent === 'UNSHARE_OKRT') {
         await refreshMainTree();
       }
-      addMessage({ id: Date.now(), role: 'assistant', content: `✅ ${action.label} completed successfully!`, timestamp: new Date() });
+
+      // Handle LIST_JIRA_TICKETS results
+      if (action.intent === 'LIST_JIRA_TICKETS' && result?.issues) {
+        const tickets = result.issues;
+        if (tickets.length === 0) {
+          addMessage({
+            id: Date.now(),
+            role: 'assistant',
+            content: `No JIRA tickets found matching your criteria.`,
+            timestamp: new Date()
+          });
+        } else {
+          const ticketList = tickets.map(t =>
+            `• **${t.key}**: ${t.summary} (${t.status?.name || t.status || 'Unknown'}) - ${t.assignee?.displayName || 'Unassigned'}`
+          ).join('\n');
+          addMessage({
+            id: Date.now(),
+            role: 'assistant',
+            content: `Found ${tickets.length} ticket${tickets.length > 1 ? 's' : ''}:\n\n${ticketList}`,
+            timestamp: new Date()
+          });
+        }
+      } else {
+        addMessage({ id: Date.now(), role: 'assistant', content: `✅ ${action.label} completed successfully!`, timestamp: new Date() });
+      }
     } catch (err) {
       console.error('Action error:', err);
       addMessage({ id: Date.now(), role: 'assistant', content: `❌ Failed to execute "${action.label}". ${err.message}`, error: true, timestamp: new Date() });
@@ -899,22 +973,43 @@ export default function AimePage() {
   const handleRunAll = async (actions) => {
     setLoading(true);
     try {
+      let jiraTicketsResults = [];
+
       for (const action of actions) {
         const payload = { ...action.body };
-        const res = await fetch(action.endpoint, {
+        const shouldSendBody = action.method !== 'DELETE' && action.method !== 'GET' && action.method !== 'HEAD';
+
+        // For GET/HEAD requests, convert payload to query parameters
+        let endpoint = action.endpoint;
+        if ((action.method === 'GET' || action.method === 'HEAD') && payload && Object.keys(payload).length > 0) {
+          const params = new URLSearchParams();
+          Object.entries(payload).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+              params.append(key, String(value));
+            }
+          });
+          endpoint = `${endpoint}?${params.toString()}`;
+        }
+
+        const res = await fetch(endpoint, {
           method: action.method,
           headers: { 'Content-Type': 'application/json' },
-          body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
+          body: shouldSendBody ? JSON.stringify(payload) : undefined,
         });
         if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
-        
+
         const result = await res.json();
-        
+
+        // Collect LIST_JIRA_TICKETS results
+        if (action.intent === 'LIST_JIRA_TICKETS' && result?.issues) {
+          jiraTicketsResults.push(...result.issues);
+        }
+
         let appliedCacheUpdate = false;
         // Handle cache update if provided by the API
         if (result._cacheUpdate) {
           const { action: cacheAction, data } = result._cacheUpdate;
-          
+
           if (cacheAction === 'addMyOKRT' && data) {
             addMyOKRT(data);
             appliedCacheUpdate = true;
@@ -944,7 +1039,23 @@ export default function AimePage() {
       if (actions.some((action) => action.intent === 'SHARE_OKRT' || action.intent === 'UNSHARE_OKRT')) {
         await refreshMainTree();
       }
-      addMessage({ id: Date.now(), role: 'assistant', content: `✅ All actions completed successfully!`, timestamp: new Date() });
+
+      // Display JIRA tickets if any were fetched
+      if (jiraTicketsResults.length > 0) {
+        const ticketList = jiraTicketsResults.map(t =>
+          `• **${t.key}**: ${t.summary} (${t.status?.name || t.status || 'Unknown'}) - ${t.assignee?.displayName || 'Unassigned'}`
+        ).join('\n');
+        addMessage({
+          id: Date.now(),
+          role: 'assistant',
+          content: `Found ${jiraTicketsResults.length} ticket${jiraTicketsResults.length > 1 ? 's' : ''}:\n\n${ticketList}`,
+          timestamp: new Date()
+        });
+      } else if (!actions.some(a => a.intent === 'LIST_JIRA_TICKETS')) {
+        addMessage({ id: Date.now(), role: 'assistant', content: `✅ All actions completed successfully!`, timestamp: new Date() });
+      } else {
+        addMessage({ id: Date.now(), role: 'assistant', content: `No JIRA tickets found matching your criteria.`, timestamp: new Date() });
+      }
     } catch (err) {
       console.error('Run All error:', err);
       addMessage({ id: Date.now(), role: 'assistant', content: `❌ Failed while executing actions. ${err.message}`, error: true, timestamp: new Date() });
@@ -999,118 +1110,118 @@ export default function AimePage() {
       <div className={`app-pageContent app-pageContent--full ${styles.container}`}>
 
 
-      <div className={styles.messagesContainer}>
-        {visibleMessages.length === 0 && (
-          <div className={styles.welcomeMessage}>
-            <div className={styles.coachAvatar}>
-              <span className={styles.coachImage} role="img" aria-label="Aime2" />
+        <div className={styles.messagesContainer}>
+          {visibleMessages.length === 0 && (
+            <div className={styles.welcomeMessage}>
+              <div className={styles.coachAvatar}>
+                <span className={styles.coachImage} role="img" aria-label="Aime2" />
+              </div>
+              <p>Hi! I'm Aime, your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
             </div>
-            <p>Hi! I'm Aime, your OKRT coach. I can help you create objectives, key results, and tasks. What would you like to work on today?</p>
-          </div>
-        )}
+          )}
 
-        {visibleMessages.map((message) => (
-          <Message
-            key={message.id}
-            message={message}
-            okrtById={okrtById}
-            onActionClick={handleActionClick}
-            onRunAll={() => handleRunAll(message.actions || [])}
-            onRetry={handleRetry}
-            onQuickReply={handleQuickReply}
-          />
-        ))}
-
-        {isLoading && (
-          <div className={styles.loadingMessage}>
-            <div className={styles.typingIndicator}><span></span><span></span><span></span></div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <form onSubmit={handleSubmit} className={styles.inputForm}>
-        <div className={styles.inputContainer}>
-          <button
-            type="button"
-            className={`${styles.micButton} ${isRecording ? styles.micButtonRecording : ''}`}
-            onClick={handleMicrophoneClick}
-            disabled={isLoading || isProcessing}
-            title={isRecording ? 'Stop recording' : 'Start voice input'}
-          >
-            {isProcessing ? (
-              <span className={styles.micProcessing}>⏳</span>
-            ) : isRecording ? (
-              <span className={styles.micRecording}>🔴</span>
-            ) : (
-              <TiMicrophoneOutline className={styles.micIcon} size={24} />
-            )}
-          </button>
-          <button
-            type="button"
-            className={`${styles.speakerButton} ${isTTSEnabled ? styles.speakerButtonEnabled : ''} ${isSpeaking ? styles.speakerButtonSpeaking : ''}`}
-            onClick={toggleTTS}
-            disabled={isLoading}
-            title={
-              needsUserGesture
-                ? 'Tap to enable audio playback'
-                : isTTSEnabled
-                  ? 'Disable text-to-speech'
-                  : 'Enable text-to-speech'
-            }
-          >
-            {isSpeaking ? (
-              <PiSpeakerHighBold className={styles.speakerSpeaking} size={24} />
-            ) : isTTSEnabled ? (
-              <PiSpeakerHighBold className={styles.speakerEnabled} size={24} />
-            ) : (
-              <PiSpeakerSlash className={styles.speakerDisabled} size={24} />
-            )}
-          </button>
-          <div className={styles.textareaWrapper}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask me about your OKRTs..."
-              className={styles.input}
-              disabled={isLoading}
-              rows={1}
+          {visibleMessages.map((message) => (
+            <Message
+              key={message.id}
+              message={message}
+              okrtById={okrtById}
+              onActionClick={handleActionClick}
+              onRunAll={() => handleRunAll(message.actions || [])}
+              onRetry={handleRetry}
+              onQuickReply={handleQuickReply}
             />
+          ))}
+
+          {isLoading && (
+            <div className={styles.loadingMessage}>
+              <div className={styles.typingIndicator}><span></span><span></span><span></span></div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form onSubmit={handleSubmit} className={styles.inputForm}>
+          <div className={styles.inputContainer}>
             <button
               type="button"
-              className={styles.resetButton}
-              onClick={handleReset}
-              title="Reset conversation"
-              aria-label="Reset conversation"
+              className={`${styles.micButton} ${isRecording ? styles.micButtonRecording : ''}`}
+              onClick={handleMicrophoneClick}
+              disabled={isLoading || isProcessing}
+              title={isRecording ? 'Stop recording' : 'Start voice input'}
             >
-              R
+              {isProcessing ? (
+                <span className={styles.micProcessing}>⏳</span>
+              ) : isRecording ? (
+                <span className={styles.micRecording}>🔴</span>
+              ) : (
+                <TiMicrophoneOutline className={styles.micIcon} size={24} />
+              )}
             </button>
             <button
               type="button"
-              className={`${styles.stopButton} ${isLoading ? styles.stopButtonActive : ''}`}
-              onClick={handleStop}
-              title="Stop response"
-              aria-label="Stop response"
-              disabled={!isLoading}
+              className={`${styles.speakerButton} ${isTTSEnabled ? styles.speakerButtonEnabled : ''} ${isSpeaking ? styles.speakerButtonSpeaking : ''}`}
+              onClick={toggleTTS}
+              disabled={isLoading}
+              title={
+                needsUserGesture
+                  ? 'Tap to enable audio playback'
+                  : isTTSEnabled
+                    ? 'Disable text-to-speech'
+                    : 'Enable text-to-speech'
+              }
             >
-              <span className={styles.stopIcon} aria-hidden="true" />
+              {isSpeaking ? (
+                <PiSpeakerHighBold className={styles.speakerSpeaking} size={24} />
+              ) : isTTSEnabled ? (
+                <PiSpeakerHighBold className={styles.speakerEnabled} size={24} />
+              ) : (
+                <PiSpeakerSlash className={styles.speakerDisabled} size={24} />
+              )}
             </button>
-            <button
-              type="submit"
-              className={styles.mobileSendButton}
-              disabled={isLoading || !input.trim()}
-              aria-label="Send message"
-            >
-              <SlArrowUpCircle size={32} />
+            <div className={styles.textareaWrapper}>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask me about your OKRTs..."
+                className={styles.input}
+                disabled={isLoading}
+                rows={1}
+              />
+              <button
+                type="button"
+                className={styles.resetButton}
+                onClick={handleReset}
+                title="Reset conversation"
+                aria-label="Reset conversation"
+              >
+                R
+              </button>
+              <button
+                type="button"
+                className={`${styles.stopButton} ${isLoading ? styles.stopButtonActive : ''}`}
+                onClick={handleStop}
+                title="Stop response"
+                aria-label="Stop response"
+                disabled={!isLoading}
+              >
+                <span className={styles.stopIcon} aria-hidden="true" />
+              </button>
+              <button
+                type="submit"
+                className={styles.mobileSendButton}
+                disabled={isLoading || !input.trim()}
+                aria-label="Send message"
+              >
+                <SlArrowUpCircle size={32} />
+              </button>
+            </div>
+            <button type="submit" className={styles.sendButton} disabled={isLoading || !input.trim()}>
+              Send
             </button>
           </div>
-          <button type="submit" className={styles.sendButton} disabled={isLoading || !input.trim()}>
-            Send
-          </button>
-        </div>
-      </form>
+        </form>
       </div>
     </div>
   );

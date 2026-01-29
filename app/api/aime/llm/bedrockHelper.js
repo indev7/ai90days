@@ -182,7 +182,8 @@ export async function handleBedrock({
             const toolName = toolNames.get(id);
             if (
               toolName === 'emit_okrt_actions' ||
-              toolName === 'emit_okrt_share_actions'
+              toolName === 'emit_okrt_share_actions' ||
+              toolName === 'emit_jira_actions'
             ) {
               const actions = extractActionsFromArgs?.(fullStr) || [];
               if (actions.length) actionsPayloads.push(...actions);

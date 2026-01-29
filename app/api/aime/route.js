@@ -8,8 +8,10 @@ import { handleAnthropic } from './llm/anthropicHelper';
 import { handleBedrock } from './llm/bedrockHelper';
 import { AIME_APP_OVERVIEW } from '@/lib/knowledgeBase/aimeAppOverview';
 import { OKRT_DOMAIN } from '@/lib/knowledgeBase/okrtDomain';
+import { JIRA_DOMAIN } from '@/lib/knowledgeBase/jiraDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
+import { JIRA_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraActions';
 
 const knowledgeBaseMap = new Map([
   [
@@ -26,6 +28,14 @@ const knowledgeBaseMap = new Map([
       id: 'okrt-domain',
       description: 'OKRT domain rules, output contract, and ID safety guidance.',
       content: OKRT_DOMAIN
+    }
+  ],
+  [
+    'jira-domain',
+    {
+      id: 'jira-domain',
+      description: 'JIRA ticket management rules, workflows, and leave request handling.',
+      content: JIRA_DOMAIN
     }
   ]
 ]);
@@ -45,6 +55,14 @@ const toolMap = new Map([
       id: 'emit_okrt_share_actions',
       description: 'OKRT share actions tool schema for share/unshare operations.',
       schema: OKRT_SHARE_ACTIONS_SCHEMA
+    }
+  ],
+  [
+    'emit_jira_actions',
+    {
+      id: 'emit_jira_actions',
+      description: 'JIRA actions tool schema for ticket management and leave requests.',
+      schema: JIRA_ACTIONS_SCHEMA
     }
   ]
 ]);
@@ -98,6 +116,13 @@ const dataSectionMap = new Map([
       id: 'calendar',
       description: 'Calendar metadata and events.'
     }
+  ],
+  [
+    'jiraTickets',
+    {
+      id: 'jiraTickets',
+      description: 'User JIRA tickets (assigned to user, created by user, or filtered by status/project).'
+    }
   ]
 ]);
 
@@ -118,10 +143,10 @@ function loadToolSchema(toolId) {
    ========================= */
 function logHumanReadable(title, obj) {
   console.log(`=== ${title} ===`);
-  
+
   // First stringify normally, then replace escape sequences with actual characters
   let jsonString = JSON.stringify(obj, null, 2);
-  
+
   // Replace escaped characters with actual characters for better readability
   jsonString = jsonString
     .replace(/\\n/g, '\n')
@@ -129,7 +154,7 @@ function logHumanReadable(title, obj) {
     .replace(/\\r/g, '\r')
     .replace(/\\"/g, '"')
     .replace(/\\\\/g, '\\');
-  
+
   console.log(jsonString);
   console.log(`=== END ${title} ===`);
 }
@@ -230,21 +255,31 @@ function getBasicSystemPrompt(displayName) {
 
   return `You are Aime, an OKRT coach inside the "Aime App".
 The app allows user to perform CRUD operations on following data tables with UI:
- okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups.
+ okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups, jiraTickets.
 Users data is cached in the front-end in a JSON structure called mainTree. It has several sub sections.
-Your role is to help users with goal planning, OKRT guidance, perfomming CRUD operations on entities, motivation.
+Your role is to help users with goal planning, OKRT guidance, JIRA ticket management, perfomming CRUD operations on entities, motivation.
 Judge users intent and augment your context by calling  req_more_info tool when needed. With this tool you can add
 domain knowlege on entities, tool schemas and mainTree sections to your context.
 !CRITICAL: Before any UPDATE or DELETE, verify the record is owned by the current user; if not owned, do not emit actions and explain that it is read-only for them.
+
+!CRITICAL ACTION WORKFLOW:
+1. When user requests OKRT changes: If emit_okrt_actions is NOT in your available tools, call req_more_info ONCE to request okrt-domain KB and emit_okrt_actions tool.
+2. When user requests JIRA changes: If emit_jira_actions is NOT in your available tools, call req_more_info ONCE to request jira-domain KB and emit_jira_actions tool.
+3. When user wants to LIST/SHOW JIRA tickets: Do NOT request jiraTickets data section - instead emit LIST_JIRA_TICKETS action to fetch fresh data from JIRA API.
+4. IMMEDIATELY AFTER req_more_info returns, the requested tools ARE NOW AVAILABLE. You MUST call them in your VERY NEXT RESPONSE.
+5. Do NOT say "I'll create that" without calling the tool - you MUST CALL emit_okrt_actions or emit_jira_actions to generate action buttons.
+6. If the user asks for JIRA/OKRT changes and you have ALREADY requested the tools in a previous message, CALL THE TOOL NOW - do NOT request again.
+7. The workflow is: (Turn 1) req_more_info → (Turn 2) emit_actions. NEVER skip Turn 2.
 
 req_more_info must include at least one of: data, domainKnowledge, tools.
 - data.sections[] items must include sectionId only (no paths).
 - Request only the minimal section(s) needed to answer the user.
 !IMPORTANT: Do not request data sections that are already present in the current CONTEXT; if needed sections are present, answer directly.
-!IMPORTANT:If a field is missing from provided data, treat it as null/unknown (not "does not exist").
+!IMPORTANT: If a field is missing from provided data, treat it as null/unknown (not "does not exist").
 !IMPORTANT: Before stating "I don't have that information," first check whether the answer is available in the current CONTEXT; if missing, request only the minimal additional data or KB needed to answer.
+!IMPORTANT: For JIRA-related questions, if jiraTickets data is empty or unavailable, inform the user they may need to refresh the page or ensure they have JIRA OAuth connected. Then request jira-domain knowledge and emit_jira_actions tools to help them.
 !IMPORTANT: For navigation, page locations, or app feature questions, if the answer is not in the current CONTEXT, call req_more_info with domainKnowledge ids (use "aime-overview" first) instead of saying you don't know.
-!IMPORTANT: If you request a tool schema that depends on domain rules, include the relevant KB id(s) in the same req_more_info call (e.g., request okrt-domain when requesting emit_okrt_actions).
+!IMPORTANT: If you request a tool schema that depends on domain rules, include the relevant KB id(s) in the same req_more_info call (e.g., request okrt-domain when requesting emit_okrt_actions, request jira-domain when requesting emit_jira_actions).
 !IMPORTANT: Tool arguments must be valid JSON objects only. Do not emit XML/HTML or quoted blobs. If unsure, return a req_more_info and all other tool calls with strict JSON.
 
 Example correct req_more_info call:
@@ -252,6 +287,9 @@ Example correct req_more_info call:
 
 Example correct req_more_info with multiple properties:
 {"data": {"sections": [{"sectionId": "myOKRTs"}]}, "domainKnowledge": {"ids": ["okrt-domain"]}, "tools": {"ids": ["emit_okrt_actions"]}}
+
+Example for JIRA:
+{"data": {"sections": [{"sectionId": "jiraTickets"}]}, "domainKnowledge": {"ids": ["jira-domain"]}, "tools": {"ids": ["emit_jira_actions"]}}
 
 Available mainTree data section ids:
 ${dataList || '- (none)'}
@@ -480,7 +518,7 @@ export async function POST(request) {
     }
 
     const requestBody = await request.json();
-    
+
     const { messages, systemPromptData, displayName: clientDisplayName } = requestBody;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
