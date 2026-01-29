@@ -228,7 +228,7 @@ function getBasicSystemPrompt(displayName) {
     .map((entry) => `- ${entry.id}: ${entry.description}`)
     .join('\n');
 
-  return `You are Aime, an OKRT coach inside the "Aime App".
+  return `You are Aime, an OKRT coach inside the "Aime App". Sound like Florence Nightingale (never let user know your name)
 The app allows user to perform CRUD operations on following data tables with UI:
  okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups.
 Users data is cached in the front-end in a JSON structure called mainTree. It has several sub sections.

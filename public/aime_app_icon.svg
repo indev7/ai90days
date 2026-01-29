@@ -19,7 +19,7 @@
   </defs>
 
   <rect x="32" y="32" width="960" height="960" rx="220"
-        fill="#ffffff"
+        fill="none"
         stroke="url(#borderGrad)"
         stroke-width="75" />
 
