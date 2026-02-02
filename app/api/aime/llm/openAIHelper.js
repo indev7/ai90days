@@ -3,6 +3,7 @@ export async function handleOpenAI({
   logHumanReadable,
   tools,
   extractActionsFromArgs,
+  extractRenderChartFromArgs,
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
@@ -90,6 +91,7 @@ export async function handleOpenAI({
       const toolBuffers = new Map(); // id -> string[] (arguments fragments)
       const toolNames = new Map();   // id -> name
       let actionsPayloads = [];      // aggregated actions
+      let chartPayloads = [];
       let latestReqMoreInfo = null;
       let hasSentReqMoreInfo = false;
       let hasReqMoreInfoError = false;
@@ -101,6 +103,15 @@ export async function handleOpenAI({
       const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
+      const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
+      const sendCharts = () => {
+        if (!chartPayloads.length) return;
+        const uniqueCharts = dedupeCharts(chartPayloads);
+        for (const chart of uniqueCharts) {
+          send({ type: 'chart', data: chart });
+        }
+        chartPayloads = [];
+      };
       const sendReqMoreInfo = () => {
         if (hasSentReqMoreInfo || !latestReqMoreInfo || blockReqMoreInfo || hasReqMoreInfoError) return;
         send({ type: 'req_more_info', data: latestReqMoreInfo });
@@ -153,6 +164,9 @@ export async function handleOpenAI({
               if (actions.length) {
                 actionsPayloads.push(...actions);
               }
+            } else if (toolName === 'render_chart') {
+              const chart = extractRenderChartFromArgs?.(fullStr);
+              if (chart) chartPayloads.push(chart);
             } else if (toolName === 'req_more_info') {
               const info = extractReqMoreInfoFromArgs?.(fullStr);
               if (info?.__invalid) {
@@ -165,11 +179,13 @@ export async function handleOpenAI({
                 latestReqMoreInfo = info;
               }
             }
+            toolBuffers.delete(id);
           } catch (e) {
             console.error('Tool JSON parse error for', id, e);
           }
         }
         actionsPayloads = dedupe(actionsPayloads);
+        chartPayloads = dedupeCharts(chartPayloads);
       };
 
       // Step 8: Extract actions from function call items.
@@ -184,6 +200,11 @@ export async function handleOpenAI({
           if (actions.length) {
             actionsPayloads.push(...actions);
           }
+          return;
+        }
+        if (item.name === 'render_chart') {
+          const chart = extractRenderChartFromArgs?.(item.arguments || '{}');
+          if (chart) chartPayloads.push(chart);
           return;
         }
         if (item.name === 'req_more_info') {
@@ -214,6 +235,7 @@ export async function handleOpenAI({
         if (payloadStr === '[DONE]') {
           flushAllTools();
           if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+          sendCharts();
           sendReqMoreInfo();
           logRawResponse();
           send({ type: 'done' });
@@ -278,6 +300,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: actionsPayloads });
             }
+            sendCharts();
             break;
           }
 
@@ -308,6 +331,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: actionsPayloads });
             }
+            sendCharts();
             break;
           }
 
@@ -320,6 +344,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: dedupe(actionsPayloads) });
             }
+            sendCharts();
             break;
           }
 
@@ -333,6 +358,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: dedupe(actionsPayloads) });
             }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });
@@ -344,6 +370,7 @@ export async function handleOpenAI({
             console.error('Responses stream error:', data);
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });
@@ -367,6 +394,7 @@ export async function handleOpenAI({
             }
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });

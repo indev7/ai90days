@@ -5,6 +5,7 @@ export async function handleBedrock({
   logHumanReadable,
   tools,
   extractActionsFromArgs,
+  extractRenderChartFromArgs,
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
@@ -110,12 +111,22 @@ export async function handleBedrock({
     async start(controller) {
       const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
       let actionsPayloads = [];
+      let chartPayloads = [];
       let latestReqMoreInfo = null;
       let sentPreparing = false;
       let hasReqMoreInfoError = false;
       let pendingBuffer = '';
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
+      const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
+      const sendCharts = () => {
+        if (!chartPayloads.length) return;
+        const uniqueCharts = dedupeCharts(chartPayloads);
+        for (const chart of uniqueCharts) {
+          send({ type: 'chart', data: chart });
+        }
+        chartPayloads = [];
+      };
       const sendReqMoreInfo = () => {
         if (!latestReqMoreInfo || hasReqMoreInfoError) return;
         send({ type: 'req_more_info', data: latestReqMoreInfo });
@@ -186,6 +197,9 @@ export async function handleBedrock({
             ) {
               const actions = extractActionsFromArgs?.(fullStr) || [];
               if (actions.length) actionsPayloads.push(...actions);
+            } else if (toolName === 'render_chart') {
+              const chart = extractRenderChartFromArgs?.(fullStr);
+              if (chart) chartPayloads.push(chart);
             } else if (toolName === 'req_more_info') {
               const info = extractReqMoreInfoFromArgs?.(fullStr);
               if (info?.__invalid) {
@@ -194,11 +208,13 @@ export async function handleBedrock({
                 latestReqMoreInfo = info;
               }
             }
+            toolBuffers.delete(id);
           } catch (e) {
             console.error('Tool JSON parse error for', id, e);
           }
         }
         actionsPayloads = dedupe(actionsPayloads);
+        chartPayloads = dedupeCharts(chartPayloads);
       };
 
       const toolNames = new Map();
@@ -291,6 +307,7 @@ export async function handleBedrock({
         prep();
         send({ type: 'actions', data: actionsPayloads });
       }
+      sendCharts();
       sendReqMoreInfo();
       send({ type: 'done' });
       controller.close();

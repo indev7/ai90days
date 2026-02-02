@@ -3,6 +3,7 @@ export async function handleAnthropic({
   logHumanReadable,
   tools,
   extractActionsFromArgs,
+  extractRenderChartFromArgs,
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
@@ -100,6 +101,7 @@ export async function handleAnthropic({
       const toolIndexToId = new Map(); // index(string) -> id
       const toolHasSeededInput = new Map(); // id -> boolean
       let actionsPayloads = [];      // aggregated actions
+      let chartPayloads = [];
       let latestReqMoreInfo = null;
       let hasSentReqMoreInfo = false;
       let hasReqMoreInfoError = false;
@@ -109,6 +111,15 @@ export async function handleAnthropic({
       const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
+      const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
+      const sendCharts = () => {
+        if (!chartPayloads.length) return;
+        const uniqueCharts = dedupeCharts(chartPayloads);
+        for (const chart of uniqueCharts) {
+          send({ type: 'chart', data: chart });
+        }
+        chartPayloads = [];
+      };
       const sendReqMoreInfo = () => {
         if (hasSentReqMoreInfo || !latestReqMoreInfo || hasReqMoreInfoError) return;
         send({ type: 'req_more_info', data: latestReqMoreInfo });
@@ -155,33 +166,39 @@ export async function handleAnthropic({
             const fullStr = (parts || []).join('');
             if (!fullStr) continue;
             const toolName = toolNames.get(id);
-              if (
-                toolName === 'emit_okrt_actions' ||
-                toolName === 'emit_okrt_share_actions'
-              ) {
-                const actions = extractActionsFromArgs(fullStr);
-                if (actions.length) {
-                  actionsPayloads.push(...actions);
-                }
-              } else if (toolName === 'req_more_info') {
-                const info = extractReqMoreInfoFromArgs?.(fullStr);
-                if (info?.__invalid) {
-                  sendReqMoreInfoError();
-                } else if (info) {
-                  latestReqMoreInfo = info;
-                }
+            if (
+              toolName === 'emit_okrt_actions' ||
+              toolName === 'emit_okrt_share_actions'
+            ) {
+              const actions = extractActionsFromArgs(fullStr);
+              if (actions.length) {
+                actionsPayloads.push(...actions);
               }
+            } else if (toolName === 'render_chart') {
+              const chart = extractRenderChartFromArgs?.(fullStr);
+              if (chart) chartPayloads.push(chart);
+            } else if (toolName === 'req_more_info') {
+              const info = extractReqMoreInfoFromArgs?.(fullStr);
+              if (info?.__invalid) {
+                sendReqMoreInfoError();
+              } else if (info) {
+                latestReqMoreInfo = info;
+              }
+            }
+            toolBuffers.delete(id);
           } catch (e) {
             console.error('Tool JSON parse error for', id, e);
           }
         }
         actionsPayloads = dedupe(actionsPayloads);
+        chartPayloads = dedupeCharts(chartPayloads);
       };
 
       const handleEvent = (eventName, payloadStr) => {
         if (payloadStr === '[DONE]') {
           flushAllTools();
           if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+          sendCharts();
           sendReqMoreInfo();
           logRawResponse();
           send({ type: 'done' });
@@ -249,12 +266,14 @@ export async function handleAnthropic({
           case 'content_block_stop': {
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             break;
           }
           case 'message_stop': {
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });

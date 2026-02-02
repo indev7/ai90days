@@ -11,6 +11,7 @@ import useVoiceInput from '@/hooks/useVoiceInput';
 import styles from './page.module.css';
 import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
+import AimeChart from '../../components/AimeChart';
 import { TiMicrophoneOutline } from "react-icons/ti";
 import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
 import { SlArrowUpCircle } from "react-icons/sl";
@@ -412,10 +413,12 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
 function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickReply }) {
   const isUser = message.role === 'user';
   const textOnly = message.content;
+  const charts = Array.isArray(message.charts) ? message.charts : [];
+  const hasCharts = !isUser && charts.length > 0;
 
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
-      <div className={styles.messageContent}>
+      <div className={`${styles.messageContent} ${hasCharts ? styles.chartMessageContent : ''}`}>
         {!isUser && <span className={styles.assistantAvatar} aria-hidden="true" />}
         {message.error ? (
           <div className={styles.errorMessage}>
@@ -426,6 +429,14 @@ function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickR
           <>
             {/* Render Markdown nicely */}
             <MessageMarkdown>{textOnly}</MessageMarkdown>
+
+            {!isUser && charts.length > 0 && (
+              <div>
+                {charts.map((chart, index) => (
+                  <AimeChart key={`${message.id}-chart-${index}`} payload={chart} />
+                ))}
+              </div>
+            )}
 
             {/* OKRT Suggestion box disabled */}
             {/* Removed OkrtPreview to hide suggestion box */}
@@ -479,6 +490,8 @@ export default function AimePage() {
   const lastPendingIdRef = useRef(null);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const [chatWidth, setChatWidth] = useState(null);
   const inputRef = useRef(null);
   
   // Use cached user data
@@ -508,6 +521,20 @@ export default function AimePage() {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   const visibleMessages = useMemo(() => messages.filter((message) => !message.hidden), [messages]);
   useEffect(() => { scrollToBottom(); }, [visibleMessages]);
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const updateWidth = () => setChatWidth(container.clientWidth || null);
+    updateWidth();
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => updateWidth());
+      observer.observe(container);
+      return () => observer.disconnect();
+    }
+    const handleResize = () => updateWidth();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   useEffect(() => {
     if (!isLoading && inputRef.current) {
       inputRef.current.focus();
@@ -627,6 +654,7 @@ export default function AimePage() {
 
       let textBuffer = '';
       let pendingActions = [];
+      let pendingCharts = [];
       let pendingReqMoreInfo = null;
       let chunkBuffer = '';
 
@@ -679,6 +707,11 @@ export default function AimePage() {
                 actions: pendingActions
               });
               console.log('[AIME] stream actions received:', data);
+            } else if (data.type === 'chart') {
+              const id = ensureAssistantMessage();
+              pendingCharts = [...pendingCharts, data.data].filter(Boolean);
+              updateMessage(id, { content: textBuffer, charts: pendingCharts });
+              console.log('[AIME] stream chart received:', data);
             } else if (data.type === 'req_more_info') {
               pendingReqMoreInfo = data.data;
               console.log('[AIME] stream req_more_info received:', data);
@@ -693,11 +726,10 @@ export default function AimePage() {
       }
 
       if (assistantMessageId) {
-        if (pendingActions.length > 0) {
-          updateMessage(assistantMessageId, { content: textBuffer, actions: pendingActions, preparingActions: false });
-        } else {
-          updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
-        }
+        const finalUpdate = { content: textBuffer, preparingActions: false };
+        if (pendingActions.length > 0) finalUpdate.actions = pendingActions;
+        if (pendingCharts.length > 0) finalUpdate.charts = pendingCharts;
+        updateMessage(assistantMessageId, finalUpdate);
       }
 
       const hasInvalidReqMoreInfo =
@@ -750,6 +782,12 @@ export default function AimePage() {
           mainTree || {},
           displayName
         );
+        const needsChartWidth =
+          Array.isArray(mergedReqMoreInfo?.domainKnowledge?.ids) &&
+          mergedReqMoreInfo.domainKnowledge.ids.includes('aime-charts');
+        const widthHint = needsChartWidth && Number.isFinite(chatWidth)
+          ? `\n\nCHAT_WINDOW_WIDTH_PX: ${Math.round(chatWidth)}`
+          : '';
         const maxRetries = nextPayload.hasData ? 2 : 4;
         const exceededRetries = autoRetryCountRef.current >= maxRetries;
         const shouldCheckDuplicate = nextPayload.hasData;
@@ -780,8 +818,8 @@ export default function AimePage() {
             ? 'SYSTEM NOTICE: The previous req_more_info requested sections already present in CONTEXT. Do not call req_more_info again unless new sections are missing; answer using existing context.'
             : '';
           const systemPromptData = duplicateNotice
-            ? `${nextPayload.text}\n\n${duplicateNotice}`
-            : nextPayload.text;
+            ? `${nextPayload.text}\n\n${duplicateNotice}${widthHint}`
+            : `${nextPayload.text}${widthHint}`;
           await sendMessage(trimmedContent, {
             skipAddUserMessage: true,
             messageHistoryOverride: nextMessages,
@@ -999,7 +1037,7 @@ export default function AimePage() {
       <div className={`app-pageContent app-pageContent--full ${styles.container}`}>
 
 
-      <div className={styles.messagesContainer}>
+      <div className={styles.messagesContainer} ref={messagesContainerRef}>
         {visibleMessages.length === 0 && (
           <div className={styles.welcomeMessage}>
             <div className={styles.coachAvatar}>

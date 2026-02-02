@@ -34,7 +34,7 @@ User sends message → API fetches user context → AI processes → Streams res
 - **Next.js API Routes**: Server-side endpoint
 - **Server-Sent Events (SSE)**: Real-time streaming
 - **JWT Authentication**: User session management
-- **SQLite Database**: User and OKRT data storage
+- **PostgreSQL Database**: User and OKRT data storage
 - **AI Providers**: OpenAI GPT models or local Ollama models
 
 ---
