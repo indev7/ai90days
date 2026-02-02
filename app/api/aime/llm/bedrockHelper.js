@@ -194,7 +194,8 @@ export async function handleBedrock({
             if (
               toolName === 'emit_okrt_actions' ||
               toolName === 'emit_okrt_share_actions' ||
-              toolName === 'emit_group_actions'
+              toolName === 'emit_group_actions' ||
+              toolName === 'emit_ms_mail_actions'
             ) {
               const actions = extractActionsFromArgs?.(fullStr) || [];
               if (actions.length) actionsPayloads.push(...actions);
@@ -240,6 +241,7 @@ export async function handleBedrock({
                 block?.name === 'emit_okrt_actions' ||
                 block?.name === 'emit_okrt_share_actions' ||
                 block?.name === 'emit_group_actions' ||
+                block?.name === 'emit_ms_mail_actions' ||
                 block?.name === 'req_more_info'
               ) {
                 prep();

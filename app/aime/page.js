@@ -27,6 +27,14 @@ const DATA_SECTION_IDS = new Set([
   'calendar'
 ]);
 
+const AUTO_READONLY_INTENTS = new Set([
+  'LIST_MESSAGES',
+  'GET_MESSAGE_PREVIEW',
+  'OPEN_MESSAGE'
+]);
+
+const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/'];
+
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
 // PSEUDOCODE: for each incoming section/reason/id, validate and add to accumulator maps/sets.
 const mergeReqMoreInfo = (accumulator, incoming) => {
@@ -269,6 +277,9 @@ function labelForAction(action) {
   if (intent === 'DELETE_OKRT') return `Delete ${noun}`;
   if (intent === 'SHARE_OKRT') return 'Share Objective';
   if (intent === 'UNSHARE_OKRT') return 'Unshare Objective';
+  if (intent === 'LIST_MESSAGES') return 'List Mail';
+  if (intent === 'GET_MESSAGE_PREVIEW') return 'Message Preview';
+  if (intent === 'OPEN_MESSAGE') return 'Open in Outlook';
   return `${method || 'POST'} ${noun}`;
 }
 
@@ -299,11 +310,53 @@ function normalizeActions(rawActions = []) {
       key: `act-${idx}-${idFromPayload || Math.random().toString(36).slice(2)}`,
       label,
       endpoint,
-      method: a?.method || 'POST',
+      method: (a?.method || 'POST').toUpperCase(),
       body: a?.payload || {},
       intent: a?.intent || 'UPDATE_OKRT',
     };
   });
+}
+
+function isReadOnlyToolAction(action) {
+  if (!action || typeof action !== 'object') return false;
+  const method = (action.method || '').toUpperCase();
+  if (method !== 'GET') return false;
+  if (!AUTO_READONLY_INTENTS.has(action.intent)) return false;
+  const endpoint = action.endpoint || '';
+  return AUTO_READONLY_ENDPOINT_PREFIXES.some((prefix) => endpoint.startsWith(prefix));
+}
+
+async function executeToolActionRequest(action, { allowWrite = false } = {}) {
+  const method = (action?.method || 'POST').toUpperCase();
+  const isReadOnly = isReadOnlyToolAction(action);
+  if (!allowWrite && !isReadOnly) {
+    throw new Error('Blocked non-read tool action from auto-execution.');
+  }
+
+  const payload = { ...(action?.body || {}) };
+  const requestInit = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (method !== 'GET' && method !== 'DELETE') {
+    requestInit.body = JSON.stringify(payload);
+  }
+
+  const res = await fetch(action.endpoint, requestInit);
+  let result = null;
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    result = await res.json();
+  } else {
+    result = await res.text();
+  }
+
+  if (!res.ok) {
+    const detail = typeof result === 'string' ? result : result?.error || res.statusText;
+    throw new Error(`API error: ${res.status}${detail ? ` - ${detail}` : ''}`);
+  }
+
+  return result;
 }
 
 /* ---------- components ---------- */
@@ -589,6 +642,7 @@ export default function AimePage() {
   const autoRetryCountRef = useRef(0);
   const duplicateReqMoreInfoRef = useRef(0);
   const reqMoreInfoErrorRetryRef = useRef(0);
+  const autoReadActionRetryRef = useRef(0);
   const accumulatedReqMoreInfoRef = useRef({
     sections: new Map(),
     knowledgeIds: new Set(),
@@ -681,6 +735,7 @@ export default function AimePage() {
 
       let textBuffer = '';
       let pendingActions = [];
+      let pendingAutoReadActions = [];
       let pendingCharts = [];
       let pendingReqMoreInfo = null;
       let chunkBuffer = '';
@@ -726,7 +781,9 @@ export default function AimePage() {
               console.log('[AIME] stream preparing_actions received:', data);
             } else if (data.type === 'actions') {
               const id = ensureAssistantMessage();
-              pendingActions = normalizeActions(data.data || []);
+              const normalizedActions = normalizeActions(data.data || []);
+              pendingAutoReadActions = normalizedActions.filter((action) => isReadOnlyToolAction(action));
+              pendingActions = normalizedActions.filter((action) => !isReadOnlyToolAction(action));
               updateMessage(id, {
                 content: textBuffer,
                 preparingActions: false,
@@ -758,6 +815,72 @@ export default function AimePage() {
         if (pendingCharts.length > 0) finalUpdate.charts = pendingCharts;
         updateMessage(assistantMessageId, finalUpdate);
       }
+
+      if (pendingAutoReadActions.length > 0 && !stopRequestedRef.current) {
+        const maxAutoReadRetries = 2;
+        if (autoReadActionRetryRef.current >= maxAutoReadRetries) {
+          addMessage({
+            id: Date.now() + 5,
+            role: 'assistant',
+            content: 'I could not finish auto-reading mail after multiple attempts. Please try again.',
+            error: true,
+            timestamp: new Date(),
+          });
+          return;
+        }
+
+        autoReadActionRetryRef.current += 1;
+
+        const autoResults = [];
+        for (const action of pendingAutoReadActions) {
+          try {
+            const result = await executeToolActionRequest(action, { allowWrite: false });
+            autoResults.push({
+              intent: action.intent,
+              endpoint: action.endpoint,
+              method: action.method,
+              ok: true,
+              data: result
+            });
+          } catch (error) {
+            autoResults.push({
+              intent: action.intent,
+              endpoint: action.endpoint,
+              method: action.method,
+              ok: false,
+              error: error?.message || 'Unknown error'
+            });
+          }
+        }
+
+        const toolResultContext = [
+          'CONTEXT - Auto-executed read-only tool results.',
+          'These results came from backend APIs and are authoritative.',
+          `<TOOL_RESULTS:ms-mail>\n${JSON.stringify(autoResults)}\n</TOOL_RESULTS:ms-mail>`,
+          'Use these results to answer the user request. Do not request write actions.'
+        ].join('\n');
+
+        const assistantContextMessage = {
+          id: Date.now() + 6,
+          role: 'assistant',
+          content: textBuffer,
+          timestamp: new Date(),
+        };
+
+        const mergedSystemPromptData = systemPromptData
+          ? `${systemPromptData}\n\n${toolResultContext}`
+          : toolResultContext;
+
+        await sendMessage(trimmedContent, {
+          skipAddUserMessage: true,
+          messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
+          systemPromptData: mergedSystemPromptData,
+          forceSend: true
+        });
+        return;
+      }
+
+      autoReadActionRetryRef.current = 0;
 
       const hasInvalidReqMoreInfo =
         textBuffer.includes(INVALID_REQ_MORE_INFO_MESSAGE);
@@ -906,15 +1029,7 @@ export default function AimePage() {
           return;
         }
       }
-      const payload = { ...action.body };
-      const res = await fetch(action.endpoint, {
-        method: action.method,
-        headers: { 'Content-Type': 'application/json' },
-        body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      
-      const result = await res.json();
+      const result = await executeToolActionRequest(action, { allowWrite: true });
       
       const appliedCacheUpdate = Boolean(result?._cacheUpdate);
       processCacheUpdate(result);
@@ -951,15 +1066,7 @@ export default function AimePage() {
     setLoading(true);
     try {
       for (const action of actions) {
-        const payload = { ...action.body };
-        const res = await fetch(action.endpoint, {
-          method: action.method,
-          headers: { 'Content-Type': 'application/json' },
-          body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
-        
-        const result = await res.json();
+        const result = await executeToolActionRequest(action, { allowWrite: true });
         
         const appliedCacheUpdate = Boolean(result?._cacheUpdate);
         processCacheUpdate(result);

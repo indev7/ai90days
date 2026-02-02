@@ -27,7 +27,8 @@ export async function handleOpenAI({
     (tool) =>
       tool?.name === 'emit_okrt_actions' ||
       tool?.name === 'emit_okrt_share_actions' ||
-      tool?.name === 'emit_group_actions'
+      tool?.name === 'emit_group_actions' ||
+      tool?.name === 'emit_ms_mail_actions'
   );
   const openaiPayload = {
     model,
@@ -160,7 +161,8 @@ export async function handleOpenAI({
             if (
               toolName === 'emit_okrt_actions' ||
               toolName === 'emit_okrt_share_actions' ||
-              toolName === 'emit_group_actions'
+              toolName === 'emit_group_actions' ||
+              toolName === 'emit_ms_mail_actions'
             ) {
               const actions = extractActionsFromArgs(fullStr);
               if (actions.length) {
@@ -197,7 +199,8 @@ export async function handleOpenAI({
         if (
           item.name === 'emit_okrt_actions' ||
           item.name === 'emit_okrt_share_actions' ||
-          item.name === 'emit_group_actions'
+          item.name === 'emit_group_actions' ||
+          item.name === 'emit_ms_mail_actions'
         ) {
           const actions = extractActionsFromArgs(item.arguments || '{}');
           if (actions.length) {
@@ -273,7 +276,8 @@ export async function handleOpenAI({
           if (
             name === 'emit_okrt_actions' ||
             name === 'emit_okrt_share_actions' ||
-            name === 'emit_group_actions'
+            name === 'emit_group_actions' ||
+            name === 'emit_ms_mail_actions'
           ) {
             prep();
           }
@@ -320,7 +324,8 @@ export async function handleOpenAI({
                 if (
                   toolName === 'emit_okrt_actions' ||
                   toolName === 'emit_okrt_share_actions' ||
-                  toolName === 'emit_group_actions'
+                  toolName === 'emit_group_actions' ||
+                  toolName === 'emit_ms_mail_actions'
                 ) {
                   prep();
                 }

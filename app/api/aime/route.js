@@ -10,10 +10,12 @@ import { AIME_APP_OVERVIEW } from '@/lib/knowledgeBase/aimeAppOverview';
 import { OKRT_DOMAIN } from '@/lib/knowledgeBase/okrtDomain';
 import { AIME_CHARTS } from '@/lib/knowledgeBase/aimeCharts';
 import { GROUPS_DOMAIN } from '@/lib/knowledgeBase/groupsDomain';
+import { MICROSOFT_MAIL_DOMAIN } from '@/lib/knowledgeBase/microsoftMailDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
 import { GROUP_ACTIONS_SCHEMA } from '@/lib/toolSchemas/groupActions';
+import { MS_MAIL_ACTIONS_SCHEMA } from '@/lib/toolSchemas/msMailActions';
 
 const knowledgeBaseMap = new Map([
   [
@@ -46,6 +48,14 @@ const knowledgeBaseMap = new Map([
       id: 'groups-domain',
       description: 'Group creation, membership, and management rules.',
       content: GROUPS_DOMAIN
+    }
+  ],
+  [
+    'ms-mail-domain',
+    {
+      id: 'ms-mail-domain',
+      description: 'Microsoft Outlook mail access via Graph (metadata-first, delegated).',
+      content: MICROSOFT_MAIL_DOMAIN
     }
   ]
 ]);
@@ -81,6 +91,14 @@ const toolMap = new Map([
       id: 'emit_group_actions',
       description: 'Group actions tool schema for create/update/delete and membership changes.',
       schema: GROUP_ACTIONS_SCHEMA
+    }
+  ],
+  [
+    'emit_ms_mail_actions',
+    {
+      id: 'emit_ms_mail_actions',
+      description: 'Microsoft mail actions tool schema for list/preview/open message operations.',
+      schema: MS_MAIL_ACTIONS_SCHEMA
     }
   ]
 ]);
