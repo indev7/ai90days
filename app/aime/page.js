@@ -6,6 +6,7 @@ import useAimeStore from '@/store/aimeStore';
 import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
 import useTextToSpeech from '@/hooks/useTextToSpeech';
 import useVoiceInput from '@/hooks/useVoiceInput';
 import styles from './page.module.css';
@@ -250,6 +251,13 @@ function labelForAction(action) {
     payload?.type === 'T' ? 'Task' :
     'OKRT';
 
+  if (intent === 'CREATE_GROUP') return `Create ${payload?.type || 'Group'}`;
+  if (intent === 'UPDATE_GROUP') return `Update ${payload?.type || 'Group'}`;
+  if (intent === 'DELETE_GROUP') return `Delete ${payload?.type || 'Group'}`;
+  if (intent === 'ADD_GROUP_MEMBER') return 'Add Group Member';
+  if (intent === 'UPDATE_GROUP_MEMBER') return 'Update Group Member';
+  if (intent === 'REMOVE_GROUP_MEMBER') return 'Remove Group Member';
+
   if (intent === 'CREATE_OKRT') return `Create ${noun}`;
   if (intent === 'UPDATE_OKRT') {
     if (payload?.title) return `Rename Objective`;
@@ -268,18 +276,24 @@ function labelForAction(action) {
 // PSEUDOCODE: map raw actions to UI objects with keys, labels, endpoints, and bodies.
 function normalizeActions(rawActions = []) {
   return rawActions.map((a, idx) => {
-    const idFromPayload = a?.payload?.id;
+    const idFromPayload = a?.payload?.id || a?.payload?.groupId || a?.payload?.group_id;
+    const userIdFromPayload =
+      a?.payload?.userId || a?.payload?.user_id || a?.payload?.memberId || a?.payload?.member_id;
     const baseEndpoint = a?.endpoint?.includes('[id]')
       ? a.endpoint.replace('[id]', idFromPayload || '')
       : a?.endpoint || '/api/okrt';
+    const endpointWithUser =
+      baseEndpoint?.includes('[userId]')
+        ? baseEndpoint.replace('[userId]', userIdFromPayload || '')
+        : baseEndpoint;
     const needsShareQuery =
       a?.method === 'DELETE' &&
-      baseEndpoint.includes('/share') &&
+      endpointWithUser.includes('/share') &&
       a?.payload?.target &&
       a?.payload?.share_type;
     const endpoint = needsShareQuery
-      ? `${baseEndpoint}?target=${encodeURIComponent(a.payload.target)}&type=${encodeURIComponent(a.payload.share_type)}`
-      : baseEndpoint;
+      ? `${endpointWithUser}?target=${encodeURIComponent(a.payload.target)}&type=${encodeURIComponent(a.payload.share_type)}`
+      : endpointWithUser;
     const label = labelForAction(a);
     return {
       key: `act-${idx}-${idFromPayload || Math.random().toString(36).slice(2)}`,
@@ -355,6 +369,11 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
             if (action.body?.type === 'O') description = `Create Objective: ${action.body?.title || ''}`;
             else if (action.body?.type === 'K') description = `Create KR: ${action.body?.description || ''}`;
             else if (action.body?.type === 'T') description = `Create Task: ${action.body?.description || ''}`;
+            else if (action.intent === 'CREATE_GROUP') {
+              description = `Create ${action.body?.type || 'Group'}: ${action.body?.name || ''}`.trim();
+            } else if (action.intent === 'ADD_GROUP_MEMBER') {
+              description = `Add member: ${action.body?.email || ''}`.trim();
+            }
             else if (action.intent === 'SHARE_OKRT') {
               description = action.body?.visibility === 'private'
                 ? 'Unshare Objective (make private)'
@@ -370,6 +389,14 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
               `${action.method === 'PUT' ? 'Update' : 'Delete'} ${action.body?.title || action.body?.description || 'OKRT'}`;
             if (action.intent === 'UNSHARE_OKRT') {
               description = 'Unshare Objective';
+            } else if (action.intent === 'UPDATE_GROUP') {
+              description = `Update ${action.body?.type || 'Group'}: ${action.body?.name || 'Details'}`;
+            } else if (action.intent === 'DELETE_GROUP') {
+              description = `Delete ${action.body?.type || 'Group'}`;
+            } else if (action.intent === 'UPDATE_GROUP_MEMBER') {
+              description = action.body?.isAdmin ? 'Set member as admin' : 'Remove member admin';
+            } else if (action.intent === 'REMOVE_GROUP_MEMBER') {
+              description = 'Remove member';
             }
           }
           return (
@@ -505,7 +532,7 @@ export default function AimePage() {
     [myOKRTs]
   );
   const preferredVoice = mainTree?.preferences?.preferred_voice;
-  const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
+  const { updateMyOKRT, setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
@@ -889,22 +916,8 @@ export default function AimePage() {
       
       const result = await res.json();
       
-      let appliedCacheUpdate = false;
-      // Handle cache update if provided by the API
-      if (result._cacheUpdate) {
-        const { action: cacheAction, data } = result._cacheUpdate;
-        
-        if (cacheAction === 'addMyOKRT' && data) {
-          addMyOKRT(data);
-          appliedCacheUpdate = true;
-        } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
-          updateMyOKRT(data.id, data.updates);
-          appliedCacheUpdate = true;
-        } else if (cacheAction === 'removeMyOKRT' && data?.id) {
-          removeMyOKRT(data.id);
-          appliedCacheUpdate = true;
-        }
-      }
+      const appliedCacheUpdate = Boolean(result?._cacheUpdate);
+      processCacheUpdate(result);
 
       if (
         !appliedCacheUpdate &&
@@ -948,22 +961,8 @@ export default function AimePage() {
         
         const result = await res.json();
         
-        let appliedCacheUpdate = false;
-        // Handle cache update if provided by the API
-        if (result._cacheUpdate) {
-          const { action: cacheAction, data } = result._cacheUpdate;
-          
-          if (cacheAction === 'addMyOKRT' && data) {
-            addMyOKRT(data);
-            appliedCacheUpdate = true;
-          } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
-            updateMyOKRT(data.id, data.updates);
-            appliedCacheUpdate = true;
-          } else if (cacheAction === 'removeMyOKRT' && data?.id) {
-            removeMyOKRT(data.id);
-            appliedCacheUpdate = true;
-          }
-        }
+        const appliedCacheUpdate = Boolean(result?._cacheUpdate);
+        processCacheUpdate(result);
 
         if (
           !appliedCacheUpdate &&

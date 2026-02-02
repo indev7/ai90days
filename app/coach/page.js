@@ -6,6 +6,7 @@ import { useCoach } from '@/contexts/CoachContext';
 import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
 import useVoiceRecording from '@/hooks/useVoiceRecording';
 import styles from './page.module.css';
 import OkrtPreview from '../../components/OkrtPreview';
@@ -265,6 +266,13 @@ function labelForAction(action) {
     payload?.type === 'T' ? 'Task' :
     'OKRT';
 
+  if (intent === 'CREATE_GROUP') return `Create ${payload?.type || 'Group'}`;
+  if (intent === 'UPDATE_GROUP') return `Update ${payload?.type || 'Group'}`;
+  if (intent === 'DELETE_GROUP') return `Delete ${payload?.type || 'Group'}`;
+  if (intent === 'ADD_GROUP_MEMBER') return 'Add Group Member';
+  if (intent === 'UPDATE_GROUP_MEMBER') return 'Update Group Member';
+  if (intent === 'REMOVE_GROUP_MEMBER') return 'Remove Group Member';
+
   if (intent === 'CREATE_OKRT') return `Create ${noun}`;
   if (intent === 'UPDATE_OKRT') {
     if (payload?.title) return `Rename Objective`;
@@ -279,10 +287,15 @@ function labelForAction(action) {
 
 function normalizeActions(rawActions = []) {
   return rawActions.map((a, idx) => {
-    const idFromPayload = a?.payload?.id;
-    const endpoint = a?.endpoint?.includes('[id]')
+    const idFromPayload = a?.payload?.id || a?.payload?.groupId || a?.payload?.group_id;
+    const userIdFromPayload =
+      a?.payload?.userId || a?.payload?.user_id || a?.payload?.memberId || a?.payload?.member_id;
+    const baseEndpoint = a?.endpoint?.includes('[id]')
       ? a.endpoint.replace('[id]', idFromPayload || '')
       : a?.endpoint || '/api/okrt';
+    const endpoint = baseEndpoint?.includes('[userId]')
+      ? baseEndpoint.replace('[userId]', userIdFromPayload || '')
+      : baseEndpoint;
     const label = labelForAction(a);
     return {
       key: `act-${idx}-${idFromPayload || Math.random().toString(36).slice(2)}`,
@@ -350,10 +363,24 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
             if (action.body?.type === 'O') description = `Create Objective: ${action.body?.title || ''}`;
             else if (action.body?.type === 'K') description = `Create KR: ${action.body?.description || ''}`;
             else if (action.body?.type === 'T') description = `Create Task: ${action.body?.description || ''}`;
+            else if (action.intent === 'CREATE_GROUP') {
+              description = `Create ${action.body?.type || 'Group'}: ${action.body?.name || ''}`.trim();
+            } else if (action.intent === 'ADD_GROUP_MEMBER') {
+              description = `Add member: ${action.body?.email || ''}`.trim();
+            }
           } else if (action.method === 'PUT' || action.method === 'DELETE') {
             description =
               descriptions[action.key] ||
               `${action.method === 'PUT' ? 'Update' : 'Delete'} ${action.body?.title || action.body?.description || 'OKRT'}`;
+            if (action.intent === 'UPDATE_GROUP') {
+              description = `Update ${action.body?.type || 'Group'}: ${action.body?.name || 'Details'}`;
+            } else if (action.intent === 'DELETE_GROUP') {
+              description = `Delete ${action.body?.type || 'Group'}`;
+            } else if (action.intent === 'UPDATE_GROUP_MEMBER') {
+              description = action.body?.isAdmin ? 'Set member as admin' : 'Remove member admin';
+            } else if (action.intent === 'REMOVE_GROUP_MEMBER') {
+              description = 'Remove member';
+            }
           }
           return (
             <tr key={action.key}>
@@ -463,7 +490,7 @@ export default function CoachPage() {
     [myOKRTs]
   );
   const preferredVoice = mainTree?.preferences?.preferred_voice;
-  const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
+  const { setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
@@ -652,19 +679,7 @@ export default function CoachPage() {
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       
       const result = await res.json();
-      
-      // Handle cache update if provided by the API
-      if (result._cacheUpdate) {
-        const { action: cacheAction, data } = result._cacheUpdate;
-        
-        if (cacheAction === 'addMyOKRT' && data) {
-          addMyOKRT(data);
-        } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
-          updateMyOKRT(data.id, data.updates);
-        } else if (cacheAction === 'removeMyOKRT' && data?.id) {
-          removeMyOKRT(data.id);
-        }
-      }
+      processCacheUpdate(result);
       
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ ${action.label} completed successfully!`, timestamp: new Date() });
     } catch (err) {
@@ -688,19 +703,7 @@ export default function CoachPage() {
         if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
         
         const result = await res.json();
-        
-        // Handle cache update if provided by the API
-        if (result._cacheUpdate) {
-          const { action: cacheAction, data } = result._cacheUpdate;
-          
-          if (cacheAction === 'addMyOKRT' && data) {
-            addMyOKRT(data);
-          } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
-            updateMyOKRT(data.id, data.updates);
-          } else if (cacheAction === 'removeMyOKRT' && data?.id) {
-            removeMyOKRT(data.id);
-          }
-        }
+        processCacheUpdate(result);
       }
       addMessage({ id: Date.now(), role: 'assistant', content: `✅ All actions completed successfully!`, timestamp: new Date() });
     } catch (err) {

@@ -9,9 +9,11 @@ import { handleBedrock } from './llm/bedrockHelper';
 import { AIME_APP_OVERVIEW } from '@/lib/knowledgeBase/aimeAppOverview';
 import { OKRT_DOMAIN } from '@/lib/knowledgeBase/okrtDomain';
 import { AIME_CHARTS } from '@/lib/knowledgeBase/aimeCharts';
+import { GROUPS_DOMAIN } from '@/lib/knowledgeBase/groupsDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
+import { GROUP_ACTIONS_SCHEMA } from '@/lib/toolSchemas/groupActions';
 
 const knowledgeBaseMap = new Map([
   [
@@ -36,6 +38,14 @@ const knowledgeBaseMap = new Map([
       id: 'aime-charts',
       description: 'Chart rendering rules for render_chart (types, data shaping, formatting).',
       content: AIME_CHARTS
+    }
+  ],
+  [
+    'groups-domain',
+    {
+      id: 'groups-domain',
+      description: 'Group creation, membership, and management rules.',
+      content: GROUPS_DOMAIN
     }
   ]
 ]);
@@ -63,6 +73,14 @@ const toolMap = new Map([
       id: 'render_chart',
       description: 'Chart rendering tool schema (bar, pie, line).',
       schema: RENDER_CHART_SCHEMA
+    }
+  ],
+  [
+    'emit_group_actions',
+    {
+      id: 'emit_group_actions',
+      description: 'Group actions tool schema for create/update/delete and membership changes.',
+      schema: GROUP_ACTIONS_SCHEMA
     }
   ]
 ]);
