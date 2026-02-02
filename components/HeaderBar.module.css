@@ -116,9 +116,9 @@
   text-decoration: none;
   color: var(--header-text, var(--text));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-left: -20px;
-  transform: translateY(-0px);
-  margin-bottom: 15px;
+  margin-left: 0;
+  transform: none;
+  margin-bottom: 0;
 }
 
 .logoLink:hover {
@@ -133,26 +133,26 @@
 }
 
 .logoIcon {
-  background-image: url('/AIME.png');
+  background-image: url('/aime_header_logo.svg');
   background-repeat: no-repeat;
   background-size: contain;
-  width: 100px;
-  height: 34px;
+  width: 160px;
+  height: 44px;
   display: inline-block;
-  margin-top: 15px;
-  margin-left: 20px;
+  margin: 0;
 }
 
 :global(html[data-theme="nature"]) .logoIcon {
-  background-image: url('/AIME.png');
+  background-image: url('/aime_header_logo.svg');
 }
 
 @media (max-width: 500px) {
   .logoIcon {
-    max-width: 110px;
+    width: 130px;
+    height: 38px;
   }
   .logoLink {
-    transform: translate(8px, -1px);
+    transform: none;
   }
   .userMenu {
     gap: 4px;
@@ -166,6 +166,13 @@
   align-items: center;
   justify-content: center;
   flex: 1;
+}
+
+.centerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(740px, 100%);
 }
 
 .searchForm {
@@ -266,6 +273,35 @@
 
 .notificationLink:hover {
   background: var(--header-hover, var(--border-light));
+}
+
+.favoritePromptsLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--header-icon, var(--text));
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  transition: background 0.2s ease, color 0.2s ease;
+  transform: translateY(0);
+}
+
+.favoritePromptsLink:hover {
+  background: var(--header-hover, var(--border-light));
+}
+
+.favoritePromptsIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: url('/aime_app_icon.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
 }
 
 .notificationBadge {
@@ -400,6 +436,10 @@
   .center {
     order: 3;
     flex-basis: 100%;
+  }
+
+  .centerActions {
+    width: 100%;
   }
 
   .searchForm {
