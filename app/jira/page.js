@@ -7,6 +7,8 @@ import Pagination from '@/components/Pagination';
 import { getThemeColorPalette } from '@/lib/clockUtils';
 import styles from './page.module.css';
 
+const JIRA_BASE_URL = String(process.env.NEXT_PUBLIC_JIRA_BASE_URL || '').replace(/\/+$/, '');
+
 // Generate consistent color for each project using dashboard clock colors
 function getProjectColor(projectIndex) {
   const colors = getThemeColorPalette();
@@ -74,11 +76,12 @@ export default function JiraPage() {
       setIsAuthenticated(data.authenticated);
 
       // Store Jira site URL if available
-      if (data.resources && data.resources.length > 0) {
-        setJiraSiteUrl(data.resources[0].url);
+      if (data.siteUrl) {
+        setJiraSiteUrl(String(data.siteUrl).replace(/\/+$/, ''));
+      } else if (JIRA_BASE_URL) {
+        setJiraSiteUrl(JIRA_BASE_URL);
       } else if (data.cloudId) {
-        // Fallback: construct URL from cloudId
-        setJiraSiteUrl(`https://staysure-group.atlassian.net`);
+        setJiraSiteUrl(`https://${data.cloudId}.atlassian.net`);
       }
 
       // Check for URL parameters
@@ -335,8 +338,8 @@ export default function JiraPage() {
 
   const handleTicketKeyClick = (ticketKey, event) => {
     event.stopPropagation();
-    // Use jiraSiteUrl or construct from known instance
-    const baseUrl = jiraSiteUrl || 'https://staysure-group.atlassian.net';
+    const baseUrl = jiraSiteUrl || JIRA_BASE_URL;
+    if (!baseUrl) return;
     window.open(`${baseUrl}/browse/${ticketKey}`, '_blank');
   };
 

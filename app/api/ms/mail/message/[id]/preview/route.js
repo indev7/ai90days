@@ -14,7 +14,15 @@ export async function GET(request, { params }) {
     }
 
     const userId = session.userId;
-    const messageId = params?.id;
+    const routeParams = await params;
+    let messageId = routeParams?.id || '';
+    if (messageId) {
+      try {
+        messageId = decodeURIComponent(messageId);
+      } catch (error) {
+        // Keep the raw route segment if decoding fails.
+      }
+    }
 
     if (!messageId) {
       return NextResponse.json({ error: 'Message ID is required' }, { status: 400 });

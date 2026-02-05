@@ -9,6 +9,15 @@ export async function handleBedrock({
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
+  const ACTION_TOOL_NAMES = new Set([
+    'emit_okrt_actions',
+    'emit_okrt_share_actions',
+    'emit_group_actions',
+    'emit_ms_mail_actions',
+    'emit_jira_query_actions'
+  ]);
+  const isActionToolName = (name) => ACTION_TOOL_NAMES.has(name);
+
   const region = process.env.AWS_BEDROCK_REGION;
   const model = process.env.AWS_BEDROCK_MODEL;
   const accessKeyId = process.env.AWS_BEDROCK_USER_KEY;
@@ -26,13 +35,54 @@ export async function handleBedrock({
     .map(m => String(m.content ?? ''))
     .join('\n\n');
 
+  const toText = (value) => {
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value ?? null);
+    } catch {
+      return String(value ?? '');
+    }
+  };
+
   const messages = llmMessages
-    .filter(m => m.role !== 'system')
-    .map(m => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: [{ type: 'text', text: String(m.content ?? '') }]
-    }))
-    .filter(m => m.content[0].text.trim().length > 0);
+    .filter((m) => m.role !== 'system')
+    .map((m) => {
+      if (m?.toolUse?.id && m?.toolUse?.name) {
+        return {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: String(m.toolUse.id),
+              name: String(m.toolUse.name),
+              input:
+                m.toolUse.input && typeof m.toolUse.input === 'object'
+                  ? m.toolUse.input
+                  : {}
+            }
+          ]
+        };
+      }
+      if (m?.toolResult?.toolUseId) {
+        return {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: String(m.toolResult.toolUseId),
+              content: toText(m.toolResult.payload)
+            }
+          ]
+        };
+      }
+      const text = String(m.content ?? '').trim();
+      if (!text) return null;
+      return {
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: [{ type: 'text', text }]
+      };
+    })
+    .filter(Boolean);
 
   const activeTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
   const toolsPayload = activeTools.map((tool) => ({
@@ -76,7 +126,7 @@ export async function handleBedrock({
         modelId: model,
         contentType: 'application/json',
         accept: 'application/json',
-        body: requestBody
+        body: payload
       },
       response: {
         status: error?.$metadata?.httpStatusCode,
@@ -90,21 +140,11 @@ export async function handleBedrock({
     throw new Error(`Bedrock API error: ${error?.message || 'Unknown error'}`);
   }
 
-  await logLlmApiInteraction?.({
-    provider: 'bedrock',
-    request: {
-      modelId: model,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: requestBody
-    },
-    response: {
-      status: response?.$metadata?.httpStatusCode,
-      statusText: response?.$metadata?.requestId,
-      headers: response?.$metadata?.httpHeaders,
-      body: ''
-    }
-  });
+  const responseMeta = {
+    status: response?.$metadata?.httpStatusCode,
+    statusText: response?.$metadata?.requestId,
+    headers: response?.$metadata?.httpHeaders
+  };
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -116,9 +156,39 @@ export async function handleBedrock({
       let sentPreparing = false;
       let hasReqMoreInfoError = false;
       let pendingBuffer = '';
+      let rawResponse = '';
+      let hasLoggedRawResponse = false;
+      const MAX_LOGGED_RESPONSE_CHARS = 200000;
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
       const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
+      const appendRawResponse = (chunkText) => {
+        if (!chunkText) return;
+        if (rawResponse.length >= MAX_LOGGED_RESPONSE_CHARS) return;
+        const remaining = MAX_LOGGED_RESPONSE_CHARS - rawResponse.length;
+        rawResponse += chunkText.slice(0, remaining);
+      };
+      const logRawResponse = async () => {
+        if (hasLoggedRawResponse) return;
+        hasLoggedRawResponse = true;
+        const body =
+          rawResponse.length >= MAX_LOGGED_RESPONSE_CHARS
+            ? `${rawResponse}\n...[truncated]`
+            : rawResponse;
+        await logLlmApiInteraction?.({
+          provider: 'bedrock',
+          request: {
+            modelId: model,
+            contentType: 'application/json',
+            accept: 'application/json',
+            body: payload
+          },
+          response: {
+            ...responseMeta,
+            body
+          }
+        });
+      };
       const sendCharts = () => {
         if (!chartPayloads.length) return;
         const uniqueCharts = dedupeCharts(chartPayloads);
@@ -191,12 +261,7 @@ export async function handleBedrock({
             const fullStr = (parts || []).join('');
             if (!fullStr) continue;
             const toolName = toolNames.get(id);
-            if (
-              toolName === 'emit_okrt_actions' ||
-              toolName === 'emit_okrt_share_actions' ||
-              toolName === 'emit_group_actions' ||
-              toolName === 'emit_ms_mail_actions'
-            ) {
+            if (isActionToolName(toolName)) {
               const actions = extractActionsFromArgs?.(fullStr) || [];
               if (actions.length) actionsPayloads.push(...actions);
             } else if (toolName === 'render_chart') {
@@ -237,13 +302,7 @@ export async function handleBedrock({
                 toolBuffers.set(block.id, [JSON.stringify(block.input)]);
                 toolHasSeededInput.set(block.id, true);
               }
-              if (
-                block?.name === 'emit_okrt_actions' ||
-                block?.name === 'emit_okrt_share_actions' ||
-                block?.name === 'emit_group_actions' ||
-                block?.name === 'emit_ms_mail_actions' ||
-                block?.name === 'req_more_info'
-              ) {
+              if (isActionToolName(block?.name) || block?.name === 'req_more_info') {
                 prep();
               }
             }
@@ -281,6 +340,7 @@ export async function handleBedrock({
         for await (const event of response?.body || []) {
           if (!event?.chunk?.bytes) continue;
           const chunkText = new TextDecoder().decode(event.chunk.bytes);
+          appendRawResponse(chunkText);
           const combined = pendingBuffer + chunkText;
           const { objects, rest } = extractJsonObjects(combined);
           pendingBuffer = rest;
@@ -313,6 +373,7 @@ export async function handleBedrock({
       }
       sendCharts();
       sendReqMoreInfo();
+      await logRawResponse();
       send({ type: 'done' });
       controller.close();
     }

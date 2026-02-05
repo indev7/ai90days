@@ -11,6 +11,8 @@ const sectionNameMap = new Map([
   ['strategy', 'Strategy'],
   ['colleagues', 'Colleagues'],
   ['tasks', 'Tasks'],
+  ['jira', 'JIRA'],
+  ['email', 'Email'],
   ['help', 'Help']
 ]);
 
@@ -89,6 +91,11 @@ const promptMap = new Map([
     sectionId: 'tasks',
     title: 'Decompose a task',
     prompt: 'Break this task into 5 concrete steps with time estimates.'
+  }],
+  ['email-inbox-recipient-check', {
+    sectionId: 'email',
+    title: 'Check messages sent to me',
+    prompt: 'can you check my inbox mail received today and see if there are any email with recipient set to my email address'
   }],
   ['help-org-chart', {
     sectionId: 'help',

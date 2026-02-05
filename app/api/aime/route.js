@@ -11,11 +11,14 @@ import { OKRT_DOMAIN } from '@/lib/knowledgeBase/okrtDomain';
 import { AIME_CHARTS } from '@/lib/knowledgeBase/aimeCharts';
 import { GROUPS_DOMAIN } from '@/lib/knowledgeBase/groupsDomain';
 import { MICROSOFT_MAIL_DOMAIN } from '@/lib/knowledgeBase/microsoftMailDomain';
+import { JIRA_DOMAIN } from '@/lib/knowledgeBase/jiraDomain';
+import { JIRA_INITIATIVE_DOMAIN } from '@/lib/knowledgeBase/jira-initiative-domain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
 import { GROUP_ACTIONS_SCHEMA } from '@/lib/toolSchemas/groupActions';
 import { MS_MAIL_ACTIONS_SCHEMA } from '@/lib/toolSchemas/msMailActions';
+import { JIRA_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraQueryActions';
 
 const knowledgeBaseMap = new Map([
   [
@@ -57,6 +60,22 @@ const knowledgeBaseMap = new Map([
       description: 'Microsoft Outlook mail access via Graph (metadata-first, delegated).',
       content: MICROSOFT_MAIL_DOMAIN
     }
+  ],
+  [
+    'jira-domain',
+    {
+      id: 'jira-domain',
+      description: 'Jira integration overview and guidance for progressive read-only querying.',
+      content: JIRA_DOMAIN
+    }
+  ],
+  [
+    'jira-initiative-domain',
+    {
+      id: 'jira-initiative-domain',
+      description: 'Initiative issue-type data definition and field catalog for Jira Portfolio Management.',
+      content: JIRA_INITIATIVE_DOMAIN
+    }
   ]
 ]);
 
@@ -97,8 +116,16 @@ const toolMap = new Map([
     'emit_ms_mail_actions',
     {
       id: 'emit_ms_mail_actions',
-      description: 'Microsoft mail actions tool schema for list/preview/open message operations.',
+      description: 'Microsoft mail actions tool schema for list/preview/read/open message operations.',
       schema: MS_MAIL_ACTIONS_SCHEMA
+    }
+  ],
+  [
+    'emit_jira_query_actions',
+    {
+      id: 'emit_jira_query_actions',
+      description: 'Read-only Jira query actions tool schema using JQL with lazy-loaded fields.',
+      schema: JIRA_QUERY_ACTIONS_SCHEMA
     }
   ]
 ]);
@@ -165,6 +192,22 @@ function loadToolSchema(toolId) {
   if (!toolId) return null;
   const entry = toolMap.get(toolId);
   return entry?.schema || null;
+}
+
+function uniqueNonEmpty(items = []) {
+  return Array.from(new Set(items.filter(Boolean)));
+}
+
+function extractTaggedSectionNames(input = '', tagName = 'DATA') {
+  if (typeof input !== 'string' || !input) return [];
+  const re = new RegExp(`<${tagName}:([^>]+)>`, 'g');
+  const names = [];
+  let match = re.exec(input);
+  while (match) {
+    names.push(String(match[1] || '').trim());
+    match = re.exec(input);
+  }
+  return uniqueNonEmpty(names);
 }
 
 /* =========================
@@ -350,7 +393,7 @@ function getBasicSystemPrompt(displayName = "AIME user") {
     `Adopt a calm, compassionate, practical tone inspired by Florence Nightingale. Do not mention Florence Nightingale or claim to be her.`,
     ``,
     `## Scope`,
-    `The app supports UI-based CRUD for: okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups.`,
+    `The app supports UI-based CRUD for: okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups, read from JIRA, read outlook email.`,
     `User data may be provided in a cached JSON tree called "mainTree".`,
     `Your job: help with goal planning, OKRT guidance, motivation, and app navigation.`,
     ``,
@@ -382,6 +425,7 @@ function getBasicSystemPrompt(displayName = "AIME user") {
     ``,
     `## Output constraints`,
     `Do not include IDs/UUIDs/tokens (id, parent_id, owner_id, gen-*) in text output.`,
+    `When sharing internal Aime routes, format them as clickable Markdown links (e.g., [Jira](/jira), [Calendar](/calendar)) instead of plain/code path text.`,
     `This is the current users display name"${safeName}". Use it only if the point needs weight and emphasis`,
     ``,
     `## Available mainTree data section ids:`,
@@ -641,7 +685,7 @@ export async function POST(request) {
     const knowledgeIds = latestReqMoreInfo?.domainKnowledge?.ids || [];
     const knowledgeBlocks = await loadKnowledgeBlocks(knowledgeIds);
 
-    const baseTools = [getReqMoreInfoTool(), RENDER_CHART_SCHEMA].filter(Boolean);
+    const baseTools = [getReqMoreInfoTool()].filter(Boolean);
     const requestedToolIds = latestReqMoreInfo?.tools?.ids || [];
     const requestedTools = requestedToolIds
       .map((toolId) => loadToolSchema(toolId))
@@ -662,8 +706,32 @@ export async function POST(request) {
 
     const llmMessages = [
       { role: 'system', content: systemPrompt },
-      ...messages.slice(-10).map(m => ({ role: m.role, content: m.content }))
+      ...messages.slice(-10).map((m) => ({
+        role: m.role,
+        content: m.content,
+        toolUse: m.toolUse,
+        toolResult: m.toolResult
+      }))
     ];
+
+    const requestedDataSections = uniqueNonEmpty(
+      (latestReqMoreInfo?.data?.sections || []).map((s) => s?.sectionId)
+    );
+    const systemPromptDataSections = extractTaggedSectionNames(systemPromptData, 'DATA');
+    const attachedDataSections = uniqueNonEmpty([
+      ...requestedDataSections,
+      ...systemPromptDataSections
+    ]);
+    const attachedKnowledgeIds = uniqueNonEmpty(knowledgeIds);
+    const attachedToolNames = uniqueNonEmpty(tools.map((tool) => tool?.name));
+
+    logHumanReadable('AIME LLM Attachments', {
+      provider: process.env.LLM_PROVIDER || 'ollama',
+      kbIds: attachedKnowledgeIds,
+      toolNames: attachedToolNames,
+      dataSections: attachedDataSections,
+      messageCountSent: llmMessages.length
+    });
 
     // LLM step 4 (server): select provider and stream the model response back to the client.
     const provider = process.env.LLM_PROVIDER || 'ollama';

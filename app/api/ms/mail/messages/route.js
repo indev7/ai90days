@@ -45,7 +45,7 @@ export async function GET(request) {
       const url = new URL(`https://graph.microsoft.com/v1.0/me/mailFolders('${encodedFolder}')/messages`);
       url.searchParams.set(
         '$select',
-        'id,subject,from,receivedDateTime,isRead,hasAttachments,importance,webLink'
+        'id,subject,from,toRecipients,receivedDateTime,isRead,hasAttachments,importance,webLink'
       );
       url.searchParams.set('$orderby', 'receivedDateTime desc');
       url.searchParams.set('$top', String(top));
@@ -92,6 +92,13 @@ export async function GET(request) {
       subject: message.subject || '(no subject)',
       fromName: message.from?.emailAddress?.name || '',
       fromEmail: message.from?.emailAddress?.address || '',
+      toRecipients: (message.toRecipients || []).map((recipient) => ({
+        name: recipient?.emailAddress?.name || '',
+        email: recipient?.emailAddress?.address || ''
+      })),
+      toEmails: (message.toRecipients || [])
+        .map((recipient) => recipient?.emailAddress?.address || '')
+        .filter(Boolean),
       receivedDateTime: message.receivedDateTime,
       isRead: message.isRead,
       hasAttachments: message.hasAttachments,

@@ -30,10 +30,15 @@ const DATA_SECTION_IDS = new Set([
 const AUTO_READONLY_INTENTS = new Set([
   'LIST_MESSAGES',
   'GET_MESSAGE_PREVIEW',
-  'OPEN_MESSAGE'
+  'GET_MESSAGE_BODY',
+  'OPEN_MESSAGE',
+  'JIRA_QUERY_ISSUES',
+  'JIRA_LIST_PROJECTS',
+  'JIRA_LIST_ISSUE_TYPES',
+  'JIRA_LIST_STATUSES'
 ]);
 
-const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/'];
+const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/'];
 
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
 // PSEUDOCODE: for each incoming section/reason/id, validate and add to accumulator maps/sets.
@@ -279,7 +284,12 @@ function labelForAction(action) {
   if (intent === 'UNSHARE_OKRT') return 'Unshare Objective';
   if (intent === 'LIST_MESSAGES') return 'List Mail';
   if (intent === 'GET_MESSAGE_PREVIEW') return 'Message Preview';
+  if (intent === 'GET_MESSAGE_BODY') return 'Read Message Body';
   if (intent === 'OPEN_MESSAGE') return 'Open in Outlook';
+  if (intent === 'JIRA_QUERY_ISSUES') return 'Query Jira Issues';
+  if (intent === 'JIRA_LIST_PROJECTS') return 'List Jira Projects';
+  if (intent === 'JIRA_LIST_ISSUE_TYPES') return 'List Jira Issue Types';
+  if (intent === 'JIRA_LIST_STATUSES') return 'List Jira Statuses';
   return `${method || 'POST'} ${noun}`;
 }
 
@@ -290,12 +300,14 @@ function normalizeActions(rawActions = []) {
     const idFromPayload = a?.payload?.id || a?.payload?.groupId || a?.payload?.group_id;
     const userIdFromPayload =
       a?.payload?.userId || a?.payload?.user_id || a?.payload?.memberId || a?.payload?.member_id;
+    const encodedId = idFromPayload ? encodeURIComponent(String(idFromPayload)) : '';
+    const encodedUserId = userIdFromPayload ? encodeURIComponent(String(userIdFromPayload)) : '';
     const baseEndpoint = a?.endpoint?.includes('[id]')
-      ? a.endpoint.replace('[id]', idFromPayload || '')
+      ? a.endpoint.replace('[id]', encodedId)
       : a?.endpoint || '/api/okrt';
     const endpointWithUser =
       baseEndpoint?.includes('[userId]')
-        ? baseEndpoint.replace('[userId]', userIdFromPayload || '')
+        ? baseEndpoint.replace('[userId]', encodedUserId)
         : baseEndpoint;
     const needsShareQuery =
       a?.method === 'DELETE' &&
@@ -326,6 +338,65 @@ function isReadOnlyToolAction(action) {
   return AUTO_READONLY_ENDPOINT_PREFIXES.some((prefix) => endpoint.startsWith(prefix));
 }
 
+function getAutoReadActionFingerprint(actions = []) {
+  const normalized = actions.map((action) => ({
+    intent: action?.intent || '',
+    endpoint: action?.endpoint || '',
+    method: (action?.method || '').toUpperCase(),
+    body: action?.body || {}
+  }));
+  return JSON.stringify(normalized);
+}
+
+function buildToolExchangeMessages(actions = [], autoResults = []) {
+  const messages = [];
+  for (let i = 0; i < actions.length; i += 1) {
+    const action = actions[i];
+    const result = autoResults[i];
+    if (!action || !result) continue;
+
+    const endpoint = String(action?.endpoint || '');
+    const toolName = endpoint.startsWith('/api/jira/')
+      ? 'emit_jira_query_actions'
+      : endpoint.startsWith('/api/ms/mail/')
+        ? 'emit_ms_mail_actions'
+        : null;
+    if (!toolName) continue;
+
+    const toolUseId = `auto_tool_${Date.now()}_${i}`;
+    const actionItem = {
+      intent: action.intent,
+      endpoint: action.endpoint,
+      method: (action.method || 'GET').toUpperCase(),
+      payload: action.body || {}
+    };
+    messages.push({
+      id: Date.now() + 60 + (i * 2),
+      role: 'assistant',
+      content: '',
+      hidden: true,
+      timestamp: new Date(),
+      toolUse: {
+        id: toolUseId,
+        name: toolName,
+        input: { actions: [actionItem] }
+      }
+    });
+    messages.push({
+      id: Date.now() + 61 + (i * 2),
+      role: 'user',
+      content: '',
+      hidden: true,
+      timestamp: new Date(),
+      toolResult: {
+        toolUseId,
+        payload: result
+      }
+    });
+  }
+  return messages;
+}
+
 async function executeToolActionRequest(action, { allowWrite = false } = {}) {
   const method = (action?.method || 'POST').toUpperCase();
   const isReadOnly = isReadOnlyToolAction(action);
@@ -334,15 +405,37 @@ async function executeToolActionRequest(action, { allowWrite = false } = {}) {
   }
 
   const payload = { ...(action?.body || {}) };
+  const baseEndpoint = action?.endpoint || '';
+  if (baseEndpoint.startsWith('/api/jira/') && payload.toolMode == null) {
+    payload.toolMode = true;
+  }
   const requestInit = {
     method,
     headers: { 'Content-Type': 'application/json' }
   };
+  const endpoint =
+    method === 'GET'
+      ? (() => {
+          const params = new URLSearchParams();
+          Object.entries(payload).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') return;
+            if (Array.isArray(value)) {
+              value.forEach((item) => params.append(key, String(item)));
+              return;
+            }
+            params.append(key, String(value));
+          });
+          if (!params.toString()) return baseEndpoint;
+          return baseEndpoint.includes('?')
+            ? `${baseEndpoint}&${params.toString()}`
+            : `${baseEndpoint}?${params.toString()}`;
+        })()
+      : baseEndpoint;
   if (method !== 'GET' && method !== 'DELETE') {
     requestInit.body = JSON.stringify(payload);
   }
 
-  const res = await fetch(action.endpoint, requestInit);
+  const res = await fetch(endpoint, requestInit);
   let result = null;
   const contentType = res.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -643,6 +736,9 @@ export default function AimePage() {
   const duplicateReqMoreInfoRef = useRef(0);
   const reqMoreInfoErrorRetryRef = useRef(0);
   const autoReadActionRetryRef = useRef(0);
+  const autoReadFingerprintRef = useRef('');
+  const duplicateAutoReadRef = useRef(0);
+  const jiraRequeryGuardRef = useRef(0);
   const accumulatedReqMoreInfoRef = useRef({
     sections: new Map(),
     knowledgeIds: new Set(),
@@ -680,6 +776,10 @@ export default function AimePage() {
       autoRetryCountRef.current = 0;
       duplicateReqMoreInfoRef.current = 0;
       reqMoreInfoErrorRetryRef.current = 0;
+      autoReadActionRetryRef.current = 0;
+      autoReadFingerprintRef.current = '';
+      duplicateAutoReadRef.current = 0;
+      jiraRequeryGuardRef.current = 0;
       outboundMessages = [...messages, userMessage];
     }
 
@@ -739,6 +839,24 @@ export default function AimePage() {
       let pendingCharts = [];
       let pendingReqMoreInfo = null;
       let chunkBuffer = '';
+      const resolveInterimAssistantContent = () => {
+        if (textBuffer.trim()) return textBuffer;
+        if (pendingReqMoreInfo) return 'Fetching the context I need to answer accurately...';
+        if (pendingAutoReadActions.length > 0) {
+          const hasJiraRead = pendingAutoReadActions.some((action) =>
+            String(action?.endpoint || '').startsWith('/api/jira/')
+          );
+          if (hasJiraRead) return 'Checking Jira...';
+          const hasMailRead = pendingAutoReadActions.some((action) =>
+            String(action?.endpoint || '').startsWith('/api/ms/mail/')
+          );
+          if (hasMailRead) return 'Checking your mailbox...';
+          return 'Working on that...';
+        }
+        if (pendingActions.length > 0) return 'I prepared actions for your review.';
+        if (pendingCharts.length > 0) return 'Preparing your chart...';
+        return 'Working on that...';
+      };
 
       const TTS_CHUNK_THRESHOLD = 400; // characters
       /** Flush accumulated text into the TTS queue when it is long or sentence-complete. */
@@ -777,7 +895,7 @@ export default function AimePage() {
               console.log('[AIME] stream content chunk received:', data);
             } else if (data.type === 'preparing_actions') {
               const id = ensureAssistantMessage();
-              updateMessage(id, { content: textBuffer, preparingActions: true });
+              updateMessage(id, { content: resolveInterimAssistantContent(), preparingActions: true });
               console.log('[AIME] stream preparing_actions received:', data);
             } else if (data.type === 'actions') {
               const id = ensureAssistantMessage();
@@ -785,7 +903,7 @@ export default function AimePage() {
               pendingAutoReadActions = normalizedActions.filter((action) => isReadOnlyToolAction(action));
               pendingActions = normalizedActions.filter((action) => !isReadOnlyToolAction(action));
               updateMessage(id, {
-                content: textBuffer,
+                content: resolveInterimAssistantContent(),
                 preparingActions: false,
                 processingActions: false,
                 actions: pendingActions
@@ -794,7 +912,7 @@ export default function AimePage() {
             } else if (data.type === 'chart') {
               const id = ensureAssistantMessage();
               pendingCharts = [...pendingCharts, data.data].filter(Boolean);
-              updateMessage(id, { content: textBuffer, charts: pendingCharts });
+              updateMessage(id, { content: resolveInterimAssistantContent(), charts: pendingCharts });
               console.log('[AIME] stream chart received:', data);
             } else if (data.type === 'req_more_info') {
               pendingReqMoreInfo = data.data;
@@ -810,19 +928,107 @@ export default function AimePage() {
       }
 
       if (assistantMessageId) {
-        const finalUpdate = { content: textBuffer, preparingActions: false };
+        const finalUpdate = { content: resolveInterimAssistantContent(), preparingActions: false };
         if (pendingActions.length > 0) finalUpdate.actions = pendingActions;
         if (pendingCharts.length > 0) finalUpdate.charts = pendingCharts;
         updateMessage(assistantMessageId, finalUpdate);
       }
 
       if (pendingAutoReadActions.length > 0 && !stopRequestedRef.current) {
+        const hasJiraToolResultsInHistory = (outboundMessages || []).some((message) =>
+          String(message?.toolResult?.payload?.endpoint || '').startsWith('/api/jira/')
+        );
+        const hasPendingJiraAutoRead = pendingAutoReadActions.some((action) =>
+          String(action?.endpoint || '').startsWith('/api/jira/')
+        );
+        if (hasJiraToolResultsInHistory && hasPendingJiraAutoRead) {
+          jiraRequeryGuardRef.current += 1;
+          if (jiraRequeryGuardRef.current > 1) {
+            addMessage({
+              id: Date.now() + 5,
+              role: 'assistant',
+              content: 'I stopped repeated Jira reads for this request. If needed, please reconnect Jira at /jira and retry.',
+              error: true,
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          const jiraRequeryNotice = [
+            'SYSTEM NOTICE: Jira tool results are already present in this conversation for the current request.',
+            'Do NOT call Jira query tools again in this turn.',
+            'Use existing Jira tool results to answer directly.',
+            'If tool results show auth failure, ask the user to login at /jira and retry.'
+          ].join(' ');
+          const nextSystemPromptData = `${systemPromptData}\n\n${jiraRequeryNotice}`;
+          const assistantContextMessage = {
+            id: Date.now() + 6,
+            role: 'assistant',
+            content: resolveInterimAssistantContent(),
+            timestamp: new Date(),
+          };
+          await sendMessage(trimmedContent, {
+            skipAddUserMessage: true,
+            messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
+            systemPromptData: nextSystemPromptData,
+            forceSend: true
+          });
+          return;
+        }
+
+        const currentAutoReadFingerprint = getAutoReadActionFingerprint(pendingAutoReadActions);
+        const isDuplicateAutoRead =
+          currentAutoReadFingerprint &&
+          currentAutoReadFingerprint === autoReadFingerprintRef.current;
+        if (isDuplicateAutoRead) {
+          duplicateAutoReadRef.current += 1;
+        } else {
+          autoReadFingerprintRef.current = currentAutoReadFingerprint;
+          duplicateAutoReadRef.current = 0;
+        }
+
+        if (duplicateAutoReadRef.current >= 1) {
+          const maxDuplicateAutoReadRetries = 1;
+          if (duplicateAutoReadRef.current > maxDuplicateAutoReadRetries) {
+            addMessage({
+              id: Date.now() + 5,
+              role: 'assistant',
+              content: 'I stopped repeated Jira/Mail reads for the same request. Please refine the filter and try again.',
+              error: true,
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          const duplicateNotice = [
+            'SYSTEM NOTICE: Duplicate read-only tool query detected for the same request.',
+            'Do NOT call Jira/Mail read tools again in this turn.',
+            'Use existing tool results already returned in this conversation to answer directly.'
+          ].join(' ');
+          const nextSystemPromptData = systemPromptData
+            ? `${systemPromptData}\n\n${duplicateNotice}`
+            : duplicateNotice;
+          const assistantContextMessage = {
+            id: Date.now() + 6,
+            role: 'assistant',
+            content: resolveInterimAssistantContent(),
+            timestamp: new Date(),
+          };
+          await sendMessage(trimmedContent, {
+            skipAddUserMessage: true,
+            messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
+            systemPromptData: nextSystemPromptData,
+            forceSend: true
+          });
+          return;
+        }
+
         const maxAutoReadRetries = 2;
         if (autoReadActionRetryRef.current >= maxAutoReadRetries) {
           addMessage({
             id: Date.now() + 5,
             role: 'assistant',
-            content: 'I could not finish auto-reading mail after multiple attempts. Please try again.',
+            content: 'I could not finish auto-reading external data after multiple attempts. Please try again.',
             error: true,
             timestamp: new Date(),
           });
@@ -853,34 +1059,34 @@ export default function AimePage() {
           }
         }
 
-        const toolResultContext = [
-          'CONTEXT - Auto-executed read-only tool results.',
-          'These results came from backend APIs and are authoritative.',
-          `<TOOL_RESULTS:ms-mail>\n${JSON.stringify(autoResults)}\n</TOOL_RESULTS:ms-mail>`,
-          'Use these results to answer the user request. Do not request write actions.'
-        ].join('\n');
-
         const assistantContextMessage = {
           id: Date.now() + 6,
           role: 'assistant',
-          content: textBuffer,
+          content: resolveInterimAssistantContent(),
           timestamp: new Date(),
         };
-
-        const mergedSystemPromptData = systemPromptData
-          ? `${systemPromptData}\n\n${toolResultContext}`
-          : toolResultContext;
+        const toolExchangeMessages = buildToolExchangeMessages(
+          pendingAutoReadActions,
+          autoResults
+        );
 
         await sendMessage(trimmedContent, {
           skipAddUserMessage: true,
-          messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
-          systemPromptData: mergedSystemPromptData,
+          messageHistoryOverride: [
+            ...(outboundMessages || []),
+            assistantContextMessage,
+            ...toolExchangeMessages
+          ],
+          systemPromptData,
           forceSend: true
         });
         return;
       }
 
       autoReadActionRetryRef.current = 0;
+      autoReadFingerprintRef.current = '';
+      duplicateAutoReadRef.current = 0;
+      jiraRequeryGuardRef.current = 0;
 
       const hasInvalidReqMoreInfo =
         textBuffer.includes(INVALID_REQ_MORE_INFO_MESSAGE);

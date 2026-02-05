@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
     }
 
     const graphResponse = await fetch(
-      `https://graph.microsoft.com/v1.0/me/messages/${messageId}?$select=webLink`,
+      `https://graph.microsoft.com/v1.0/me/messages/${messageId}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,isRead,body,bodyPreview,webLink`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`
@@ -49,7 +49,7 @@ export async function GET(request, { params }) {
       let errorBody = null;
       try {
         errorBody = await graphResponse.json();
-      } catch (error) {
+      } catch (parseError) {
         errorBody = null;
       }
 
@@ -59,17 +59,32 @@ export async function GET(request, { params }) {
 
     const message = await graphResponse.json();
 
-    if (!message?.webLink) {
-      return NextResponse.json({ error: 'Message link not available' }, { status: 404 });
-    }
-
     logMailboxTelemetry({
-      endpoint: '/api/ms/mail/message/:id/open',
+      endpoint: '/api/ms/mail/message/:id/body',
       userId,
       count: 1
     });
 
-    return NextResponse.redirect(message.webLink, { status: 302 });
+    return NextResponse.json({
+      id: message.id,
+      subject: message.subject || '(no subject)',
+      fromName: message.from?.emailAddress?.name || '',
+      fromEmail: message.from?.emailAddress?.address || '',
+      toRecipients: (message.toRecipients || []).map((recipient) => ({
+        name: recipient?.emailAddress?.name || '',
+        email: recipient?.emailAddress?.address || ''
+      })),
+      ccRecipients: (message.ccRecipients || []).map((recipient) => ({
+        name: recipient?.emailAddress?.name || '',
+        email: recipient?.emailAddress?.address || ''
+      })),
+      receivedDateTime: message.receivedDateTime,
+      isRead: message.isRead,
+      bodyPreview: message.bodyPreview || '',
+      bodyContentType: message.body?.contentType || 'text',
+      body: message.body?.content || '',
+      webLink: message.webLink
+    });
   } catch (error) {
     console.error('[MS Mail API] ❌ Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

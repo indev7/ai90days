@@ -53,7 +53,7 @@ Related files:
    - `app/signup/page.js`
 3. NextAuth handles OAuth in `app/api/auth/[...nextauth]/route.js`:
    - Provider: `AzureADProvider`.
-   - Scopes: `openid profile email User.Read Calendars.Read Mail.ReadBasic offline_access`.
+   - Scopes: `openid profile email User.Read Calendars.Read Mail.ReadBasic Mail.Read offline_access`.
    - JWT session strategy.
 4. `callbacks.signIn`:
    - Enforces an allowlist of email domains.

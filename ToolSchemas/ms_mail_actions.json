@@ -1,7 +1,7 @@
 {
   "type": "function",
   "name": "emit_ms_mail_actions",
-  "description": "Emit an ordered list of Microsoft mail actions (list messages, preview, open).",
+  "description": "Emit an ordered list of Microsoft mail actions (list messages, preview, read body, open).",
   "parameters": {
     "type": "object",
     "properties": {
@@ -17,6 +17,7 @@
               "enum": [
                 "LIST_MESSAGES",
                 "GET_MESSAGE_PREVIEW",
+                "GET_MESSAGE_BODY",
                 "OPEN_MESSAGE"
               ]
             },
@@ -25,6 +26,7 @@
               "enum": [
                 "/api/ms/mail/messages",
                 "/api/ms/mail/message/[id]/preview",
+                "/api/ms/mail/message/[id]/body",
                 "/api/ms/mail/message/[id]/open"
               ]
             },

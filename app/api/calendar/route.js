@@ -40,7 +40,7 @@ export async function GET(request) {
           client_secret: process.env.MICROSOFT_CLIENT_SECRET,
           refresh_token: user.microsoft_refresh_token,
           grant_type: 'refresh_token',
-          scope: 'openid profile email User.Read Calendars.Read Mail.ReadBasic offline_access',
+          scope: 'openid profile email User.Read Calendars.Read Mail.ReadBasic Mail.Read offline_access',
         }),
       });
 

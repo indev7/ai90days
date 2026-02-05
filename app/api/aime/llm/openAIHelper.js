@@ -7,6 +7,15 @@ export async function handleOpenAI({
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
+  const ACTION_TOOL_NAMES = new Set([
+    'emit_okrt_actions',
+    'emit_okrt_share_actions',
+    'emit_group_actions',
+    'emit_ms_mail_actions',
+    'emit_jira_query_actions'
+  ]);
+  const isActionToolName = (name) => ACTION_TOOL_NAMES.has(name);
+
   // Step 1: Read config and ensure OpenAI credentials exist.
   const apiKey = process.env.OPENAI_API_KEY || process.env.OPEN_AI_API_KEY;
   const model = process.env.LLM_MODEL_NAME || 'gpt-4o-mini';
@@ -23,13 +32,7 @@ export async function handleOpenAI({
   // Step 3: Build the OpenAI payload (model + tools + stream).
   // Build Responses API payload with tools enabled and streaming on.
   const activeTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
-  const blockReqMoreInfo = activeTools.some(
-    (tool) =>
-      tool?.name === 'emit_okrt_actions' ||
-      tool?.name === 'emit_okrt_share_actions' ||
-      tool?.name === 'emit_group_actions' ||
-      tool?.name === 'emit_ms_mail_actions'
-  );
+  const blockReqMoreInfo = activeTools.some((tool) => isActionToolName(tool?.name));
   const openaiPayload = {
     model,
     input,
@@ -158,12 +161,7 @@ export async function handleOpenAI({
           try {
             const fullStr = (parts || []).join('');
             const toolName = toolNames.get(id);
-            if (
-              toolName === 'emit_okrt_actions' ||
-              toolName === 'emit_okrt_share_actions' ||
-              toolName === 'emit_group_actions' ||
-              toolName === 'emit_ms_mail_actions'
-            ) {
+            if (isActionToolName(toolName)) {
               const actions = extractActionsFromArgs(fullStr);
               if (actions.length) {
                 actionsPayloads.push(...actions);
@@ -196,12 +194,7 @@ export async function handleOpenAI({
       const handleFunctionCallItem = (item) => {
         if (!item) return;
         if (item.type !== 'function_call') return;
-        if (
-          item.name === 'emit_okrt_actions' ||
-          item.name === 'emit_okrt_share_actions' ||
-          item.name === 'emit_group_actions' ||
-          item.name === 'emit_ms_mail_actions'
-        ) {
+        if (isActionToolName(item.name)) {
           const actions = extractActionsFromArgs(item.arguments || '{}');
           if (actions.length) {
             actionsPayloads.push(...actions);
@@ -273,12 +266,7 @@ export async function handleOpenAI({
               toolBuffers.set(id, []);
               if (type === 'function' && name) toolNames.set(id, name);
             }
-          if (
-            name === 'emit_okrt_actions' ||
-            name === 'emit_okrt_share_actions' ||
-            name === 'emit_group_actions' ||
-            name === 'emit_ms_mail_actions'
-          ) {
+          if (isActionToolName(name)) {
             prep();
           }
             if (name === 'req_more_info' && blockReqMoreInfo) {
@@ -321,12 +309,7 @@ export async function handleOpenAI({
               arr.push(String(delta));
               toolBuffers.set(item_id, arr);
               const toolName = toolNames.get(item_id);
-                if (
-                  toolName === 'emit_okrt_actions' ||
-                  toolName === 'emit_okrt_share_actions' ||
-                  toolName === 'emit_group_actions' ||
-                  toolName === 'emit_ms_mail_actions'
-                ) {
+                if (isActionToolName(toolName)) {
                   prep();
                 }
             }

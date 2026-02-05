@@ -1,7 +1,7 @@
 import { get, run } from '@/lib/pgdb';
 
 const TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
-const DEFAULT_SCOPES = 'openid profile email User.Read Mail.ReadBasic offline_access';
+const DEFAULT_SCOPES = 'openid profile email User.Read Mail.ReadBasic Mail.Read offline_access';
 
 export async function getMicrosoftAccessToken(userId, options = {}) {
   const { scopes = DEFAULT_SCOPES, logPrefix = '[MS Mail API]' } = options;
@@ -50,7 +50,7 @@ export async function getMicrosoftAccessToken(userId, options = {}) {
       return {
         error: {
           status: 401,
-          message: 'Microsoft consent required for Mail.ReadBasic; please re-login.'
+          message: 'Microsoft consent required for Mail.Read; please re-login.'
         }
       };
     }
@@ -106,7 +106,7 @@ export function mapGraphError(graphResponse, errorBody) {
   if (graphResponse.status === 401) {
     return {
       status: 401,
-      message: 'Microsoft consent required for Mail.ReadBasic; please re-login.'
+      message: 'Microsoft consent required for Mail.Read; please re-login.'
     };
   }
 

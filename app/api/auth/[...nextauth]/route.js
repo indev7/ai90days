@@ -11,7 +11,7 @@ const handler = NextAuth({
       tenantId: process.env.MICROSOFT_TENANT_ID,
       authorization: {
         params: {
-          scope: "openid profile email User.Read Calendars.Read Mail.ReadBasic offline_access"
+          scope: "openid profile email User.Read Calendars.Read Mail.ReadBasic Mail.Read offline_access"
         }
       }
     }),

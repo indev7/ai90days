@@ -41,11 +41,13 @@ export async function GET(request) {
     // Get accessible resources (Jira sites)
     const resources = await getAccessibleResources(tokenData.access_token);
     const cloudId = resources.length > 0 ? resources[0].id : null;
+    const siteUrl = resources.length > 0 ? resources[0].url : null;
 
     setJiraSessionCookies(cookieStore, {
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       cloudId,
+      siteUrl,
     });
 
     return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/jira?success=true`);

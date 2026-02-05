@@ -4,9 +4,42 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+const JIRA_BASE_URL = String(process.env.NEXT_PUBLIC_JIRA_BASE_URL || '').replace(/\/+$/, '');
+
+function linkJiraKeys(text) {
+  if (!text || !JIRA_BASE_URL) return text;
+
+  // Fix malformed links like [ILT-14602](https://.../browse/) by appending the key.
+  const fixedMarkdownLinks = text.replace(
+    /\[([A-Z][A-Z0-9]+-\d+)\]\((https?:\/\/[^)\s]*\/browse\/)\)/g,
+    (_m, key, urlPrefix) => `[${key}](${urlPrefix}${key})`
+  );
+
+  // Protect existing markdown links and raw URLs so we do not relink keys inside them.
+  const protectedChunks = [];
+  const protect = (value) => {
+    const token = `__JIRA_PROTECTED_${protectedChunks.length}__`;
+    protectedChunks.push(value);
+    return token;
+  };
+
+  const masked = fixedMarkdownLinks
+    .replace(/\[[^\]]+\]\([^)]+\)/g, (m) => protect(m))
+    .replace(/https?:\/\/[^\s)]+/g, (m) => protect(m));
+
+  const relinked = masked.replace(/\b([A-Z][A-Z0-9]+-\d+)\b/g, (_match, key) => {
+    return `[${key}](${JIRA_BASE_URL}/browse/${key})`;
+  });
+
+  return relinked.replace(/__JIRA_PROTECTED_(\d+)__/g, (_m, idx) => {
+    return protectedChunks[Number(idx)] || '';
+  });
+}
+
 export default function MessageMarkdown({ children }) {
   const text = typeof children === 'string' ? children : '';
   if (!text) return null;
+  const linkedText = linkJiraKeys(text);
   return (
     <div className="md-wrap">
       <ReactMarkdown
@@ -19,7 +52,7 @@ export default function MessageMarkdown({ children }) {
           )
         }}
       >
-        {text}
+        {linkedText}
       </ReactMarkdown>
       <style jsx>{`
         .md-wrap :global(h1,h2,h3){ margin: 0.4rem 0 0.2rem; }

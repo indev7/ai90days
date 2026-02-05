@@ -11,17 +11,20 @@ export async function GET(request) {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('jira_access_token')?.value;
     const cloudId = cookieStore.get('jira_cloud_id')?.value;
+    const siteUrl = cookieStore.get('jira_site_url')?.value || null;
 
     if (!accessToken || !cloudId) {
       return NextResponse.json({
         authenticated: false,
-        cloudId: null
+        cloudId: null,
+        siteUrl: null
       });
     }
 
     return NextResponse.json({
       authenticated: true,
-      cloudId: cloudId
+      cloudId: cloudId,
+      siteUrl
     });
   } catch (error) {
     return NextResponse.json(
