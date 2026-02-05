@@ -650,11 +650,15 @@ function getLatestReqMoreInfo(messages) {
   return null;
 }
 
-async function loadKnowledgeBlocks(ids = []) {
+async function loadKnowledgeBlocks(ids = [], emailAddress = '') {
   const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
   const blocks = [];
+  const safeEmail = String(emailAddress).replace(/\r?\n/g, ' ').trim();
   for (const id of uniqueIds) {
-    const content = await loadKnowledgeBaseEntry(id);
+    let content = await loadKnowledgeBaseEntry(id);
+    if (id === 'ms-mail-domain' && content?.trim()) {
+      content = `${content.trim()}\n\nCurrent user email address: ${safeEmail || 'unknown'}`;
+    }
     if (content?.trim()) {
       blocks.push(`<KB:${id}>\n${content.trim()}\n</KB:${id}>`);
     }
@@ -675,15 +679,21 @@ export async function POST(request) {
 
     const requestBody = await request.json();
     
-    const { messages, systemPromptData, displayName: clientDisplayName } = requestBody;
+    const {
+      messages,
+      systemPromptData,
+      displayName: clientDisplayName,
+      emailAddress: clientEmailAddress
+    } = requestBody;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
     }
 
     const displayName = clientDisplayName || 'User';
+    const emailAddress = clientEmailAddress || '';
     const latestReqMoreInfo = getLatestReqMoreInfo(messages);
     const knowledgeIds = latestReqMoreInfo?.domainKnowledge?.ids || [];
-    const knowledgeBlocks = await loadKnowledgeBlocks(knowledgeIds);
+    const knowledgeBlocks = await loadKnowledgeBlocks(knowledgeIds, emailAddress);
 
     const baseTools = [getReqMoreInfoTool()].filter(Boolean);
     const requestedToolIds = latestReqMoreInfo?.tools?.ids || [];
