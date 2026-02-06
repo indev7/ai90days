@@ -1,5 +1,13 @@
 'use client';
 
+import JIRA_CONFIG from '@/lib/jiraConfig';
+import {
+  checkPaginationStopConditions,
+  mergePageResults,
+  calculateNextPayload,
+  extractTrackingData
+} from '@/lib/aime/jiraPaginationHelper';
+
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import useAimeStore from '@/store/aimeStore';
@@ -13,6 +21,7 @@ import styles from './page.module.css';
 import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
 import AimeChart from '../../components/AimeChart';
+import ContextUsageIndicator from '../../components/ContextUsageIndicator';
 import { TiMicrophoneOutline } from "react-icons/ti";
 import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
 import { SlArrowUpCircle } from "react-icons/sl";
@@ -666,6 +675,7 @@ export default function AimePage() {
   const messagesContainerRef = useRef(null);
   const [chatWidth, setChatWidth] = useState(null);
   const inputRef = useRef(null);
+  const [usageStats, setUsageStats] = useState({ inputTokens: 0, outputTokens: 0 });
   
   // Use cached user data
   const { user, isLoading: userLoading } = useUser();
@@ -739,6 +749,10 @@ export default function AimePage() {
   const autoReadFingerprintRef = useRef('');
   const duplicateAutoReadRef = useRef(0);
   const jiraRequeryGuardRef = useRef(0);
+  const lastJiraQueryFingerprintRef = useRef('');
+  const lastJiraQueryTimeRef = useRef(0);
+  const jiraPageCounterRef = useRef(1);
+  const jiraPagingStatusRef = useRef(null);
   const accumulatedReqMoreInfoRef = useRef({
     sections: new Map(),
     knowledgeIds: new Set(),
@@ -780,6 +794,9 @@ export default function AimePage() {
       autoReadFingerprintRef.current = '';
       duplicateAutoReadRef.current = 0;
       jiraRequeryGuardRef.current = 0;
+      lastJiraQueryFingerprintRef.current = '';
+      lastJiraQueryTimeRef.current = 0;
+      jiraPageCounterRef.current = 1;
       outboundMessages = [...messages, userMessage];
     }
 
@@ -841,6 +858,9 @@ export default function AimePage() {
       let chunkBuffer = '';
       const resolveInterimAssistantContent = () => {
         if (textBuffer.trim()) return textBuffer;
+        if (jiraPagingStatusRef.current?.pageNumber) {
+          return `Fetching Jira page ${jiraPagingStatusRef.current.pageNumber}...`;
+        }
         if (pendingReqMoreInfo) return 'Fetching the context I need to answer accurately...';
         if (pendingAutoReadActions.length > 0) {
           const hasJiraRead = pendingAutoReadActions.some((action) =>
@@ -917,6 +937,15 @@ export default function AimePage() {
             } else if (data.type === 'req_more_info') {
               pendingReqMoreInfo = data.data;
               console.log('[AIME] stream req_more_info received:', data);
+            } else if (data.type === 'usage') {
+              // Capture usage metadata
+              if (data.data) {
+                setUsageStats({
+                  inputTokens: data.data.inputTokens || 0,
+                  outputTokens: data.data.outputTokens || 0
+                });
+              }
+              console.log('[AIME] stream usage received:', data);
             } else if (data.type === 'done') {
               // no-op
               console.log('[AIME] stream done received:', data);
@@ -938,12 +967,40 @@ export default function AimePage() {
         const hasJiraToolResultsInHistory = (outboundMessages || []).some((message) =>
           String(message?.toolResult?.payload?.endpoint || '').startsWith('/api/jira/')
         );
-        const hasPendingJiraAutoRead = pendingAutoReadActions.some((action) =>
+        const lastJiraToolResult = [...(outboundMessages || [])]
+          .reverse()
+          .find((message) => String(message?.toolResult?.payload?.endpoint || '').startsWith('/api/jira/'));
+        const jiraResultData = lastJiraToolResult?.toolResult?.payload?.data || {};
+        const jiraHasMorePages = Boolean(jiraResultData?.hasMore || jiraResultData?.nextPageToken);
+        const pendingJiraActions = pendingAutoReadActions.filter((action) =>
           String(action?.endpoint || '').startsWith('/api/jira/')
         );
-        if (hasJiraToolResultsInHistory && hasPendingJiraAutoRead) {
-          jiraRequeryGuardRef.current += 1;
-          if (jiraRequeryGuardRef.current > 1) {
+        const hasPendingJiraAutoRead = pendingJiraActions.length > 0;
+        
+        if (hasJiraToolResultsInHistory && hasPendingJiraAutoRead && !jiraHasMorePages) {
+          // Create fingerprint of the pending Jira query to detect actual duplicates
+          const currentJiraFingerprint = getAutoReadActionFingerprint(pendingJiraActions);
+          const now = Date.now();
+          
+          // Reset counter if enough time has passed
+          if (now - lastJiraQueryTimeRef.current > JIRA_CONFIG.JIRA_GUARD_RESET_MS) {
+            jiraRequeryGuardRef.current = 0;
+            lastJiraQueryFingerprintRef.current = '';
+          }
+          
+          // Only increment counter if it's actually the same query
+          if (currentJiraFingerprint === lastJiraQueryFingerprintRef.current) {
+            jiraRequeryGuardRef.current += 1;
+          } else {
+            // Different query - reset counter and update fingerprint
+            lastJiraQueryFingerprintRef.current = currentJiraFingerprint;
+            jiraRequeryGuardRef.current = 0;
+          }
+          
+          lastJiraQueryTimeRef.current = now;
+          
+          // Block only after exceeding max attempts for the same query
+          if (jiraRequeryGuardRef.current > JIRA_CONFIG.MAX_JIRA_REQUERY_ATTEMPTS) {
             addMessage({
               id: Date.now() + 5,
               role: 'assistant',
@@ -954,26 +1011,29 @@ export default function AimePage() {
             return;
           }
 
-          const jiraRequeryNotice = [
-            'SYSTEM NOTICE: Jira tool results are already present in this conversation for the current request.',
-            'Do NOT call Jira query tools again in this turn.',
-            'Use existing Jira tool results to answer directly.',
-            'If tool results show auth failure, ask the user to login at /jira and retry.'
-          ].join(' ');
-          const nextSystemPromptData = `${systemPromptData}\n\n${jiraRequeryNotice}`;
-          const assistantContextMessage = {
-            id: Date.now() + 6,
-            role: 'assistant',
-            content: resolveInterimAssistantContent(),
-            timestamp: new Date(),
-          };
-          await sendMessage(trimmedContent, {
-            skipAddUserMessage: true,
-            messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
-            systemPromptData: nextSystemPromptData,
-            forceSend: true
-          });
-          return;
+          // Only show notice if we've seen this exact query before
+          if (jiraRequeryGuardRef.current > 0) {
+            const jiraRequeryNotice = [
+              'SYSTEM NOTICE: Jira tool results are already present in this conversation for the current request.',
+              'Do NOT call Jira query tools again in this turn.',
+              'Use existing Jira tool results to answer directly.',
+              'If tool results show auth failure, ask the user to login at /jira and retry.'
+            ].join(' ');
+            const nextSystemPromptData = `${systemPromptData}\n\n${jiraRequeryNotice}`;
+            const assistantContextMessage = {
+              id: Date.now() + 6,
+              role: 'assistant',
+              content: resolveInterimAssistantContent(),
+              timestamp: new Date(),
+            };
+            await sendMessage(trimmedContent, {
+              skipAddUserMessage: true,
+              messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
+              systemPromptData: nextSystemPromptData,
+              forceSend: true
+            });
+            return;
+          }
         }
 
         const currentAutoReadFingerprint = getAutoReadActionFingerprint(pendingAutoReadActions);
@@ -988,7 +1048,7 @@ export default function AimePage() {
         }
 
         if (duplicateAutoReadRef.current >= 1) {
-          const maxDuplicateAutoReadRetries = 1;
+          const maxDuplicateAutoReadRetries = JIRA_CONFIG.MAX_DUPLICATE_AUTO_READ_RETRIES;
           if (duplicateAutoReadRef.current > maxDuplicateAutoReadRetries) {
             addMessage({
               id: Date.now() + 5,
@@ -1023,7 +1083,7 @@ export default function AimePage() {
           return;
         }
 
-        const maxAutoReadRetries = 2;
+        const maxAutoReadRetries = JIRA_CONFIG.MAX_AUTO_READ_RETRIES;
         if (autoReadActionRetryRef.current >= maxAutoReadRetries) {
           addMessage({
             id: Date.now() + 5,
@@ -1038,9 +1098,102 @@ export default function AimePage() {
         autoReadActionRetryRef.current += 1;
 
         const autoResults = [];
+        const maxJiraPages = JIRA_CONFIG.MAX_PAGES_PER_REQUEST;
+        const maxIssues = JIRA_CONFIG.MAX_ISSUES_PER_REQUEST;
+        const paginationTimeout = JIRA_CONFIG.PAGINATION_TIMEOUT_MS;
+
+        const fetchJiraPages = async (action) => {
+          let aggregated = null;
+          let payload = { ...(action?.body || {}) };
+          let pagesFetched = 0;
+          const seenTokens = new Set();
+          const seenPageSignatures = new Set();
+          let lastIssueCount = 0;
+          let lastFirstKey = '';
+          let lastLastKey = '';
+          const startTime = Date.now();
+
+          while (pagesFetched < maxJiraPages) {
+            const pageNumber = pagesFetched + 1;
+            const id = ensureAssistantMessage();
+            jiraPagingStatusRef.current = { pageNumber };
+            updateMessage(id, { content: `Fetching Jira page ${pageNumber}...` });
+
+            const result = await executeToolActionRequest(
+              { ...action, body: payload },
+              { allowWrite: false }
+            );
+
+            pagesFetched += 1;
+
+            // Merge results using helper
+            aggregated = mergePageResults(aggregated, result, maxIssues);
+
+            // Extract tracking data
+            const tracking = extractTrackingData(result);
+            
+            // Check all stop conditions using helper
+            const stopCheck = checkPaginationStopConditions({
+              aggregated,
+              result,
+              pagesFetched,
+              seenPageSignatures,
+              seenTokens,
+              lastFirstKey,
+              lastLastKey,
+              lastIssueCount,
+              startTime,
+              maxJiraPages,
+              maxIssues,
+              paginationTimeout
+            });
+
+            // Apply any updates from stop check
+            if (stopCheck.updates && aggregated) {
+              Object.assign(aggregated, stopCheck.updates);
+            }
+
+            // Stop if needed
+            if (stopCheck.shouldStop) {
+              console.log(`[JIRA] Pagination stopped: ${stopCheck.reason}`);
+              break;
+            }
+
+            // Update tracking state
+            seenPageSignatures.add(tracking.pageSignature);
+            if (tracking.nextPageToken) {
+              seenTokens.add(tracking.nextPageToken);
+            }
+            lastFirstKey = tracking.firstKey;
+            lastLastKey = tracking.lastKey;
+            lastIssueCount = Array.isArray(aggregated?.issues) ? aggregated.issues.length : 0;
+
+            // Calculate next payload using helper
+            payload = calculateNextPayload({ currentPayload: payload, result });
+          }
+
+          jiraPagingStatusRef.current = null;
+          if (!aggregated) return null;
+          aggregated.pagesFetched = pagesFetched;
+          // Don't set hasMore/partial here - they're already set by the API response or pagination helper
+          return aggregated;
+        };
+
         for (const action of pendingAutoReadActions) {
+          const isJiraAction = String(action?.endpoint || '').startsWith('/api/jira/');
+          const isCountOnly = Boolean(action?.body?.countOnly);
+          const isDistinct = Boolean(action?.body?.distinct);
           try {
-            const result = await executeToolActionRequest(action, { allowWrite: false });
+            // FIX: Enable pagination for distinct queries to get consistent counts
+            const result = isJiraAction && !isCountOnly
+              ? await fetchJiraPages(action)
+              : await executeToolActionRequest(action, { allowWrite: false });
+            
+            // Add warning for partial results
+            if (result?.partial === true) {
+              result._warning = `Partial results: Only scanned ${result.pagesScanned || 'some'} pages. Results may be incomplete.`;
+            }
+            
             autoResults.push({
               intent: action.intent,
               endpoint: action.endpoint,
@@ -1087,6 +1240,8 @@ export default function AimePage() {
       autoReadFingerprintRef.current = '';
       duplicateAutoReadRef.current = 0;
       jiraRequeryGuardRef.current = 0;
+      lastJiraQueryFingerprintRef.current = '';
+      lastJiraQueryTimeRef.current = 0;
 
       const hasInvalidReqMoreInfo =
         textBuffer.includes(INVALID_REQ_MORE_INFO_MESSAGE);
@@ -1320,6 +1475,7 @@ export default function AimePage() {
     setLoading(false);
     setLLMActivity(false);
     setInput('');
+    setUsageStats({ inputTokens: 0, outputTokens: 0 });
     lastPendingIdRef.current = null;
     lastPromptFingerprintRef.current = '';
     autoRetryCountRef.current = 0;
@@ -1456,6 +1612,15 @@ export default function AimePage() {
               <SlArrowUpCircle size={32} />
             </button>
           </div>
+          {/* Usage indicator between input and send button */}
+          {(usageStats.inputTokens > 0 || usageStats.outputTokens > 0) && (
+            <ContextUsageIndicator
+              inputTokens={usageStats.inputTokens}
+              outputTokens={usageStats.outputTokens}
+              maxTokens={200000}
+              provider={process.env.NEXT_PUBLIC_LLM_PROVIDER || 'bedrock'}
+            />
+          )}
           <button type="submit" className={styles.sendButton} disabled={isLoading || !input.trim()}>
             Send
           </button>

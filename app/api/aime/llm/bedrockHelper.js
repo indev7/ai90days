@@ -147,18 +147,19 @@ export async function handleBedrock({
   };
 
   const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
-      let actionsPayloads = [];
-      let chartPayloads = [];
-      let latestReqMoreInfo = null;
-      let sentPreparing = false;
-      let hasReqMoreInfoError = false;
-      let pendingBuffer = '';
-      let rawResponse = '';
-      let hasLoggedRawResponse = false;
-      const MAX_LOGGED_RESPONSE_CHARS = 200000;
+const stream = new ReadableStream({
+async start(controller) {
+  const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+  let actionsPayloads = [];
+  let chartPayloads = [];
+  let latestReqMoreInfo = null;
+  let sentPreparing = false;
+  let hasReqMoreInfoError = false;
+  let pendingBuffer = '';
+  let rawResponse = '';
+  let hasLoggedRawResponse = false;
+  const MAX_LOGGED_RESPONSE_CHARS = 200000;
+  let usageMetadata = { inputTokens: 0, outputTokens: 0 };
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
       const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
@@ -287,6 +288,15 @@ export async function handleBedrock({
       const toolNames = new Map();
       const handleEvent = (payload) => {
         if (!payload || typeof payload !== 'object') return;
+        
+        // Capture usage metadata
+        if (payload.type === 'message_start' && payload?.message?.usage) {
+          usageMetadata.inputTokens = payload.message.usage.input_tokens || 0;
+        }
+        if (payload.type === 'message_delta' && payload?.usage) {
+          usageMetadata.outputTokens = payload.usage.output_tokens || 0;
+        }
+        
         switch (payload.type) {
           case 'content_block_start': {
             const block = payload?.content_block;
@@ -374,6 +384,12 @@ export async function handleBedrock({
       sendCharts();
       sendReqMoreInfo();
       await logRawResponse();
+      
+      // Send usage metadata before done
+      if (usageMetadata.inputTokens > 0 || usageMetadata.outputTokens > 0) {
+        send({ type: 'usage', data: usageMetadata });
+      }
+      
       send({ type: 'done' });
       controller.close();
     }

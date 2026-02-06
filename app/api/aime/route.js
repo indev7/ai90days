@@ -13,6 +13,7 @@ import { GROUPS_DOMAIN } from '@/lib/knowledgeBase/groupsDomain';
 import { MICROSOFT_MAIL_DOMAIN } from '@/lib/knowledgeBase/microsoftMailDomain';
 import { JIRA_DOMAIN } from '@/lib/knowledgeBase/jiraDomain';
 import { JIRA_INITIATIVE_DOMAIN } from '@/lib/knowledgeBase/jira-initiative-domain';
+import { JIRA_LEAVE_DOMAIN } from '@/lib/knowledgeBase/jira-leave-domain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
@@ -75,6 +76,14 @@ const knowledgeBaseMap = new Map([
       id: 'jira-initiative-domain',
       description: 'Initiative issue-type data definition and field catalog for Jira Portfolio Management.',
       content: JIRA_INITIATIVE_DOMAIN
+    }
+  ],
+  [
+    'jira-leave-domain',
+    {
+      id: 'jira-leave-domain',
+      description: 'Leave-Request issue-type data definition and custom field catalog for ILT project.',
+      content: JIRA_LEAVE_DOMAIN
     }
   ]
 ]);
