@@ -92,7 +92,9 @@ export default function AimeChart({ payload }) {
 
   const showLegend = options?.showLegend ?? trimmedSeries.length > 1;
   const yFormatter = (value) => formatValue(value, y?.format);
-  const barChartHeight = Math.max(260, trimmedData.length * 30 + 60);
+  const baseChartHeight = 260;
+  const barChartHeight = Math.max(baseChartHeight, trimmedData.length * 30 + 60);
+  const containerHeight = chartType === 'bar' ? barChartHeight : baseChartHeight;
 
   return (
     <div className={styles.chartWrapper}>
@@ -103,7 +105,7 @@ export default function AimeChart({ payload }) {
         </div>
       )}
       {description && <div className={styles.chartDescription}>{description}</div>}
-      <div className={styles.chartContainer}>
+      <div className={styles.chartContainer} style={{ height: `${containerHeight}px` }}>
         {chartType === 'bar' && (
           <ResponsiveContainer width="100%" height={barChartHeight}>
             <BarChart
