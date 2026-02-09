@@ -3,9 +3,19 @@ export async function handleOpenAI({
   logHumanReadable,
   tools,
   extractActionsFromArgs,
+  extractRenderChartFromArgs,
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
+  const ACTION_TOOL_NAMES = new Set([
+    'emit_okrt_actions',
+    'emit_okrt_share_actions',
+    'emit_group_actions',
+    'emit_ms_mail_actions',
+    'emit_jira_query_actions'
+  ]);
+  const isActionToolName = (name) => ACTION_TOOL_NAMES.has(name);
+
   // Step 1: Read config and ensure OpenAI credentials exist.
   const apiKey = process.env.OPENAI_API_KEY || process.env.OPEN_AI_API_KEY;
   const model = process.env.LLM_MODEL_NAME || 'gpt-4o-mini';
@@ -22,11 +32,7 @@ export async function handleOpenAI({
   // Step 3: Build the OpenAI payload (model + tools + stream).
   // Build Responses API payload with tools enabled and streaming on.
   const activeTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
-  const blockReqMoreInfo = activeTools.some(
-    (tool) =>
-      tool?.name === 'emit_okrt_actions' ||
-      tool?.name === 'emit_okrt_share_actions'
-  );
+  const blockReqMoreInfo = activeTools.some((tool) => isActionToolName(tool?.name));
   const openaiPayload = {
     model,
     input,
@@ -90,6 +96,7 @@ export async function handleOpenAI({
       const toolBuffers = new Map(); // id -> string[] (arguments fragments)
       const toolNames = new Map();   // id -> name
       let actionsPayloads = [];      // aggregated actions
+      let chartPayloads = [];
       let latestReqMoreInfo = null;
       let hasSentReqMoreInfo = false;
       let hasReqMoreInfoError = false;
@@ -101,6 +108,15 @@ export async function handleOpenAI({
       const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
+      const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
+      const sendCharts = () => {
+        if (!chartPayloads.length) return;
+        const uniqueCharts = dedupeCharts(chartPayloads);
+        for (const chart of uniqueCharts) {
+          send({ type: 'chart', data: chart });
+        }
+        chartPayloads = [];
+      };
       const sendReqMoreInfo = () => {
         if (hasSentReqMoreInfo || !latestReqMoreInfo || blockReqMoreInfo || hasReqMoreInfoError) return;
         send({ type: 'req_more_info', data: latestReqMoreInfo });
@@ -145,14 +161,14 @@ export async function handleOpenAI({
           try {
             const fullStr = (parts || []).join('');
             const toolName = toolNames.get(id);
-            if (
-              toolName === 'emit_okrt_actions' ||
-              toolName === 'emit_okrt_share_actions'
-            ) {
+            if (isActionToolName(toolName)) {
               const actions = extractActionsFromArgs(fullStr);
               if (actions.length) {
                 actionsPayloads.push(...actions);
               }
+            } else if (toolName === 'render_chart') {
+              const chart = extractRenderChartFromArgs?.(fullStr);
+              if (chart) chartPayloads.push(chart);
             } else if (toolName === 'req_more_info') {
               const info = extractReqMoreInfoFromArgs?.(fullStr);
               if (info?.__invalid) {
@@ -165,25 +181,29 @@ export async function handleOpenAI({
                 latestReqMoreInfo = info;
               }
             }
+            toolBuffers.delete(id);
           } catch (e) {
             console.error('Tool JSON parse error for', id, e);
           }
         }
         actionsPayloads = dedupe(actionsPayloads);
+        chartPayloads = dedupeCharts(chartPayloads);
       };
 
       // Step 8: Extract actions from function call items.
       const handleFunctionCallItem = (item) => {
         if (!item) return;
         if (item.type !== 'function_call') return;
-        if (
-          item.name === 'emit_okrt_actions' ||
-          item.name === 'emit_okrt_share_actions'
-        ) {
+        if (isActionToolName(item.name)) {
           const actions = extractActionsFromArgs(item.arguments || '{}');
           if (actions.length) {
             actionsPayloads.push(...actions);
           }
+          return;
+        }
+        if (item.name === 'render_chart') {
+          const chart = extractRenderChartFromArgs?.(item.arguments || '{}');
+          if (chart) chartPayloads.push(chart);
           return;
         }
         if (item.name === 'req_more_info') {
@@ -214,6 +234,7 @@ export async function handleOpenAI({
         if (payloadStr === '[DONE]') {
           flushAllTools();
           if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+          sendCharts();
           sendReqMoreInfo();
           logRawResponse();
           send({ type: 'done' });
@@ -245,12 +266,9 @@ export async function handleOpenAI({
               toolBuffers.set(id, []);
               if (type === 'function' && name) toolNames.set(id, name);
             }
-            if (
-              name === 'emit_okrt_actions' ||
-              name === 'emit_okrt_share_actions'
-            ) {
-              prep();
-            }
+          if (isActionToolName(name)) {
+            prep();
+          }
             if (name === 'req_more_info' && blockReqMoreInfo) {
               sendReqMoreInfoError(
                 'I already have the tool schema I need, so I cannot request more info. Please retry.'
@@ -278,6 +296,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: actionsPayloads });
             }
+            sendCharts();
             break;
           }
 
@@ -290,12 +309,9 @@ export async function handleOpenAI({
               arr.push(String(delta));
               toolBuffers.set(item_id, arr);
               const toolName = toolNames.get(item_id);
-              if (
-                toolName === 'emit_okrt_actions' ||
-                toolName === 'emit_okrt_share_actions'
-              ) {
-                prep();
-              }
+                if (isActionToolName(toolName)) {
+                  prep();
+                }
             }
             break;
           }
@@ -308,6 +324,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: actionsPayloads });
             }
+            sendCharts();
             break;
           }
 
@@ -320,6 +337,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: dedupe(actionsPayloads) });
             }
+            sendCharts();
             break;
           }
 
@@ -333,6 +351,7 @@ export async function handleOpenAI({
               prep();
               send({ type: 'actions', data: dedupe(actionsPayloads) });
             }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });
@@ -344,6 +363,7 @@ export async function handleOpenAI({
             console.error('Responses stream error:', data);
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });
@@ -367,6 +387,7 @@ export async function handleOpenAI({
             }
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });

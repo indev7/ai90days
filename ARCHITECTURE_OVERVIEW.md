@@ -7,13 +7,12 @@ This document provides a high-level overview of the AMPCode system: major compon
 - Users access the app via web or mobile browsers.
 - The Next.js application serves both UI and API routes.
 - The system integrates with Microsoft OAuth and OpenAI APIs.
-- Primary data is stored in PostgreSQL (SQLite is legacy).
+- Primary data is stored in PostgreSQL.
 
 ```mermaid
 graph TB
   User[Browser Users] --> NextApp[Next.js App]
   NextApp --> DB[(PostgreSQL)]
-  NextApp -.-> SQLite[(SQLite Legacy)]
   NextApp --> MSAuth[Microsoft OAuth]
   NextApp --> OpenAI[OpenAI API]
 ```
@@ -60,7 +59,6 @@ graph TB
 ### Data Layer
 
 - PostgreSQL is the primary store.
-- SQLite remains for legacy compatibility and migration paths.
 
 ## Database ER Diagram
 
@@ -272,8 +270,6 @@ erDiagram
 | `react-icons` | Icon packs for React | `components/LeftMenu.js` |
 | `react-markdown` | Markdown rendering in React | `components/MessageMarkdown.jsx` |
 | `remark-gfm` | GitHub Flavored Markdown plugin | `components/MessageMarkdown.jsx` |
-| `sqlite` | SQLite wrapper utilities | `lib/db.sqlite.backup.js` |
-| `sqlite3` | SQLite driver | `lib/db.sqlite.backup.js` |
 | `uuid` | UUID generation | `app/api/okrt/route.js` |
 | `zustand` | State management | `store/mainTreeStore.js` |
 

@@ -40,7 +40,6 @@ graph TB
     
     subgraph "Data Layer"
         PostgreSQL[(PostgreSQL Database)]
-        SQLite[(SQLite - Legacy)]
     end
     
     subgraph "External Services"
@@ -79,7 +78,6 @@ graph TB
     TreeLib --> DBLib
     
     DBLib --> PostgreSQL
-    DBLib -.-> SQLite
 ```
 
 ## Detailed Component Architecture
@@ -354,9 +352,7 @@ erDiagram
   - JWT (jose library)
   - NextAuth.js (Microsoft OAuth)
   - bcryptjs (password hashing)
-- **Database**: 
-  - PostgreSQL (primary - pg library)
-  - SQLite (legacy support - sqlite3)
+- **Database**: PostgreSQL (pg library)
 - **AI Integration**: OpenAI API
 
 ### Database
@@ -535,10 +531,8 @@ NODE_ENV
 ```
 
 ### Database Migration Path
-1. SQLite (Phase 1-2) → PostgreSQL (Phase 3+)
-2. Migration scripts in `Phase1/PGDB/`
-3. Automatic schema initialization
-4. Backward compatibility maintained
+1. PostgreSQL only (Phase 3+)
+2. Schema migration scripts in `Phase1/PGDB/`
 
 ### Scalability
 - Stateless API design

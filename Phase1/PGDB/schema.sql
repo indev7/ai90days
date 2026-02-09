@@ -292,24 +292,8 @@ WHERE o.visibility = 'shared';
 -- COMMENTS
 -- ============================================================================
 
--- This schema maintains exact compatibility with the SQLite version:
--- - All table names are identical
--- - All column names are identical
--- - All foreign key relationships are preserved
--- - All check constraints are maintained
--- 
--- Key PostgreSQL conversions made:
--- - INTEGER PRIMARY KEY AUTOINCREMENT → SERIAL PRIMARY KEY
--- - TEXT for datetime → TIMESTAMP
--- - datetime('now') → CURRENT_TIMESTAMP
--- - BOOLEAN stored as actual BOOLEAN (not INTEGER 0/1)
--- - Added JSONB for preferences (more efficient than TEXT in PostgreSQL)
--- - Added triggers for automatic updated_at timestamp updates
--- - Added optional views for common query patterns
---
--- After running this schema, you'll need to update lib/db.js to:
--- 1. Use 'pg' package instead of 'sqlite3'
--- 2. Change parameter placeholders from ? to $1, $2, etc.
--- 3. Update query methods (run/get/all → query with rows)
--- 4. Handle RETURNING clause for INSERT operations
--- 5. Update datetime functions to use PostgreSQL syntax
+-- PostgreSQL schema notes:
+-- - Uses SERIAL/BIGSERIAL primary keys where appropriate
+-- - Uses TIMESTAMP for datetime fields
+-- - Uses JSONB for preferences
+-- - Includes triggers for updated_at timestamps

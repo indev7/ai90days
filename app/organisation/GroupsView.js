@@ -2,25 +2,37 @@
 
 import React, { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import OrgChart from "d3-org-chart";
+import { OrgChart } from "d3-org-chart";
 import styles from "./GroupsView.module.css";
 
-const NODE_TEMPLATE = `
-  <div class="org-card">
-    <div class="org-card__content">
-      <div class="org-card__title">{NAME}</div>
-      <div class="org-card__chips">
-        <span class="org-card__chip">Objectives: {OBJECTIVE_COUNT}</span>
-        <span class="org-card__chip">Members: {MEMBER_COUNT}</span>
+const escapeHtml = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+const renderNodeContent = (node) => {
+  const data = node?.data || {};
+  const name = escapeHtml(data.name || "Group");
+  const objectiveCount = escapeHtml(data.objectiveCountDisplay ?? "0");
+  const memberCount = escapeHtml(data.memberCountDisplay ?? "0");
+  const activeClass = data.isActive ? " org-card--active" : "";
+
+  return `
+    <div class="org-card${activeClass}">
+      <div class="org-card__content">
+        <div class="org-card__title">${name}</div>
+        <div class="org-card__chips">
+          <span class="org-card__chip">Objectives: ${objectiveCount}</span>
+          <span class="org-card__chip">Members: ${memberCount}</span>
+        </div>
       </div>
     </div>
-  </div>
-`;
-
-const TEMPLATE_REPLACE = {
-  NAME: "name",
-  OBJECTIVE_COUNT: "objectiveCountDisplay",
-  MEMBER_COUNT: "memberCountDisplay",
+  `;
 };
 
 function buildFlatNodes(tree, expandedGroupId) {
@@ -59,15 +71,7 @@ function buildFlatNodes(tree, expandedGroupId) {
         expanded: true,
         width: 260,
         height: 136,
-        borderWidth: isActive ? 2 : 1,
-        borderColor: isActive
-          ? { red: 88, green: 28, blue: 135, alpha: 1 }
-          : { red: 226, green: 232, blue: 240, alpha: 1 },
-        backgroundColor: isActive
-          ? { red: 247, green: 243, blue: 255, alpha: 1 }
-          : { red: 255, green: 255, blue: 255, alpha: 1 },
-        template: NODE_TEMPLATE,
-        replaceData: TEMPLATE_REPLACE,
+        isActive,
       });
 
       if (Array.isArray(item.children) && item.children.length) {
@@ -351,33 +355,19 @@ export default function GroupsView({
         chart = new OrgChart();
         chartRefs.current.set(rootId, chart);
 
-        const baseNode = chart.defaultNode();
         chart
           .container(container)
-          .backgroundColor("transparent")
           .initialZoom(0.75)
           .duration(450)
-          .depth(260)
-          .template(NODE_TEMPLATE)
-          .replaceData(TEMPLATE_REPLACE)
-          .defaultNode({
-            ...baseNode,
-            width: 340,
-            height: 160,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: { red: 184, green: 210, blue: 210, alpha: 1 },
-            backgroundColor: { red: 255, green: 255, blue: 255, alpha: 1 },
-            connectorLineColor: { red: 64, green: 64, blue: 64, alpha: 1 },
-            connectorLineWidth: 2.4,
-            nodeImage: { ...baseNode.nodeImage, width: 0, height: 0, borderWidth: 0, shadow: false },
-            nodeIcon: { ...baseNode.nodeIcon, size: 0 },
-          });
+          .nodeWidth(() => 340)
+          .nodeHeight(() => 160)
+          .nodeContent(renderNodeContent);
       }
 
-      chart.onNodeClick((nodeId) => {
+      chart.onNodeClick((node) => {
         if (onNodeClick) {
-          onNodeClick(nodeId);
+          const groupId = node?.data?.groupId ?? node?.data?.id ?? null;
+          onNodeClick(groupId);
         }
       });
 
@@ -523,6 +513,11 @@ export default function GroupsView({
           border-radius: 10px;
           overflow: hidden;
           box-shadow: inset 0 0 0 1px var(--org-card-border);
+        }
+
+        .org-card--active {
+          background: var(--brand-50, #f7f3ff);
+          box-shadow: inset 0 0 0 2px var(--brand-primary, #6a4bff);
         }
 
         .org-card__content {

@@ -86,6 +86,10 @@
   word-wrap: break-word;
 }
 
+.chartMessageContent {
+  max-width: 92%;
+}
+
 .userMessage .messageContent {
   background: var(--accent-gradient);
   color: white;

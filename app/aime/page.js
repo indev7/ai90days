@@ -1,16 +1,27 @@
 'use client';
 
+import JIRA_CONFIG from '@/lib/jiraConfig';
+import {
+  checkPaginationStopConditions,
+  mergePageResults,
+  calculateNextPayload,
+  extractTrackingData
+} from '@/lib/aime/jiraPaginationHelper';
+
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import useAimeStore from '@/store/aimeStore';
 import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { useMainTree } from '@/hooks/useMainTree';
+import { processCacheUpdate } from '@/lib/cacheUpdateHandler';
 import useTextToSpeech from '@/hooks/useTextToSpeech';
 import useVoiceInput from '@/hooks/useVoiceInput';
 import styles from './page.module.css';
 import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
+import AimeChart from '../../components/AimeChart';
+import ContextUsageIndicator from '../../components/ContextUsageIndicator';
 import { TiMicrophoneOutline } from "react-icons/ti";
 import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
 import { SlArrowUpCircle } from "react-icons/sl";
@@ -24,6 +35,19 @@ const DATA_SECTION_IDS = new Set([
   'preferences',
   'calendar'
 ]);
+
+const AUTO_READONLY_INTENTS = new Set([
+  'LIST_MESSAGES',
+  'GET_MESSAGE_PREVIEW',
+  'GET_MESSAGE_BODY',
+  'OPEN_MESSAGE',
+  'JIRA_QUERY_ISSUES',
+  'JIRA_LIST_PROJECTS',
+  'JIRA_LIST_ISSUE_TYPES',
+  'JIRA_LIST_STATUSES'
+]);
+
+const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/'];
 
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
 // PSEUDOCODE: for each incoming section/reason/id, validate and add to accumulator maps/sets.
@@ -249,6 +273,13 @@ function labelForAction(action) {
     payload?.type === 'T' ? 'Task' :
     'OKRT';
 
+  if (intent === 'CREATE_GROUP') return `Create ${payload?.type || 'Group'}`;
+  if (intent === 'UPDATE_GROUP') return `Update ${payload?.type || 'Group'}`;
+  if (intent === 'DELETE_GROUP') return `Delete ${payload?.type || 'Group'}`;
+  if (intent === 'ADD_GROUP_MEMBER') return 'Add Group Member';
+  if (intent === 'UPDATE_GROUP_MEMBER') return 'Update Group Member';
+  if (intent === 'REMOVE_GROUP_MEMBER') return 'Remove Group Member';
+
   if (intent === 'CREATE_OKRT') return `Create ${noun}`;
   if (intent === 'UPDATE_OKRT') {
     if (payload?.title) return `Rename Objective`;
@@ -260,6 +291,14 @@ function labelForAction(action) {
   if (intent === 'DELETE_OKRT') return `Delete ${noun}`;
   if (intent === 'SHARE_OKRT') return 'Share Objective';
   if (intent === 'UNSHARE_OKRT') return 'Unshare Objective';
+  if (intent === 'LIST_MESSAGES') return 'List Mail';
+  if (intent === 'GET_MESSAGE_PREVIEW') return 'Message Preview';
+  if (intent === 'GET_MESSAGE_BODY') return 'Read Message Body';
+  if (intent === 'OPEN_MESSAGE') return 'Open in Outlook';
+  if (intent === 'JIRA_QUERY_ISSUES') return 'Query Jira Issues';
+  if (intent === 'JIRA_LIST_PROJECTS') return 'List Jira Projects';
+  if (intent === 'JIRA_LIST_ISSUE_TYPES') return 'List Jira Issue Types';
+  if (intent === 'JIRA_LIST_STATUSES') return 'List Jira Statuses';
   return `${method || 'POST'} ${noun}`;
 }
 
@@ -267,28 +306,159 @@ function labelForAction(action) {
 // PSEUDOCODE: map raw actions to UI objects with keys, labels, endpoints, and bodies.
 function normalizeActions(rawActions = []) {
   return rawActions.map((a, idx) => {
-    const idFromPayload = a?.payload?.id;
+    const idFromPayload = a?.payload?.id || a?.payload?.groupId || a?.payload?.group_id;
+    const userIdFromPayload =
+      a?.payload?.userId || a?.payload?.user_id || a?.payload?.memberId || a?.payload?.member_id;
+    const encodedId = idFromPayload ? encodeURIComponent(String(idFromPayload)) : '';
+    const encodedUserId = userIdFromPayload ? encodeURIComponent(String(userIdFromPayload)) : '';
     const baseEndpoint = a?.endpoint?.includes('[id]')
-      ? a.endpoint.replace('[id]', idFromPayload || '')
+      ? a.endpoint.replace('[id]', encodedId)
       : a?.endpoint || '/api/okrt';
+    const endpointWithUser =
+      baseEndpoint?.includes('[userId]')
+        ? baseEndpoint.replace('[userId]', encodedUserId)
+        : baseEndpoint;
     const needsShareQuery =
       a?.method === 'DELETE' &&
-      baseEndpoint.includes('/share') &&
+      endpointWithUser.includes('/share') &&
       a?.payload?.target &&
       a?.payload?.share_type;
     const endpoint = needsShareQuery
-      ? `${baseEndpoint}?target=${encodeURIComponent(a.payload.target)}&type=${encodeURIComponent(a.payload.share_type)}`
-      : baseEndpoint;
+      ? `${endpointWithUser}?target=${encodeURIComponent(a.payload.target)}&type=${encodeURIComponent(a.payload.share_type)}`
+      : endpointWithUser;
     const label = labelForAction(a);
     return {
       key: `act-${idx}-${idFromPayload || Math.random().toString(36).slice(2)}`,
       label,
       endpoint,
-      method: a?.method || 'POST',
+      method: (a?.method || 'POST').toUpperCase(),
       body: a?.payload || {},
       intent: a?.intent || 'UPDATE_OKRT',
     };
   });
+}
+
+function isReadOnlyToolAction(action) {
+  if (!action || typeof action !== 'object') return false;
+  const method = (action.method || '').toUpperCase();
+  if (method !== 'GET') return false;
+  if (!AUTO_READONLY_INTENTS.has(action.intent)) return false;
+  const endpoint = action.endpoint || '';
+  return AUTO_READONLY_ENDPOINT_PREFIXES.some((prefix) => endpoint.startsWith(prefix));
+}
+
+function getAutoReadActionFingerprint(actions = []) {
+  const normalized = actions.map((action) => ({
+    intent: action?.intent || '',
+    endpoint: action?.endpoint || '',
+    method: (action?.method || '').toUpperCase(),
+    body: action?.body || {}
+  }));
+  return JSON.stringify(normalized);
+}
+
+function buildToolExchangeMessages(actions = [], autoResults = []) {
+  const messages = [];
+  for (let i = 0; i < actions.length; i += 1) {
+    const action = actions[i];
+    const result = autoResults[i];
+    if (!action || !result) continue;
+
+    const endpoint = String(action?.endpoint || '');
+    const toolName = endpoint.startsWith('/api/jira/')
+      ? 'emit_jira_query_actions'
+      : endpoint.startsWith('/api/ms/mail/')
+        ? 'emit_ms_mail_actions'
+        : null;
+    if (!toolName) continue;
+
+    const toolUseId = `auto_tool_${Date.now()}_${i}`;
+    const actionItem = {
+      intent: action.intent,
+      endpoint: action.endpoint,
+      method: (action.method || 'GET').toUpperCase(),
+      payload: action.body || {}
+    };
+    messages.push({
+      id: Date.now() + 60 + (i * 2),
+      role: 'assistant',
+      content: '',
+      hidden: true,
+      timestamp: new Date(),
+      toolUse: {
+        id: toolUseId,
+        name: toolName,
+        input: { actions: [actionItem] }
+      }
+    });
+    messages.push({
+      id: Date.now() + 61 + (i * 2),
+      role: 'user',
+      content: '',
+      hidden: true,
+      timestamp: new Date(),
+      toolResult: {
+        toolUseId,
+        payload: result
+      }
+    });
+  }
+  return messages;
+}
+
+async function executeToolActionRequest(action, { allowWrite = false } = {}) {
+  const method = (action?.method || 'POST').toUpperCase();
+  const isReadOnly = isReadOnlyToolAction(action);
+  if (!allowWrite && !isReadOnly) {
+    throw new Error('Blocked non-read tool action from auto-execution.');
+  }
+
+  const payload = { ...(action?.body || {}) };
+  const baseEndpoint = action?.endpoint || '';
+  if (baseEndpoint.startsWith('/api/jira/') && payload.toolMode == null) {
+    payload.toolMode = true;
+  }
+  const requestInit = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  const endpoint =
+    method === 'GET'
+      ? (() => {
+          const params = new URLSearchParams();
+          Object.entries(payload).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') return;
+            if (Array.isArray(value)) {
+              value.forEach((item) => params.append(key, String(item)));
+              return;
+            }
+            params.append(key, String(value));
+          });
+          if (!params.toString()) return baseEndpoint;
+          return baseEndpoint.includes('?')
+            ? `${baseEndpoint}&${params.toString()}`
+            : `${baseEndpoint}?${params.toString()}`;
+        })()
+      : baseEndpoint;
+  if (method !== 'GET' && method !== 'DELETE') {
+    requestInit.body = JSON.stringify(payload);
+  }
+
+  const res = await fetch(endpoint, requestInit);
+  let result = null;
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    result = await res.json();
+  } else {
+    result = await res.text();
+  }
+
+  if (!res.ok) {
+    const detail = typeof result === 'string' ? result : result?.error || res.statusText;
+    throw new Error(`API error: ${res.status}${detail ? ` - ${detail}` : ''}`);
+  }
+
+  return result;
 }
 
 /* ---------- components ---------- */
@@ -354,6 +524,11 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
             if (action.body?.type === 'O') description = `Create Objective: ${action.body?.title || ''}`;
             else if (action.body?.type === 'K') description = `Create KR: ${action.body?.description || ''}`;
             else if (action.body?.type === 'T') description = `Create Task: ${action.body?.description || ''}`;
+            else if (action.intent === 'CREATE_GROUP') {
+              description = `Create ${action.body?.type || 'Group'}: ${action.body?.name || ''}`.trim();
+            } else if (action.intent === 'ADD_GROUP_MEMBER') {
+              description = `Add member: ${action.body?.email || ''}`.trim();
+            }
             else if (action.intent === 'SHARE_OKRT') {
               description = action.body?.visibility === 'private'
                 ? 'Unshare Objective (make private)'
@@ -369,6 +544,14 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
               `${action.method === 'PUT' ? 'Update' : 'Delete'} ${action.body?.title || action.body?.description || 'OKRT'}`;
             if (action.intent === 'UNSHARE_OKRT') {
               description = 'Unshare Objective';
+            } else if (action.intent === 'UPDATE_GROUP') {
+              description = `Update ${action.body?.type || 'Group'}: ${action.body?.name || 'Details'}`;
+            } else if (action.intent === 'DELETE_GROUP') {
+              description = `Delete ${action.body?.type || 'Group'}`;
+            } else if (action.intent === 'UPDATE_GROUP_MEMBER') {
+              description = action.body?.isAdmin ? 'Set member as admin' : 'Remove member admin';
+            } else if (action.intent === 'REMOVE_GROUP_MEMBER') {
+              description = 'Remove member';
             }
           }
           return (
@@ -412,10 +595,12 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
 function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickReply }) {
   const isUser = message.role === 'user';
   const textOnly = message.content;
+  const charts = Array.isArray(message.charts) ? message.charts : [];
+  const hasCharts = !isUser && charts.length > 0;
 
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
-      <div className={styles.messageContent}>
+      <div className={`${styles.messageContent} ${hasCharts ? styles.chartMessageContent : ''}`}>
         {!isUser && <span className={styles.assistantAvatar} aria-hidden="true" />}
         {message.error ? (
           <div className={styles.errorMessage}>
@@ -426,6 +611,14 @@ function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickR
           <>
             {/* Render Markdown nicely */}
             <MessageMarkdown>{textOnly}</MessageMarkdown>
+
+            {!isUser && charts.length > 0 && (
+              <div>
+                {charts.map((chart, index) => (
+                  <AimeChart key={`${message.id}-chart-${index}`} payload={chart} />
+                ))}
+              </div>
+            )}
 
             {/* OKRT Suggestion box disabled */}
             {/* Removed OkrtPreview to hide suggestion box */}
@@ -479,7 +672,10 @@ export default function AimePage() {
   const lastPendingIdRef = useRef(null);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const [chatWidth, setChatWidth] = useState(null);
   const inputRef = useRef(null);
+  const [usageStats, setUsageStats] = useState({ inputTokens: 0, outputTokens: 0 });
   
   // Use cached user data
   const { user, isLoading: userLoading } = useUser();
@@ -492,7 +688,7 @@ export default function AimePage() {
     [myOKRTs]
   );
   const preferredVoice = mainTree?.preferences?.preferred_voice;
-  const { addMyOKRT, updateMyOKRT, removeMyOKRT, setLLMActivity } = useMainTreeStore();
+  const { updateMyOKRT, setLLMActivity } = useMainTreeStore();
   
   // Text-to-Speech hook
   const { isTTSEnabled, isSpeaking, needsUserGesture, toggleTTS, speak } = useTextToSpeech(preferredVoice);
@@ -508,6 +704,20 @@ export default function AimePage() {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   const visibleMessages = useMemo(() => messages.filter((message) => !message.hidden), [messages]);
   useEffect(() => { scrollToBottom(); }, [visibleMessages]);
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const updateWidth = () => setChatWidth(container.clientWidth || null);
+    updateWidth();
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => updateWidth());
+      observer.observe(container);
+      return () => observer.disconnect();
+    }
+    const handleResize = () => updateWidth();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   useEffect(() => {
     if (!isLoading && inputRef.current) {
       inputRef.current.focus();
@@ -535,6 +745,14 @@ export default function AimePage() {
   const autoRetryCountRef = useRef(0);
   const duplicateReqMoreInfoRef = useRef(0);
   const reqMoreInfoErrorRetryRef = useRef(0);
+  const autoReadActionRetryRef = useRef(0);
+  const autoReadFingerprintRef = useRef('');
+  const duplicateAutoReadRef = useRef(0);
+  const jiraRequeryGuardRef = useRef(0);
+  const lastJiraQueryFingerprintRef = useRef('');
+  const lastJiraQueryTimeRef = useRef(0);
+  const jiraPageCounterRef = useRef(1);
+  const jiraPagingStatusRef = useRef(null);
   const accumulatedReqMoreInfoRef = useRef({
     sections: new Map(),
     knowledgeIds: new Set(),
@@ -572,6 +790,13 @@ export default function AimePage() {
       autoRetryCountRef.current = 0;
       duplicateReqMoreInfoRef.current = 0;
       reqMoreInfoErrorRetryRef.current = 0;
+      autoReadActionRetryRef.current = 0;
+      autoReadFingerprintRef.current = '';
+      duplicateAutoReadRef.current = 0;
+      jiraRequeryGuardRef.current = 0;
+      lastJiraQueryFingerprintRef.current = '';
+      lastJiraQueryTimeRef.current = 0;
+      jiraPageCounterRef.current = 1;
       outboundMessages = [...messages, userMessage];
     }
 
@@ -627,8 +852,31 @@ export default function AimePage() {
 
       let textBuffer = '';
       let pendingActions = [];
+      let pendingAutoReadActions = [];
+      let pendingCharts = [];
       let pendingReqMoreInfo = null;
       let chunkBuffer = '';
+      const resolveInterimAssistantContent = () => {
+        if (textBuffer.trim()) return textBuffer;
+        if (jiraPagingStatusRef.current?.pageNumber) {
+          return `Fetching Jira page ${jiraPagingStatusRef.current.pageNumber}...`;
+        }
+        if (pendingReqMoreInfo) return 'Fetching the context I need to answer accurately...';
+        if (pendingAutoReadActions.length > 0) {
+          const hasJiraRead = pendingAutoReadActions.some((action) =>
+            String(action?.endpoint || '').startsWith('/api/jira/')
+          );
+          if (hasJiraRead) return 'Checking Jira...';
+          const hasMailRead = pendingAutoReadActions.some((action) =>
+            String(action?.endpoint || '').startsWith('/api/ms/mail/')
+          );
+          if (hasMailRead) return 'Checking your mailbox...';
+          return 'Working on that...';
+        }
+        if (pendingActions.length > 0) return 'I prepared actions for your review.';
+        if (pendingCharts.length > 0) return 'Preparing your chart...';
+        return 'Working on that...';
+      };
 
       const TTS_CHUNK_THRESHOLD = 400; // characters
       /** Flush accumulated text into the TTS queue when it is long or sentence-complete. */
@@ -667,21 +915,37 @@ export default function AimePage() {
               console.log('[AIME] stream content chunk received:', data);
             } else if (data.type === 'preparing_actions') {
               const id = ensureAssistantMessage();
-              updateMessage(id, { content: textBuffer, preparingActions: true });
+              updateMessage(id, { content: resolveInterimAssistantContent(), preparingActions: true });
               console.log('[AIME] stream preparing_actions received:', data);
             } else if (data.type === 'actions') {
               const id = ensureAssistantMessage();
-              pendingActions = normalizeActions(data.data || []);
+              const normalizedActions = normalizeActions(data.data || []);
+              pendingAutoReadActions = normalizedActions.filter((action) => isReadOnlyToolAction(action));
+              pendingActions = normalizedActions.filter((action) => !isReadOnlyToolAction(action));
               updateMessage(id, {
-                content: textBuffer,
+                content: resolveInterimAssistantContent(),
                 preparingActions: false,
                 processingActions: false,
                 actions: pendingActions
               });
               console.log('[AIME] stream actions received:', data);
+            } else if (data.type === 'chart') {
+              const id = ensureAssistantMessage();
+              pendingCharts = [...pendingCharts, data.data].filter(Boolean);
+              updateMessage(id, { content: resolveInterimAssistantContent(), charts: pendingCharts });
+              console.log('[AIME] stream chart received:', data);
             } else if (data.type === 'req_more_info') {
               pendingReqMoreInfo = data.data;
               console.log('[AIME] stream req_more_info received:', data);
+            } else if (data.type === 'usage') {
+              // Accumulate usage metadata across conversation
+              if (data.data) {
+                setUsageStats(prev => ({
+                  inputTokens: prev.inputTokens + (data.data.inputTokens || 0),
+                  outputTokens: prev.outputTokens + (data.data.outputTokens || 0)
+                }));
+              }
+              console.log('[AIME] stream usage received:', data);
             } else if (data.type === 'done') {
               // no-op
               console.log('[AIME] stream done received:', data);
@@ -693,12 +957,291 @@ export default function AimePage() {
       }
 
       if (assistantMessageId) {
-        if (pendingActions.length > 0) {
-          updateMessage(assistantMessageId, { content: textBuffer, actions: pendingActions, preparingActions: false });
-        } else {
-          updateMessage(assistantMessageId, { content: textBuffer, preparingActions: false });
-        }
+        const finalUpdate = { content: resolveInterimAssistantContent(), preparingActions: false };
+        if (pendingActions.length > 0) finalUpdate.actions = pendingActions;
+        if (pendingCharts.length > 0) finalUpdate.charts = pendingCharts;
+        updateMessage(assistantMessageId, finalUpdate);
       }
+
+      if (pendingAutoReadActions.length > 0 && !stopRequestedRef.current) {
+        const hasJiraToolResultsInHistory = (outboundMessages || []).some((message) =>
+          String(message?.toolResult?.payload?.endpoint || '').startsWith('/api/jira/')
+        );
+        const lastJiraToolResult = [...(outboundMessages || [])]
+          .reverse()
+          .find((message) => String(message?.toolResult?.payload?.endpoint || '').startsWith('/api/jira/'));
+        const jiraResultData = lastJiraToolResult?.toolResult?.payload?.data || {};
+        const jiraHasMorePages = Boolean(jiraResultData?.hasMore || jiraResultData?.nextPageToken);
+        const pendingJiraActions = pendingAutoReadActions.filter((action) =>
+          String(action?.endpoint || '').startsWith('/api/jira/')
+        );
+        const hasPendingJiraAutoRead = pendingJiraActions.length > 0;
+        
+        if (hasJiraToolResultsInHistory && hasPendingJiraAutoRead && !jiraHasMorePages) {
+          // Create fingerprint of the pending Jira query to detect actual duplicates
+          const currentJiraFingerprint = getAutoReadActionFingerprint(pendingJiraActions);
+          const now = Date.now();
+          
+          // Reset counter if enough time has passed
+          if (now - lastJiraQueryTimeRef.current > JIRA_CONFIG.JIRA_GUARD_RESET_MS) {
+            jiraRequeryGuardRef.current = 0;
+            lastJiraQueryFingerprintRef.current = '';
+          }
+          
+          // Only increment counter if it's actually the same query
+          if (currentJiraFingerprint === lastJiraQueryFingerprintRef.current) {
+            jiraRequeryGuardRef.current += 1;
+          } else {
+            // Different query - reset counter and update fingerprint
+            lastJiraQueryFingerprintRef.current = currentJiraFingerprint;
+            jiraRequeryGuardRef.current = 0;
+          }
+          
+          lastJiraQueryTimeRef.current = now;
+          
+          // Block only after exceeding max attempts for the same query
+          if (jiraRequeryGuardRef.current > JIRA_CONFIG.MAX_JIRA_REQUERY_ATTEMPTS) {
+            addMessage({
+              id: Date.now() + 5,
+              role: 'assistant',
+              content: 'I stopped repeated Jira reads for this request. If needed, please reconnect Jira at /jira and retry.',
+              error: true,
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          // Only show notice if we've seen this exact query before
+          if (jiraRequeryGuardRef.current > 0) {
+            const jiraRequeryNotice = [
+              'SYSTEM NOTICE: Jira tool results are already present in this conversation for the current request.',
+              'Do NOT call Jira query tools again in this turn.',
+              'Use existing Jira tool results to answer directly.',
+              'If tool results show auth failure, ask the user to login at /jira and retry.'
+            ].join(' ');
+            const nextSystemPromptData = `${systemPromptData}\n\n${jiraRequeryNotice}`;
+            const assistantContextMessage = {
+              id: Date.now() + 6,
+              role: 'assistant',
+              content: resolveInterimAssistantContent(),
+              timestamp: new Date(),
+            };
+            await sendMessage(trimmedContent, {
+              skipAddUserMessage: true,
+              messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
+              systemPromptData: nextSystemPromptData,
+              forceSend: true
+            });
+            return;
+          }
+        }
+
+        const currentAutoReadFingerprint = getAutoReadActionFingerprint(pendingAutoReadActions);
+        const isDuplicateAutoRead =
+          currentAutoReadFingerprint &&
+          currentAutoReadFingerprint === autoReadFingerprintRef.current;
+        if (isDuplicateAutoRead) {
+          duplicateAutoReadRef.current += 1;
+        } else {
+          autoReadFingerprintRef.current = currentAutoReadFingerprint;
+          duplicateAutoReadRef.current = 0;
+        }
+
+        if (duplicateAutoReadRef.current >= 1) {
+          const maxDuplicateAutoReadRetries = JIRA_CONFIG.MAX_DUPLICATE_AUTO_READ_RETRIES;
+          if (duplicateAutoReadRef.current > maxDuplicateAutoReadRetries) {
+            addMessage({
+              id: Date.now() + 5,
+              role: 'assistant',
+              content: 'I stopped repeated Jira/Mail reads for the same request. Please refine the filter and try again.',
+              error: true,
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          const duplicateNotice = [
+            'SYSTEM NOTICE: Duplicate read-only tool query detected for the same request.',
+            'Do NOT call Jira/Mail read tools again in this turn.',
+            'Use existing tool results already returned in this conversation to answer directly.'
+          ].join(' ');
+          const nextSystemPromptData = systemPromptData
+            ? `${systemPromptData}\n\n${duplicateNotice}`
+            : duplicateNotice;
+          const assistantContextMessage = {
+            id: Date.now() + 6,
+            role: 'assistant',
+            content: resolveInterimAssistantContent(),
+            timestamp: new Date(),
+          };
+          await sendMessage(trimmedContent, {
+            skipAddUserMessage: true,
+            messageHistoryOverride: [...(outboundMessages || []), assistantContextMessage],
+            systemPromptData: nextSystemPromptData,
+            forceSend: true
+          });
+          return;
+        }
+
+        const maxAutoReadRetries = JIRA_CONFIG.MAX_AUTO_READ_RETRIES;
+        if (autoReadActionRetryRef.current >= maxAutoReadRetries) {
+          addMessage({
+            id: Date.now() + 5,
+            role: 'assistant',
+            content: 'I could not finish auto-reading external data after multiple attempts. Please try again.',
+            error: true,
+            timestamp: new Date(),
+          });
+          return;
+        }
+
+        autoReadActionRetryRef.current += 1;
+
+        const autoResults = [];
+        const maxJiraPages = JIRA_CONFIG.MAX_PAGES_PER_REQUEST;
+        const maxIssues = JIRA_CONFIG.MAX_ISSUES_PER_REQUEST;
+        const paginationTimeout = JIRA_CONFIG.PAGINATION_TIMEOUT_MS;
+
+        const fetchJiraPages = async (action) => {
+          let aggregated = null;
+          let payload = { ...(action?.body || {}) };
+          let pagesFetched = 0;
+          const seenTokens = new Set();
+          const seenPageSignatures = new Set();
+          let lastIssueCount = 0;
+          let lastFirstKey = '';
+          let lastLastKey = '';
+          const startTime = Date.now();
+
+          while (pagesFetched < maxJiraPages) {
+            const pageNumber = pagesFetched + 1;
+            const id = ensureAssistantMessage();
+            jiraPagingStatusRef.current = { pageNumber };
+            updateMessage(id, { content: `Fetching Jira page ${pageNumber}...` });
+
+            const result = await executeToolActionRequest(
+              { ...action, body: payload },
+              { allowWrite: false }
+            );
+
+            pagesFetched += 1;
+
+            // Merge results using helper
+            aggregated = mergePageResults(aggregated, result, maxIssues);
+
+            // Extract tracking data
+            const tracking = extractTrackingData(result);
+            
+            // Check all stop conditions using helper
+            const stopCheck = checkPaginationStopConditions({
+              aggregated,
+              result,
+              pagesFetched,
+              seenPageSignatures,
+              seenTokens,
+              lastFirstKey,
+              lastLastKey,
+              lastIssueCount,
+              startTime,
+              maxJiraPages,
+              maxIssues,
+              paginationTimeout
+            });
+
+            // Apply any updates from stop check
+            if (stopCheck.updates && aggregated) {
+              Object.assign(aggregated, stopCheck.updates);
+            }
+
+            // Stop if needed
+            if (stopCheck.shouldStop) {
+              console.log(`[JIRA] Pagination stopped: ${stopCheck.reason}`);
+              break;
+            }
+
+            // Update tracking state
+            seenPageSignatures.add(tracking.pageSignature);
+            if (tracking.nextPageToken) {
+              seenTokens.add(tracking.nextPageToken);
+            }
+            lastFirstKey = tracking.firstKey;
+            lastLastKey = tracking.lastKey;
+            lastIssueCount = Array.isArray(aggregated?.issues) ? aggregated.issues.length : 0;
+
+            // Calculate next payload using helper
+            payload = calculateNextPayload({ currentPayload: payload, result });
+          }
+
+          jiraPagingStatusRef.current = null;
+          if (!aggregated) return null;
+          aggregated.pagesFetched = pagesFetched;
+          // Don't set hasMore/partial here - they're already set by the API response or pagination helper
+          return aggregated;
+        };
+
+        for (const action of pendingAutoReadActions) {
+          const isJiraAction = String(action?.endpoint || '').startsWith('/api/jira/');
+          const isCountOnly = Boolean(action?.body?.countOnly);
+          const isDistinct = Boolean(action?.body?.distinct);
+          try {
+            // FIX: Enable pagination for distinct queries to get consistent counts
+            const result = isJiraAction && !isCountOnly
+              ? await fetchJiraPages(action)
+              : await executeToolActionRequest(action, { allowWrite: false });
+            
+            // Add warning for partial results
+            if (result?.partial === true) {
+              result._warning = `Partial results: Only scanned ${result.pagesScanned || 'some'} pages. Results may be incomplete.`;
+            }
+            
+            autoResults.push({
+              intent: action.intent,
+              endpoint: action.endpoint,
+              method: action.method,
+              ok: true,
+              data: result
+            });
+          } catch (error) {
+            autoResults.push({
+              intent: action.intent,
+              endpoint: action.endpoint,
+              method: action.method,
+              ok: false,
+              error: error?.message || 'Unknown error'
+            });
+          }
+        }
+
+        const assistantContextMessage = {
+          id: Date.now() + 6,
+          role: 'assistant',
+          content: resolveInterimAssistantContent(),
+          timestamp: new Date(),
+        };
+        const toolExchangeMessages = buildToolExchangeMessages(
+          pendingAutoReadActions,
+          autoResults
+        );
+
+        await sendMessage(trimmedContent, {
+          skipAddUserMessage: true,
+          messageHistoryOverride: [
+            ...(outboundMessages || []),
+            assistantContextMessage,
+            ...toolExchangeMessages
+          ],
+          systemPromptData,
+          forceSend: true
+        });
+        return;
+      }
+
+      autoReadActionRetryRef.current = 0;
+      autoReadFingerprintRef.current = '';
+      duplicateAutoReadRef.current = 0;
+      jiraRequeryGuardRef.current = 0;
+      lastJiraQueryFingerprintRef.current = '';
+      lastJiraQueryTimeRef.current = 0;
 
       const hasInvalidReqMoreInfo =
         textBuffer.includes(INVALID_REQ_MORE_INFO_MESSAGE);
@@ -750,6 +1293,12 @@ export default function AimePage() {
           mainTree || {},
           displayName
         );
+        const needsChartWidth =
+          Array.isArray(mergedReqMoreInfo?.domainKnowledge?.ids) &&
+          mergedReqMoreInfo.domainKnowledge.ids.includes('aime-charts');
+        const widthHint = needsChartWidth && Number.isFinite(chatWidth)
+          ? `\n\nCHAT_WINDOW_WIDTH_PX: ${Math.round(chatWidth)}`
+          : '';
         const maxRetries = nextPayload.hasData ? 2 : 4;
         const exceededRetries = autoRetryCountRef.current >= maxRetries;
         const shouldCheckDuplicate = nextPayload.hasData;
@@ -780,8 +1329,8 @@ export default function AimePage() {
             ? 'SYSTEM NOTICE: The previous req_more_info requested sections already present in CONTEXT. Do not call req_more_info again unless new sections are missing; answer using existing context.'
             : '';
           const systemPromptData = duplicateNotice
-            ? `${nextPayload.text}\n\n${duplicateNotice}`
-            : nextPayload.text;
+            ? `${nextPayload.text}\n\n${duplicateNotice}${widthHint}`
+            : `${nextPayload.text}${widthHint}`;
           await sendMessage(trimmedContent, {
             skipAddUserMessage: true,
             messageHistoryOverride: nextMessages,
@@ -841,32 +1390,10 @@ export default function AimePage() {
           return;
         }
       }
-      const payload = { ...action.body };
-      const res = await fetch(action.endpoint, {
-        method: action.method,
-        headers: { 'Content-Type': 'application/json' },
-        body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const result = await executeToolActionRequest(action, { allowWrite: true });
       
-      const result = await res.json();
-      
-      let appliedCacheUpdate = false;
-      // Handle cache update if provided by the API
-      if (result._cacheUpdate) {
-        const { action: cacheAction, data } = result._cacheUpdate;
-        
-        if (cacheAction === 'addMyOKRT' && data) {
-          addMyOKRT(data);
-          appliedCacheUpdate = true;
-        } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
-          updateMyOKRT(data.id, data.updates);
-          appliedCacheUpdate = true;
-        } else if (cacheAction === 'removeMyOKRT' && data?.id) {
-          removeMyOKRT(data.id);
-          appliedCacheUpdate = true;
-        }
-      }
+      const appliedCacheUpdate = Boolean(result?._cacheUpdate);
+      processCacheUpdate(result);
 
       if (
         !appliedCacheUpdate &&
@@ -900,32 +1427,10 @@ export default function AimePage() {
     setLoading(true);
     try {
       for (const action of actions) {
-        const payload = { ...action.body };
-        const res = await fetch(action.endpoint, {
-          method: action.method,
-          headers: { 'Content-Type': 'application/json' },
-          body: action.method === 'DELETE' ? undefined : JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error(`API error: ${res.status} on "${action.label}"`);
+        const result = await executeToolActionRequest(action, { allowWrite: true });
         
-        const result = await res.json();
-        
-        let appliedCacheUpdate = false;
-        // Handle cache update if provided by the API
-        if (result._cacheUpdate) {
-          const { action: cacheAction, data } = result._cacheUpdate;
-          
-          if (cacheAction === 'addMyOKRT' && data) {
-            addMyOKRT(data);
-            appliedCacheUpdate = true;
-          } else if (cacheAction === 'updateMyOKRT' && data?.id && data?.updates) {
-            updateMyOKRT(data.id, data.updates);
-            appliedCacheUpdate = true;
-          } else if (cacheAction === 'removeMyOKRT' && data?.id) {
-            removeMyOKRT(data.id);
-            appliedCacheUpdate = true;
-          }
-        }
+        const appliedCacheUpdate = Boolean(result?._cacheUpdate);
+        processCacheUpdate(result);
 
         if (
           !appliedCacheUpdate &&
@@ -970,6 +1475,7 @@ export default function AimePage() {
     setLoading(false);
     setLLMActivity(false);
     setInput('');
+    setUsageStats({ inputTokens: 0, outputTokens: 0 });
     lastPendingIdRef.current = null;
     lastPromptFingerprintRef.current = '';
     autoRetryCountRef.current = 0;
@@ -999,7 +1505,7 @@ export default function AimePage() {
       <div className={`app-pageContent app-pageContent--full ${styles.container}`}>
 
 
-      <div className={styles.messagesContainer}>
+      <div className={styles.messagesContainer} ref={messagesContainerRef}>
         {visibleMessages.length === 0 && (
           <div className={styles.welcomeMessage}>
             <div className={styles.coachAvatar}>
@@ -1106,6 +1612,15 @@ export default function AimePage() {
               <SlArrowUpCircle size={32} />
             </button>
           </div>
+          {/* Usage indicator between input and send button */}
+          {(usageStats.inputTokens > 0 || usageStats.outputTokens > 0) && (
+            <ContextUsageIndicator
+              inputTokens={usageStats.inputTokens}
+              outputTokens={usageStats.outputTokens}
+              maxTokens={200000}
+              provider={process.env.NEXT_PUBLIC_LLM_PROVIDER || 'bedrock'}
+            />
+          )}
           <button type="submit" className={styles.sendButton} disabled={isLoading || !input.trim()}>
             Send
           </button>

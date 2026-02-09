@@ -7,7 +7,7 @@
 
 ## Project Structure
 - **Framework**: Next.js with App Router (JavaScript only)
-- **Database**: SQLite at `./Phase1/DB/app.db`
+- **Database**: PostgreSQL (Prisma)
 - **Styling**: CSS Modules + theme variables in `styles/theme.css`
 - **Authentication**: JWT sessions with `jose` library
 
@@ -16,13 +16,13 @@
 - Microsoft OAuth login with account linking
 - Responsive navigation (mobile hamburger + desktop left rail)
 - Modern vibrant theme with dark mode support
-- SQLite database with user management
+- PostgreSQL database with user management
 - Profile editing with first/last name and password changes
 - Avatar dropdown with profile pictures
 
 ## Environment
 - Copy `.env.local` for session secret
-- Database auto-initializes on first run
+- Database schema managed via `Phase1/PGDB/` scripts
 - Logo located at `/public/brand/90d-logo.png`
 
 ## Theme System
