@@ -139,7 +139,7 @@
   width: 160px;
   height: 44px;
   display: inline-block;
-  margin: 0;
+  margin-left: 30px;
 }
 
 :global(html[data-theme="nature"]) .logoIcon {

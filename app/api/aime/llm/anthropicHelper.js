@@ -3,9 +3,19 @@ export async function handleAnthropic({
   logHumanReadable,
   tools,
   extractActionsFromArgs,
+  extractRenderChartFromArgs,
   extractReqMoreInfoFromArgs,
   logLlmApiInteraction
 }) {
+  const ACTION_TOOL_NAMES = new Set([
+    'emit_okrt_actions',
+    'emit_okrt_share_actions',
+    'emit_group_actions',
+    'emit_ms_mail_actions',
+    'emit_jira_query_actions'
+  ]);
+  const isActionToolName = (name) => ACTION_TOOL_NAMES.has(name);
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const model = process.env.ANTHROPIC_MODEL_NAME || process.env.LLM_MODEL_NAME || 'claude-3-5-sonnet-20240620';
   const maxTokens = parseInt(process.env.ANTHROPIC_MAX_TOKENS || '4096', 10);
@@ -17,14 +27,55 @@ export async function handleAnthropic({
     .map(m => String(m.content ?? ''))
     .join('\n\n');
 
-  // Normalize messages to Anthropic schema and drop empty content.
+  const toText = (value) => {
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value ?? null);
+    } catch {
+      return String(value ?? '');
+    }
+  };
+
+  // Normalize chat + synthetic tool bridge messages to Anthropic schema.
   const messages = llmMessages
-    .filter(m => m.role !== 'system')
-    .map(m => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: [{ type: 'text', text: String(m.content ?? '') }]
-    }))
-    .filter(m => m.content[0].text.trim().length > 0);
+    .filter((m) => m.role !== 'system')
+    .map((m) => {
+      if (m?.toolUse?.id && m?.toolUse?.name) {
+        return {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: String(m.toolUse.id),
+              name: String(m.toolUse.name),
+              input:
+                m.toolUse.input && typeof m.toolUse.input === 'object'
+                  ? m.toolUse.input
+                  : {}
+            }
+          ]
+        };
+      }
+      if (m?.toolResult?.toolUseId) {
+        return {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: String(m.toolResult.toolUseId),
+              content: toText(m.toolResult.payload)
+            }
+          ]
+        };
+      }
+      const text = String(m.content ?? '').trim();
+      if (!text) return null;
+      return {
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: [{ type: 'text', text }]
+      };
+    })
+    .filter(Boolean);
 
   // Expose tools so Claude can return structured actions or req_more_info.
   const activeTools = Array.isArray(tools) ? tools.filter(Boolean) : [];
@@ -67,7 +118,7 @@ export async function handleAnthropic({
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01'
         },
-        body: requestBody
+        body: payload
       },
       response: {
         status: response.status,
@@ -100,6 +151,7 @@ export async function handleAnthropic({
       const toolIndexToId = new Map(); // index(string) -> id
       const toolHasSeededInput = new Map(); // id -> boolean
       let actionsPayloads = [];      // aggregated actions
+      let chartPayloads = [];
       let latestReqMoreInfo = null;
       let hasSentReqMoreInfo = false;
       let hasReqMoreInfoError = false;
@@ -109,6 +161,15 @@ export async function handleAnthropic({
       const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
       const prep = () => { if (!sentPreparing) { sentPreparing = true; send({ type: 'preparing_actions' }); } };
       const dedupe = (arr) => Array.from(new Map(arr.map(a => [JSON.stringify(a), a])).values());
+      const dedupeCharts = (arr) => Array.from(new Map(arr.map(c => [JSON.stringify(c), c])).values());
+      const sendCharts = () => {
+        if (!chartPayloads.length) return;
+        const uniqueCharts = dedupeCharts(chartPayloads);
+        for (const chart of uniqueCharts) {
+          send({ type: 'chart', data: chart });
+        }
+        chartPayloads = [];
+      };
       const sendReqMoreInfo = () => {
         if (hasSentReqMoreInfo || !latestReqMoreInfo || hasReqMoreInfoError) return;
         send({ type: 'req_more_info', data: latestReqMoreInfo });
@@ -136,7 +197,7 @@ export async function handleAnthropic({
               'x-api-key': apiKey,
               'anthropic-version': '2023-06-01'
             },
-            body: requestBody
+            body: payload
           },
           response: {
             status: response.status,
@@ -155,33 +216,36 @@ export async function handleAnthropic({
             const fullStr = (parts || []).join('');
             if (!fullStr) continue;
             const toolName = toolNames.get(id);
-              if (
-                toolName === 'emit_okrt_actions' ||
-                toolName === 'emit_okrt_share_actions'
-              ) {
-                const actions = extractActionsFromArgs(fullStr);
-                if (actions.length) {
-                  actionsPayloads.push(...actions);
-                }
-              } else if (toolName === 'req_more_info') {
-                const info = extractReqMoreInfoFromArgs?.(fullStr);
-                if (info?.__invalid) {
-                  sendReqMoreInfoError();
-                } else if (info) {
-                  latestReqMoreInfo = info;
-                }
+            if (isActionToolName(toolName)) {
+              const actions = extractActionsFromArgs(fullStr);
+              if (actions.length) {
+                actionsPayloads.push(...actions);
               }
+            } else if (toolName === 'render_chart') {
+              const chart = extractRenderChartFromArgs?.(fullStr);
+              if (chart) chartPayloads.push(chart);
+            } else if (toolName === 'req_more_info') {
+              const info = extractReqMoreInfoFromArgs?.(fullStr);
+              if (info?.__invalid) {
+                sendReqMoreInfoError();
+              } else if (info) {
+                latestReqMoreInfo = info;
+              }
+            }
+            toolBuffers.delete(id);
           } catch (e) {
             console.error('Tool JSON parse error for', id, e);
           }
         }
         actionsPayloads = dedupe(actionsPayloads);
+        chartPayloads = dedupeCharts(chartPayloads);
       };
 
       const handleEvent = (eventName, payloadStr) => {
         if (payloadStr === '[DONE]') {
           flushAllTools();
           if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+          sendCharts();
           sendReqMoreInfo();
           logRawResponse();
           send({ type: 'done' });
@@ -206,10 +270,7 @@ export async function handleAnthropic({
                 toolBuffers.set(block.id, [JSON.stringify(block.input)]);
                 toolHasSeededInput.set(block.id, true);
               }
-              if (
-                block?.name === 'emit_okrt_actions' ||
-                block?.name === 'emit_okrt_share_actions'
-              ) {
+              if (isActionToolName(block?.name)) {
                 prep();
               }
               // Note: We don't block req_more_info here at content_block_start because we need to see the full arguments first
@@ -236,10 +297,7 @@ export async function handleAnthropic({
                 arr.push(String(data.delta.partial_json));
                 toolBuffers.set(bufferId, arr);
                 const toolName = toolNames.get(bufferId);
-                if (
-                  toolName === 'emit_okrt_actions' ||
-                  toolName === 'emit_okrt_share_actions'
-                ) {
+                if (isActionToolName(toolName)) {
                   prep();
                 }
               }
@@ -249,12 +307,14 @@ export async function handleAnthropic({
           case 'content_block_stop': {
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             break;
           }
           case 'message_stop': {
             flushAllTools();
             if (actionsPayloads.length) { prep(); send({ type: 'actions', data: actionsPayloads }); }
+            sendCharts();
             sendReqMoreInfo();
             logRawResponse();
             send({ type: 'done' });

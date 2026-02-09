@@ -13,14 +13,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **Next.js App Router** application built in JavaScript (not TypeScript) using:
 
-- **Database**: SQLite with auto-migration system in `Phase1/DB/`
+- **Database**: PostgreSQL via Prisma
 - **Authentication**: Custom JWT sessions using `jose` library + Microsoft OAuth via NextAuth
 - **Styling**: CSS Modules with CSS custom properties in `styles/theme.css`
 - **State Management**: React hooks for client-side state, custom auth context in layout
 
 ### Key Architectural Patterns
 
-- **Database Layer**: `lib/db.js` handles all SQLite operations with automatic schema migrations
+- **Database Layer**: `lib/db.js` provides Prisma access helpers
 - **Authentication**: `lib/auth.js` manages JWT sessions, password hashing, and validation
 - **Layout System**: Responsive design with desktop left rail navigation and mobile hamburger menu
 - **Component Architecture**: All components use CSS Modules for scoped styling
@@ -31,8 +31,6 @@ The app uses a phased migration approach:
 1. **Phase 1**: Basic user authentication with username/password
 2. **Phase 2**: Microsoft OAuth integration with account linking
 3. **Phase 3**: OKRT (Objectives, Key Results, Tasks) management system
-
-Migrations run automatically on database connection in `lib/db.js:26-47`.
 
 ### Authentication Flow
 
@@ -53,7 +51,7 @@ Migrations run automatically on database connection in `lib/db.js:26-47`.
 Key database operations in `lib/db.js`:
 - User management: `createUser()`, `getUserByEmail()`, `updateUser()`
 - OKRT operations: `createOKRT()`, `getOKRTHierarchy()`, `updateOKRT()`
-- Auto-migration system ensures schema stays current
+- Schema changes are managed via `Phase1/PGDB/` scripts and Prisma
 
 ## Styling System
 
@@ -64,6 +62,6 @@ Key database operations in `lib/db.js`:
 
 ## Environment Setup
 
-- Database auto-initializes on first run at `./Phase1/DB/app.db`
+- Database schema managed via `Phase1/PGDB/` scripts
 - Requires `SESSION_SECRET` environment variable for JWT signing
 - Microsoft OAuth credentials needed for social login features

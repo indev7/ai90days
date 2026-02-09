@@ -1,0 +1,26 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding:.3rem;
+}
+
+.ringWrapper {
+  display: flex;
+  align-items: center;
+  cursor: help;
+}
+
+.costValue {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* Dark mode support */
+html[data-theme="dark"] .costValue {
+  color: var(--text-secondary, #9ca3af);
+}

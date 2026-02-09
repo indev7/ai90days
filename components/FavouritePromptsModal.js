@@ -11,14 +11,16 @@ const sectionNameMap = new Map([
   ['strategy', 'Strategy'],
   ['colleagues', 'Colleagues'],
   ['tasks', 'Tasks'],
+  ['jira', 'JIRA'],
+  ['email', 'Email'],
   ['help', 'Help']
 ]);
 
 const promptMap = new Map([
   ['fav-clarify', {
     sectionId: 'my_favourites',
-    title: 'Clarify today’s focus',
-    prompt: 'Help me pick the single most important outcome for today and why.'
+    title: 'My calendar events today',
+    prompt: 'are you able to see my calendar today?'
   }],
   ['fav-draft', {
     sectionId: 'my_favourites',
@@ -89,6 +91,16 @@ const promptMap = new Map([
     sectionId: 'tasks',
     title: 'Decompose a task',
     prompt: 'Break this task into 5 concrete steps with time estimates.'
+  }],
+  ['jira-portfolio-initiatives-status-count', {
+    sectionId: 'jira',
+    title: 'Summarize portfolio initiatives',
+    prompt: 'In JIRA summarize the Initiatives in the Portfolio Management Project and tabulate Status and Count'
+  }],
+  ['email-inbox-recipient-check', {
+    sectionId: 'email',
+    title: 'Check messages sent to me',
+    prompt: 'can you check my inbox mail received today and see if there are any email with recipient set to my email address'
   }],
   ['help-org-chart', {
     sectionId: 'help',

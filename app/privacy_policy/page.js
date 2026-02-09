@@ -1,0 +1,205 @@
+import styles from './page.module.css';
+
+export default function PrivacyPolicyPage() {
+  return (
+    <div className="app-page">
+      <div className={`app-pageContent app-pageContent--wide ${styles.page}`}>
+        <header className={styles.header}>
+          <h1 className={styles.title}>AIME Privacy Policy</h1>
+          <p className={styles.updated}>Last updated: 2026-01-29 (Draft)</p>
+        </header>
+
+        <p className={styles.lede}>
+          This Privacy Policy explains how the AIME web application collects, uses, shares,
+          and protects personal data when you use AIME, our internal workplace goal-setting
+          and execution-visibility application.
+        </p>
+
+        <section className={styles.section}>
+          <h2>1. Who this policy applies to</h2>
+          <p>
+            AIME is intended for internal use by Intervest staff (and, where applicable,
+            affiliated group companies). This policy applies to authorised users who access AIME.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>2. Controller and contact details</h2>
+          <p>Intervest is the controller for personal data processed in AIME.</p>
+          <address className={styles.address}>
+            Intervest (Pvt) Ltd<br />
+            Data Protection Officer, Risk &amp; Compliance Department<br />
+            Level 23, 324 Havelock Road, Colombo 006, Sri Lanka<br />
+            Email: <a href="mailto:info@intervest.lk">info@intervest.lk</a><br />
+            Phone: <a href="tel:+94112081880">+94 112 081 880</a>
+          </address>
+          <p>
+            If your local entity is a joint controller for certain processing, we will provide
+            a supplemental notice where required.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>3. What data AIME processes</h2>
+          <p>AIME may process the following categories of personal data:</p>
+          <ul>
+            <li>Account and identity data: name, work email/login identifier, employee identifier (if used), authentication/session identifiers.</li>
+            <li>Organisation data: department/team, role (User/Leader/Owner/Admin), reporting line and organisational structure attributes needed for RBAC.</li>
+            <li>Goal and collaboration data: objectives, key results, tasks/initiatives, time blocks, progress updates, comments, and related timestamps and ownership.</li>
+            <li>Usage and technical data: IP address, device/browser information, login events, and diagnostic logs (to secure and operate the service).</li>
+            <li>Integration references (where enabled): identifiers and metadata from Jira and KPI systems (e.g., issue keys, assignee identifiers, KPI identifiers), scoped by permissions.</li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>4. Special category data and sensitive information</h2>
+          <p>
+            AIME is not designed for recording special category data (e.g., health information,
+            biometrics, religious or political beliefs, trade union membership, sexual orientation).
+            Users should not enter such information into AIME free-text fields (e.g., comments) or
+            into Jira tickets via AIME. If such data is incidentally included, we will minimise
+            processing, restrict access, and handle it in line with applicable law.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>5. How we collect data</h2>
+          <ul>
+            <li>Directly from you when you create or update goals, tasks, comments, and time blocks.</li>
+            <li>From enterprise systems you already use, when you connect AIME (e.g., Microsoft SSO for identity; Jira for ticket information; Snowflake or KPI sources for reporting), scoped by permissions.</li>
+            <li>Automatically through system operation (security logs and technical telemetry).</li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>6. Purposes of processing</h2>
+          <p>We process personal data in AIME to:</p>
+          <ul>
+            <li>Provide AIME’s functionality for 90-day goal planning, tracking, dashboards, and collaboration.</li>
+            <li>Enforce security and access control (authentication, RBAC, fraud/abuse prevention).</li>
+            <li>Integrate with workplace systems (e.g., Jira for work items and Snowflake/KPI sources for reporting), where enabled.</li>
+            <li>Provide an AI-assisted interface to draft OKRs, answer questions, and propose actions to save time (with user Accept/Reject controls).</li>
+            <li>Operate, troubleshoot, and improve AIME (including defect handling and service reliability).</li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>7. Lawful bases (EU/UK)</h2>
+          <p>
+            Where EU/UK data protection laws apply (e.g., GDPR / UK GDPR), we rely on one or more
+            lawful bases, depending on the processing context:
+          </p>
+          <ul>
+            <li>Performance of a contract/workplace administration (Art. 6(1)(b)): operating internal tools that staff use as part of their work.</li>
+            <li>Legitimate interests (Art. 6(1)(f)): operating, securing, and improving AIME, and providing execution visibility and coordination across teams, balanced against user rights and expectations.</li>
+            <li>Legal obligation (Art. 6(1)(c)) where applicable: responding to data subject rights requests or compliance obligations that apply to Intervest.</li>
+          </ul>
+          <p>If we ever need to rely on consent, we will request it explicitly and you may withdraw it at any time.</p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>8. AI features and human oversight</h2>
+          <ul>
+            <li>AIME includes an AI assistant to help users draft OKRs, summarise information, and interact with AIME and connected systems using natural language.</li>
+            <li>Human-in-the-loop: the AI assistant may propose changes (e.g., create/update OKRs or Jira tickets), but actions are only executed after explicit user approval (Accept/Reject).</li>
+            <li>Data minimisation for AI: the assistant is designed to retrieve and send only the data required to answer a user’s request, and it does not have direct database access.</li>
+            <li>No autonomous decision-making: AIME is not intended to make automated decisions about individuals (e.g., hiring, disciplinary action, or performance evaluation).</li>
+            <li>AI-generated content: where AIME displays AI-generated inspiration or text, it will be labelled (e.g., “Includes AI Generated Content”).</li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>9. Sharing and processors</h2>
+          <p>
+            We may share personal data with authorised service providers (processors) to operate AIME,
+            subject to contractual safeguards and access controls. Depending on configuration, this may include:
+          </p>
+          <ul>
+            <li>Hosting and infrastructure providers (e.g., Vercel today; AWS planned).</li>
+            <li>Database providers (e.g., Neon Postgres today; AWS RDS planned).</li>
+            <li>AI inference provider (e.g., Amazon Bedrock and underlying model provider, if enabled).</li>
+            <li>Enterprise systems and integrations (e.g., Atlassian Jira; Microsoft identity/SSO; Snowflake for KPI data), limited to what is required and authorised.</li>
+            <li>Security, monitoring, and vulnerability management tools (e.g., Snyk), where adopted.</li>
+          </ul>
+          <p>We do not sell personal data and we do not use AIME for advertising or cross-site tracking.</p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>10. International transfers</h2>
+          <p>
+            If personal data is accessed or processed outside the country/region where it originated
+            (for example, EU/EEA users’ data processed in the UK or elsewhere), we will implement
+            appropriate safeguards as required by applicable law. This may include contractual clauses,
+            transfer impact assessments, and vendor controls.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>11. Retention</h2>
+          <p>
+            We retain personal data only as long as necessary for the purposes described in this policy,
+            including security, contractual, and legal requirements. Typical retention periods (subject to
+            organisational policy) may include:
+          </p>
+          <ul>
+            <li>Goals/OKRs and related metadata: retained for operational history and planning purposes, then archived or deleted in line with retention schedules (retained up to one year).</li>
+            <li>Audit/security logs: retained for a limited period to support security monitoring and incident investigation (one month).</li>
+            <li>Integration references (Jira/KPI): we avoid duplicating source-system data unnecessarily and may occasionally cache them temporarily to improve application speed.</li>
+          </ul>
+          <p>Specific retention values will be documented in AIME’s retention schedule and Record of Processing Activities (RoPA).</p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>12. Security</h2>
+          <p>We implement administrative, technical, and organisational measures to protect personal data, including:</p>
+          <ul>
+            <li>Authentication via Microsoft SSO and role-based access control (RBAC) aligned to organisational structure.</li>
+            <li>Encryption in transit (TLS) and encryption at rest through managed service controls.</li>
+            <li>Access logging/audit trails for key actions (including AI proposals and approvals, where configured).</li>
+            <li>Least privilege access to integrations (scoped tokens) and secure secrets management.</li>
+            <li>Vulnerability management (e.g., dependency scanning) and patching practices.</li>
+          </ul>
+        </section>
+
+        <section className={styles.section}>
+          <h2>13. Your rights</h2>
+          <p>
+            Where applicable data protection laws grant you rights, including access, rectification,
+            erasure, restriction, objection, and data portability. To exercise these rights, contact
+            the Data Protection Officer using the details above. We will respond within legally required
+            timeframes.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>14. Cookies and similar technologies</h2>
+          <p>
+            AIME uses essential cookies for authentication/session security and, where applicable,
+            Microsoft SSO. AIME does not use cookies for advertising or cross-site tracking. Please refer
+            to the AIME Cookie Use Policy for details.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>15. Updates to this policy</h2>
+          <p>
+            We may update this policy from time to time to reflect legal, operational, or technological changes.
+            The updated version will be made available within AIME (or via the relevant internal policy repository)
+            with a revised “Last updated” date.
+          </p>
+        </section>
+
+        <section className={styles.section}>
+          <h2>16. Questions and complaints</h2>
+          <p>If you have questions or concerns about this policy, or wish to exercise your data protection rights, please contact:</p>
+          <address className={styles.address}>
+            Data Protection Officer, Risk &amp; Compliance Department<br />
+            Intervest (Pvt) Ltd, Level 23, 324 Havelock Road, Colombo 006, Sri Lanka<br />
+            Email: <a href="mailto:info@intervest.lk">info@intervest.lk</a><br />
+            Phone: <a href="tel:+94112081880">+94 112 081 880</a>
+          </address>
+        </section>
+      </div>
+    </div>
+  );
+}
