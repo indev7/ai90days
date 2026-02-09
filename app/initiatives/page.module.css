@@ -1,0 +1,92 @@
+.container {
+  background: var(--bg);
+  min-height: calc(100vh - var(--app-header-height, 72px));
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.filtersRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.filterBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 220px;
+}
+
+.ragSwitcher {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 320px;
+}
+
+.ragThumb {
+  width: calc(25% - 6px);
+}
+
+.ragButton {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 0.85rem;
+}
+
+.prioritySwitcher {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  min-width: 380px;
+}
+
+.priorityThumb {
+  width: calc(16.6667% - 6px);
+}
+
+.priorityButton {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+
+.loading,
+.emptyState,
+.error {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.error {
+  color: var(--danger);
+  background: var(--danger-light);
+  border-color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .filtersRow {
+    align-items: flex-start;
+  }
+
+  .ragSwitcher {
+    min-width: 260px;
+  }
+
+  .prioritySwitcher {
+    min-width: 300px;
+  }
+}

@@ -938,12 +938,12 @@ export default function AimePage() {
               pendingReqMoreInfo = data.data;
               console.log('[AIME] stream req_more_info received:', data);
             } else if (data.type === 'usage') {
-              // Capture usage metadata
+              // Accumulate usage metadata across conversation
               if (data.data) {
-                setUsageStats({
-                  inputTokens: data.data.inputTokens || 0,
-                  outputTokens: data.data.outputTokens || 0
-                });
+                setUsageStats(prev => ({
+                  inputTokens: prev.inputTokens + (data.data.inputTokens || 0),
+                  outputTokens: prev.outputTokens + (data.data.outputTokens || 0)
+                }));
               }
               console.log('[AIME] stream usage received:', data);
             } else if (data.type === 'done') {

@@ -1,0 +1,99 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.key {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.keyLink {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand-primary);
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+.keyLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--text));
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.metaPill {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.priorityPill {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+
+.dueDatePill {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.ragPill {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ragGreen {
+  color: var(--success);
+  background: var(--success-light);
+}
+
+.ragAmber {
+  color: #c7741a;
+  background: #fff2e0;
+}
+
+.ragRed {
+  color: var(--danger);
+  background: var(--danger-light);
+}
+
+.ragUnknown {
+  color: var(--text-secondary);
+  background: var(--border-light);
+}

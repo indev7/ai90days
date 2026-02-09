@@ -484,11 +484,19 @@ export default function JiraPage() {
             disabled={!filters.project}
           >
             <option value="">All Issue Types</option>
-            {issueTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
+            {issueTypes.map((type) => {
+              const typeName = typeof type === 'string' ? type : type?.name;
+              if (!typeName) return null;
+              const typeLabel =
+                typeof type === 'object' && type?.count != null
+                  ? `${typeName} (${type.count})`
+                  : typeName;
+              return (
+                <option key={typeName} value={typeName}>
+                  {typeLabel}
+                </option>
+              );
+            })}
           </select>
 
           <select
@@ -501,11 +509,19 @@ export default function JiraPage() {
             disabled={!filters.project}
           >
             <option value="">All Statuses</option>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
+            {statuses.map((status) => {
+              const statusName = typeof status === 'string' ? status : status?.name;
+              if (!statusName) return null;
+              const statusLabel =
+                typeof status === 'object' && status?.count != null
+                  ? `${statusName} (${status.count})`
+                  : statusName;
+              return (
+                <option key={statusName} value={statusName}>
+                  {statusLabel}
+                </option>
+              );
+            })}
           </select>
         </div>
 
