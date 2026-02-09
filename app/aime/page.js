@@ -33,7 +33,8 @@ const DATA_SECTION_IDS = new Set([
   'timeBlocks',
   'notifications',
   'preferences',
-  'calendar'
+  'calendar',
+  'initiatives'
 ]);
 
 const AUTO_READONLY_INTENTS = new Set([
@@ -299,6 +300,8 @@ function labelForAction(action) {
   if (intent === 'JIRA_LIST_PROJECTS') return 'List Jira Projects';
   if (intent === 'JIRA_LIST_ISSUE_TYPES') return 'List Jira Issue Types';
   if (intent === 'JIRA_LIST_STATUSES') return 'List Jira Statuses';
+  if (intent === 'LINK_JIRA_TICKET') return 'Link Jira Ticket';
+  if (intent === 'UNLINK_JIRA_TICKET') return 'Unlink Jira Ticket';
   return `${method || 'POST'} ${noun}`;
 }
 
@@ -440,7 +443,7 @@ async function executeToolActionRequest(action, { allowWrite = false } = {}) {
             : `${baseEndpoint}?${params.toString()}`;
         })()
       : baseEndpoint;
-  if (method !== 'GET' && method !== 'DELETE') {
+  if (method !== 'GET' && (method !== 'DELETE' || Object.keys(payload).length > 0)) {
     requestInit.body = JSON.stringify(payload);
   }
 
@@ -488,6 +491,13 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
             const content = okrt.type === 'O' ? okrt.title : okrt.description;
             newDescriptions[action.key] = `${action.method === 'PUT' ? 'Update' : 'Delete'} ${typeLabel}: ${content || 'Untitled'}`;
           }
+        }
+        if ((action.intent === 'LINK_JIRA_TICKET' || action.intent === 'UNLINK_JIRA_TICKET') && action.body?.id) {
+          const okrt = okrtById.get(String(action.body.id));
+          const jiraKey = action.body?.jira_ticket_id || action.body?.jiraTicketId || '';
+          const targetLabel = okrt?.type === 'O' ? 'Objective' : (okrt?.type === 'K' ? 'KR' : okrt?.type === 'T' ? 'Task' : 'OKRT');
+          const title = okrt?.type === 'O' ? okrt?.title : okrt?.description;
+          newDescriptions[action.key] = `${action.intent === 'LINK_JIRA_TICKET' ? 'Link' : 'Unlink'} Jira ${jiraKey} → ${targetLabel}: ${title || 'Untitled'}`.trim();
         }
       }
       setDescriptions(newDescriptions);
@@ -537,6 +547,8 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
               description = action.body?.visibility === 'private'
                 ? 'Unshare Objective (make private)'
                 : 'Unshare Objective';
+            } else if (action.intent === 'LINK_JIRA_TICKET') {
+              description = descriptions[action.key] || `Link Jira ${action.body?.jira_ticket_id || ''}`.trim();
             }
           } else if (action.method === 'PUT' || action.method === 'DELETE') {
             description =
@@ -552,6 +564,8 @@ function ActionButtons({ actions, okrtById, onActionClick, onRunAll }) {
               description = action.body?.isAdmin ? 'Set member as admin' : 'Remove member admin';
             } else if (action.intent === 'REMOVE_GROUP_MEMBER') {
               description = 'Remove member';
+            } else if (action.intent === 'UNLINK_JIRA_TICKET') {
+              description = descriptions[action.key] || `Unlink Jira ${action.body?.jira_ticket_id || ''}`.trim();
             }
           }
           return (

@@ -156,6 +156,21 @@ CREATE INDEX IF NOT EXISTS idx_share_group_or_user_id ON share(group_or_user_id)
 CREATE INDEX IF NOT EXISTS idx_share_type ON share(share_type);
 
 -- ============================================================================
+-- JIRA LINK TABLE (Phase 22)
+-- Map OKRT records to Jira tickets (e.g., Initiatives)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS jira_link (
+    okrt_id TEXT NOT NULL,
+    jira_ticket_id TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (okrt_id, jira_ticket_id),
+    FOREIGN KEY (okrt_id) REFERENCES okrt(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_jira_link_okrt_id ON jira_link(okrt_id);
+CREATE INDEX IF NOT EXISTS idx_jira_link_ticket_id ON jira_link(jira_ticket_id);
+
+-- ============================================================================
 -- FOLLOWS TABLE (Phase 7)
 -- Users following shared objectives
 -- ============================================================================

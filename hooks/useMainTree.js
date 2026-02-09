@@ -33,6 +33,8 @@ export function useMainTree() {
     setSectionLoading,
     setSectionLoaded,
     setCalendar,
+    setInitiatives,
+    setInitiativesUnavailable,
     clearMainTree,
     currentUserId,
     setCurrentUserId
@@ -107,6 +109,7 @@ export function useMainTree() {
         setSectionLoading('sharedOKRTs', true);
         setSectionLoading('groups', true);
         setSectionLoading('preferences', true);
+        setSectionLoading('initiatives', true);
         
         console.log('Loading mainTree data progressively...');
 
@@ -147,7 +150,7 @@ export function useMainTree() {
                   continue;
                 }
                 
-                if (message.section && message.data) {
+                if (message.section && Object.prototype.hasOwnProperty.call(message, 'data')) {
                   const { section, data } = message;
                   console.log(`✅ Received ${section}:`, Array.isArray(data) ? data.length : 'object');
                   
@@ -171,6 +174,13 @@ export function useMainTree() {
                       break;
                     case 'groups':
                       store.setGroups(data);
+                      break;
+                    case 'initiatives':
+                      if (message.meta?.unavailable) {
+                        store.setInitiativesUnavailable();
+                      } else {
+                        store.setInitiatives(data);
+                      }
                       break;
                   }
                 }

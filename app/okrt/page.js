@@ -7,6 +7,7 @@ import styles from './page.module.css';
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
+import InitiativeCard from '@/components/InitiativeCard';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
 import useMainTreeStore from '@/store/mainTreeStore';
@@ -88,6 +89,12 @@ export default function OKRTPage() {
   const [focusedObjectiveId, setFocusedObjectiveId] = useState(null);
   const [krExpansionState, setKrExpansionState] = useState({});
   const [commentsExpanded, setCommentsExpanded] = useState({});
+  const [jiraAuth, setJiraAuth] = useState({
+    checked: false,
+    authenticated: false,
+    siteUrl: ''
+  });
+  const [jiraIssueByKey, setJiraIssueByKey] = useState({});
   const [modalState, setModalState] = useState({
     isOpen: false,
     mode: 'create',
@@ -147,6 +154,115 @@ export default function OKRTPage() {
       setSharedGroupFilter('all');
     }
   }, [sharedGroupOptions, sharedGroupFilter]);
+
+  const linkedTicketKeys = useMemo(() => {
+    const keys = new Set();
+    objectives.forEach((objective) => {
+      const links = objective.jira_links || objective.jiraLinks || [];
+      links.forEach((link) => {
+        if (typeof link === 'string') {
+          keys.add(link);
+        } else if (link && typeof link.jira_ticket_id === 'string') {
+          keys.add(link.jira_ticket_id);
+        }
+      });
+    });
+    return Array.from(keys);
+  }, [objectives]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkJiraAuth = async () => {
+      if (linkedTicketKeys.length === 0) {
+        setJiraAuth({ checked: true, authenticated: false, siteUrl: '' });
+        return;
+      }
+      try {
+        const response = await fetch('/api/jira/auth/status');
+        const data = response.ok ? await response.json() : null;
+        if (!cancelled) {
+          setJiraAuth({
+            checked: true,
+            authenticated: Boolean(data?.authenticated),
+            siteUrl: data?.siteUrl || ''
+          });
+        }
+      } catch (_error) {
+        if (!cancelled) {
+          setJiraAuth({ checked: true, authenticated: false, siteUrl: '' });
+        }
+      }
+    };
+    checkJiraAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedTicketKeys.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const normalizeKey = (value) => String(value || '').trim().toUpperCase();
+    const isValidKey = (value) => /^[A-Z][A-Z0-9]+-\d+$/.test(value);
+
+    const fetchLinkedInitiatives = async () => {
+      if (!jiraAuth.authenticated || linkedTicketKeys.length === 0) {
+        setJiraIssueByKey({});
+        return;
+      }
+
+      const normalizedKeys = linkedTicketKeys
+        .map(normalizeKey)
+        .filter((key) => isValidKey(key));
+
+      if (normalizedKeys.length === 0) {
+        setJiraIssueByKey({});
+        return;
+      }
+
+      const uniqueKeys = Array.from(new Set(normalizedKeys)).slice(0, 200);
+      const batches = [];
+      for (let i = 0; i < uniqueKeys.length; i += 50) {
+        batches.push(uniqueKeys.slice(i, i + 50));
+      }
+
+      const nextIssueMap = {};
+
+      for (const batch of batches) {
+        const jql = `key in (${batch.join(',')})`;
+        const params = new URLSearchParams({
+          jql,
+          fields: 'summary,status,priority,duedate,project,issuetype,customfield_11331',
+          maxResults: String(batch.length)
+        });
+
+        const response = await fetch(`/api/jira/query?${params.toString()}`);
+        if (!response.ok) {
+          if (response.status === 401 && !cancelled) {
+            setJiraAuth({ checked: true, authenticated: false, siteUrl: '' });
+          }
+          continue;
+        }
+        const data = await response.json();
+        const issues = Array.isArray(data?.issues) ? data.issues : [];
+        issues.forEach((issue) => {
+          if (issue?.key) {
+            nextIssueMap[issue.key.toUpperCase()] = issue;
+          }
+        });
+      }
+
+      if (!cancelled) {
+        setJiraIssueByKey(nextIssueMap);
+      }
+    };
+
+    fetchLinkedInitiatives();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jiraAuth.authenticated, linkedTicketKeys.join('|')]);
 
   // Process mainTree data whenever it changes (from cross-tab sync or initial load)
   useEffect(() => {
@@ -718,6 +834,52 @@ export default function OKRTPage() {
                         isFocused={focusedObjectiveId === objective.id}
                         comments={objective.comments || []}
                       />
+
+                      {(() => {
+                        const rawLinks = objective.jira_links || objective.jiraLinks || [];
+                        const normalizeKey = (value) => String(value || '').trim().toUpperCase();
+                        const isValidKey = (value) => /^[A-Z][A-Z0-9]+-\d+$/.test(value);
+                        const jiraKeys = rawLinks
+                          .map((link) => (typeof link === 'string' ? link : link?.jira_ticket_id))
+                          .map(normalizeKey)
+                          .filter((key) => isValidKey(key));
+                        const linkedInitiatives = jiraKeys
+                          .map((key) => jiraIssueByKey[key])
+                          .filter(Boolean);
+
+                        if (linkedInitiatives.length === 0 && jiraKeys.length === 0) {
+                          return null;
+                        }
+
+                        return (
+                          <div className={styles.objectiveInitiatives}>
+                            <div className={styles.objectiveInitiativesHeader}>
+                              <span>Linked Initiatives</span>
+                              <span className={styles.objectiveInitiativesCount}>
+                                {linkedInitiatives.length || jiraKeys.length}
+                              </span>
+                            </div>
+                            {linkedInitiatives.length === 0 && jiraAuth.checked && !jiraAuth.authenticated ? (
+                              <div className={styles.objectiveInitiativesEmpty}>
+                                Connect Jira to view linked initiatives.
+                                <a className={styles.objectiveInitiativesLink} href="/api/jira/auth/login">
+                                  Connect Jira
+                                </a>
+                              </div>
+                            ) : (
+                              <div className={styles.objectiveInitiativesGrid}>
+                                {linkedInitiatives.map((initiative) => (
+                                  <InitiativeCard
+                                    key={initiative.key}
+                                    initiative={initiative}
+                                    jiraSiteUrl={jiraAuth.siteUrl}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Key Results Grid for this objective - only show when expanded */}
                       {expandedObjectives.has(objective.id) && (

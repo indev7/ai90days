@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { all, get } from '@/lib/pgdb';
+import { getJiraAuth, jiraFetchWithRetry, parseJiraIssue } from '@/lib/jiraAuth';
 
 /**
  * GET /api/main-tree/progressive
@@ -26,10 +27,11 @@ export async function GET(request) {
       async start(controller) {
         try {
           // Helper to send a section update
-          const sendSection = (section, data) => {
+          const sendSection = (section, data, meta = null) => {
             const message = JSON.stringify({
               section,
               data,
+              ...(meta ? { meta } : {}),
               _cacheUpdate: {
                 action: `set${section.charAt(0).toUpperCase() + section.slice(1)}`,
                 data
@@ -193,6 +195,22 @@ export async function GET(request) {
             ORDER BY CASE WHEN o.parent_id IS NULL THEN 0 ELSE 1 END, o.order_index ASC
           `, [userId]);
 
+          const jiraLinksByOkrt = new Map();
+          if (myOKRTs.length > 0) {
+            const okrtIds = myOKRTs.map((okrt) => okrt.id);
+            const placeholders = okrtIds.map(() => '?').join(', ');
+            const jiraLinks = await all(
+              `SELECT okrt_id, jira_ticket_id FROM jira_link WHERE okrt_id IN (${placeholders})`,
+              okrtIds
+            );
+            jiraLinks.forEach((link) => {
+              if (!jiraLinksByOkrt.has(link.okrt_id)) {
+                jiraLinksByOkrt.set(link.okrt_id, []);
+              }
+              jiraLinksByOkrt.get(link.okrt_id).push(link.jira_ticket_id);
+            });
+          }
+
           // Fetch comments for objectives and attach sharing metadata
           const myOKRTsWithComments = await Promise.all(
             myOKRTs.map(async (okrt) => {
@@ -215,10 +233,14 @@ export async function GET(request) {
                 return {
                   ...okrt,
                   comments,
-                  shared_groups: sharedGroupsByObjective.get(okrt.id) || []
+                  shared_groups: sharedGroupsByObjective.get(okrt.id) || [],
+                  jira_links: jiraLinksByOkrt.get(okrt.id) || []
                 };
               }
-              return okrt;
+              return {
+                ...okrt,
+                jira_links: jiraLinksByOkrt.get(okrt.id) || []
+              };
             })
           );
           
@@ -400,6 +422,58 @@ export async function GET(request) {
           console.log('[Progressive] Sending groups...');
           sendSection('groups', groupsWithDetails);
           console.log('[Progressive] ✅ groups sent');
+
+          // 6. Load Initiatives from Jira (if authenticated)
+          console.log('[Progressive] Loading initiatives from Jira...');
+          const jiraAuth = await getJiraAuth();
+
+          if (!jiraAuth?.isAuthenticated) {
+            sendSection('initiatives', [], { unavailable: true });
+            console.log('[Progressive] ⚠️ Jira not authenticated, initiatives unavailable');
+          } else {
+            try {
+              const JQL = 'project = PM AND issuetype = "Initiative"';
+              const fields = [
+                'summary',
+                'priority',
+                'duedate',
+                'customfield_11331'
+              ];
+              const initiatives = [];
+              let startAt = 0;
+              let hasMore = true;
+              const maxResults = 100;
+              const maxTotal = 300;
+
+              while (hasMore && initiatives.length < maxTotal) {
+                const params = new URLSearchParams({
+                  jql: JQL,
+                  fields: fields.join(','),
+                  startAt: String(startAt),
+                  maxResults: String(maxResults)
+                });
+
+                const response = await jiraFetchWithRetry(`/rest/api/3/search/jql?${params.toString()}`);
+                const data = await response.json();
+                const issues = Array.isArray(data?.issues) ? data.issues : [];
+                const parsed = issues
+                  .map((issue) => parseJiraIssue(issue))
+                  .filter((issue) => issue);
+
+                initiatives.push(...parsed);
+
+                const total = Number.isFinite(data?.total) ? data.total : null;
+                startAt += issues.length;
+                hasMore = issues.length > 0 && (total == null || startAt < total);
+              }
+
+              sendSection('initiatives', initiatives.slice(0, maxTotal));
+              console.log('[Progressive] ✅ initiatives sent');
+            } catch (error) {
+              console.error('[Progressive] Failed to load initiatives from Jira:', error?.message || error);
+              sendSection('initiatives', [], { unavailable: true });
+            }
+          }
 
           // Signal completion
           controller.enqueue(encoder.encode(JSON.stringify({ complete: true }) + '\n'));
