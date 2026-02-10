@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getJiraOAuthConfig, setJiraStateCookie } from '@/lib/jiraOAuth';
+import { getJiraOAuthConfig, setJiraReturnToCookie, setJiraStateCookie } from '@/lib/jiraOAuth';
 
 /**
  * GET handler to initiate Jira OAuth 2.0 authentication flow
@@ -10,6 +10,8 @@ import { getJiraOAuthConfig, setJiraStateCookie } from '@/lib/jiraOAuth';
 export async function GET(request) {
   try {
     const { clientId, redirectUri } = getJiraOAuthConfig();
+    const { searchParams } = new URL(request.url);
+    const returnTo = searchParams.get('returnTo');
 
     // Generate a random state for CSRF protection
     const state = crypto.randomUUID();
@@ -17,6 +19,9 @@ export async function GET(request) {
     // Store state in cookie for verification
     const cookieStore = await cookies();
     setJiraStateCookie(cookieStore, state);
+    if (returnTo) {
+      setJiraReturnToCookie(cookieStore, returnTo);
+    }
 
     // Jira OAuth 2.0 (3LO) authorization URL
     const authUrl = new URL('https://auth.atlassian.com/authorize');

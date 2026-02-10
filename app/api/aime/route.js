@@ -14,12 +14,14 @@ import { MICROSOFT_MAIL_DOMAIN } from '@/lib/knowledgeBase/microsoftMailDomain';
 import { JIRA_DOMAIN } from '@/lib/knowledgeBase/jiraDomain';
 import { JIRA_INITIATIVE_DOMAIN } from '@/lib/knowledgeBase/jira-initiative-domain';
 import { JIRA_LEAVE_DOMAIN } from '@/lib/knowledgeBase/jira-leave-domain';
+import { JIRA_LINK_DOMAIN } from '@/lib/knowledgeBase/jiraLinkDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
 import { GROUP_ACTIONS_SCHEMA } from '@/lib/toolSchemas/groupActions';
 import { MS_MAIL_ACTIONS_SCHEMA } from '@/lib/toolSchemas/msMailActions';
 import { JIRA_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraQueryActions';
+import { JIRA_LINK_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraLinkActions';
 
 const knowledgeBaseMap = new Map([
   [
@@ -85,6 +87,14 @@ const knowledgeBaseMap = new Map([
       description: 'Leave-Request issue-type data definition and custom field catalog for ILT project.',
       content: JIRA_LEAVE_DOMAIN
     }
+  ],
+  [
+    'jira-link-domain',
+    {
+      id: 'jira-link-domain',
+      description: 'Rules for linking/unlinking Jira tickets to OKRTs.',
+      content: JIRA_LINK_DOMAIN
+    }
   ]
 ]);
 
@@ -135,6 +145,14 @@ const toolMap = new Map([
       id: 'emit_jira_query_actions',
       description: 'Read-only Jira query actions tool schema using JQL with lazy-loaded fields.',
       schema: JIRA_QUERY_ACTIONS_SCHEMA
+    }
+  ],
+  [
+    'emit_jira_link_actions',
+    {
+      id: 'emit_jira_link_actions',
+      description: 'Link/unlink Jira tickets to OKRTs.',
+      schema: JIRA_LINK_ACTIONS_SCHEMA
     }
   ]
 ]);
@@ -187,6 +205,13 @@ const dataSectionMap = new Map([
     {
       id: 'calendar',
       description: 'Calendar metadata and events.'
+    }
+  ],
+  [
+    'initiatives',
+    {
+      id: 'initiatives',
+      description: 'Jira Portfolio Management initiatives for the Initiatives page.'
     }
   ]
 ]);
@@ -403,6 +428,7 @@ function getBasicSystemPrompt(displayName = "AIME user") {
     ``,
     `## Scope`,
     `The app supports UI-based CRUD for: okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups, read from JIRA, read outlook email.`,
+    `You can link/unlink Jira tickets (Initiatives) to OKRTs when requested.`,
     `User data may be provided in a cached JSON tree called "mainTree".`,
     `Your job: help with goal planning, OKRT guidance, motivation, and app navigation.`,
     ``,
@@ -467,7 +493,7 @@ CONTEXT - Selected mainTree Sections:
 User Display Name: ${displayName}
 Sections Included: ${sectionNames}
 Section Counts: ${counts.join(', ')}
-Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions or emit_okrt_share_actions tool calls:
+Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, or emit_jira_link_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
   }
@@ -480,7 +506,7 @@ Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
 CONTEXT - Current User's Information and OKRTs:
 User Display Name: ${displayName}
 Number of Objectives: ${objectives.length}
-Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions or emit_okrt_share_actions tool calls:
+Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, or emit_jira_link_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has ${objectives.length} objective(s) with ${krCount} key result(s).`
     : `

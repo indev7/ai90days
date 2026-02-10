@@ -491,11 +491,9 @@ export default function LeftMenu({
       const data = await response.json();
       processCacheUpdateFromData(data);
 
-      // Close modal
-      handleCloseOkrtModal();
-
       // Trigger a refresh of the mainTree data
       window.dispatchEvent(new CustomEvent('refreshMainTree'));
+      return data.okrt;
 
     } catch (error) {
       console.error('Error saving OKRT:', error);

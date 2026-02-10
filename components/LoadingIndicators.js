@@ -12,6 +12,7 @@ const SECTIONS = [
   { key: 'notifications', label: 'Notifications', shortLabel: 'Notif' },
   { key: 'sharedOKRTs', label: 'Shared OKRTs', shortLabel: 'Shared' },
   { key: 'groups', label: 'Groups', shortLabel: 'Groups' },
+  { key: 'initiatives', label: 'Initiatives', shortLabel: 'Init' },
   { key: 'calendar', label: 'Calendar', shortLabel: 'Cal' }
 ];
 
