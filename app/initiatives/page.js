@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RiFlag2Line } from 'react-icons/ri';
 import InitiativeCard from '@/components/InitiativeCard';
+import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
 
 const JIRA_BASE_URL = String(process.env.NEXT_PUBLIC_JIRA_BASE_URL || '').replace(/\/+$/, '');
@@ -20,13 +21,26 @@ const RAG_OPTIONS = [
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: '', label: 'All' },
+  { value: '', label: 'All Priorities' },
   { value: 'Highest', label: 'Highest' },
   { value: 'High', label: 'High' },
   { value: 'Medium', label: 'Medium' },
   { value: 'Low', label: 'Low' },
   { value: 'Lowest', label: 'Lowest' },
 ];
+
+function extractRagValue(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    const first = value.find(Boolean);
+    return extractRagValue(first);
+  }
+  if (typeof value === 'object') {
+    return value.value || value.name || value.label || value.status || '';
+  }
+  return String(value);
+}
 
 function escapeJqlValue(value) {
   return (value || '').replace(/["\\]/g, '').trim();
@@ -38,18 +52,22 @@ export default function InitiativesPage() {
   const [jiraSiteUrl, setJiraSiteUrl] = useState('');
   const [statuses, setStatuses] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [priorityIndex, setPriorityIndex] = useState(0);
+  const [selectedPriority, setSelectedPriority] = useState('');
   const [ragIndex, setRagIndex] = useState(0);
   const [initiatives, setInitiatives] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingFacets, setLoadingFacets] = useState(false);
   const [error, setError] = useState('');
+  const [forceInitiativesRefresh, setForceInitiativesRefresh] = useState(false);
+  const setInitiativesInStore = useMainTreeStore((state) => state.setInitiatives);
+  const storedInitiatives = useMainTreeStore((state) => state.mainTree.initiatives) || [];
+  const initiativesLoaded = useMainTreeStore((state) => state.sectionStates?.initiatives?.loaded);
 
   const ragValue = RAG_OPTIONS[ragIndex]?.value ?? '';
-  const priorityValue = PRIORITY_OPTIONS[priorityIndex]?.value ?? '';
+  const priorityValue = selectedPriority;
 
   const redirectToLogin = useCallback(() => {
-    window.location.href = '/api/jira/auth/login';
+    window.location.href = '/api/jira/auth/login?returnTo=/initiatives';
   }, []);
 
   const checkAuthStatus = useCallback(async () => {
@@ -79,6 +97,19 @@ export default function InitiativesPage() {
 
   const loadStatuses = useCallback(async () => {
     if (!authChecked || !isAuthenticated) return;
+    if (initiativesLoaded && storedInitiatives.length > 0) {
+      const counts = new Map();
+      storedInitiatives.forEach((initiative) => {
+        const name = initiative?.status;
+        if (!name) return;
+        counts.set(name, (counts.get(name) || 0) + 1);
+      });
+      const derivedStatuses = Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setStatuses(derivedStatuses);
+      return;
+    }
     setLoadingFacets(true);
     setError('');
     try {
@@ -166,26 +197,103 @@ export default function InitiativesPage() {
         }
       }
 
-      setInitiatives(aggregated.slice(0, MAX_INITIATIVES));
+      const trimmed = aggregated.slice(0, MAX_INITIATIVES);
+      const deduped = [];
+      const seenKeys = new Set();
+      for (const issue of trimmed) {
+        const key = issue?.key;
+        if (!key || seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        deduped.push(issue);
+      }
+      setInitiatives(deduped);
+      if (!selectedStatus && !priorityValue && !ragValue) {
+        setInitiativesInStore(deduped);
+      }
+      if (forceInitiativesRefresh) {
+        setForceInitiativesRefresh(false);
+        window.history.replaceState({}, '', '/initiatives');
+      }
     } catch (err) {
       setInitiatives([]);
       setError('Failed to load initiatives');
     } finally {
       setLoading(false);
     }
-  }, [authChecked, isAuthenticated, selectedStatus, ragValue, priorityValue, redirectToLogin]);
+  }, [
+    authChecked,
+    isAuthenticated,
+    selectedStatus,
+    ragValue,
+    priorityValue,
+    redirectToLogin,
+    setInitiativesInStore,
+    forceInitiativesRefresh
+  ]);
 
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
   useEffect(() => {
+    if (initiativesLoaded && storedInitiatives.length > 0) {
+      const counts = new Map();
+      storedInitiatives.forEach((initiative) => {
+        const name = initiative?.status;
+        if (!name) return;
+        counts.set(name, (counts.get(name) || 0) + 1);
+      });
+      const derivedStatuses = Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setStatuses(derivedStatuses);
+      return;
+    }
     loadStatuses();
-  }, [loadStatuses]);
+  }, [loadStatuses, initiativesLoaded, storedInitiatives]);
 
   useEffect(() => {
+    if (initiativesLoaded && !forceInitiativesRefresh) return;
     loadInitiatives();
-  }, [loadInitiatives]);
+  }, [loadInitiatives, initiativesLoaded, forceInitiativesRefresh]);
+
+  useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+      setForceInitiativesRefresh(true);
+    }
+  }, [authChecked, isAuthenticated]);
+
+  useEffect(() => {
+    if (!initiativesLoaded || storedInitiatives.length === 0) return;
+    const filtered = storedInitiatives.filter((initiative) => {
+      if (selectedStatus && initiative.status !== selectedStatus) {
+        return false;
+      }
+      if (priorityValue && initiative.priority !== priorityValue) {
+        return false;
+      }
+      if (ragValue) {
+        const ragValueText = extractRagValue(
+          initiative?.customFields?.[RAG_FIELD_ID]
+        );
+        if (ragValueText !== ragValue) {
+          return false;
+        }
+      }
+      return true;
+    });
+    const deduped = [];
+    const seenKeys = new Set();
+    for (const issue of filtered) {
+      const key = issue?.key;
+      if (!key || seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      deduped.push(issue);
+    }
+    setInitiatives(deduped);
+  }, [storedInitiatives, initiativesLoaded, selectedStatus, priorityValue, ragValue]);
 
   const statusOptions = useMemo(
     () =>
@@ -238,31 +346,21 @@ export default function InitiativesPage() {
               </select>
             </div>
             <div className={styles.filterBlock}>
-              <span className="app-headerLabel">Priority</span>
-              <div
-                className={`app-filterSwitcher ${styles.prioritySwitcher}`}
-                role="group"
-                aria-label="Priority filter"
+              <label className="app-headerLabel" htmlFor="initiativePriority">
+                Priority
+              </label>
+              <select
+                id="initiativePriority"
+                className="app-headerSelect"
+                value={selectedPriority}
+                onChange={(event) => setSelectedPriority(event.target.value)}
               >
-                <div
-                  className={`app-filterThumb ${styles.priorityThumb}`}
-                  style={{ left: `calc(6px + ${priorityIndex * 16.6667}%)` }}
-                  aria-hidden="true"
-                />
-                {PRIORITY_OPTIONS.map((option, index) => (
-                  <button
-                    key={option.label}
-                    type="button"
-                    className={`app-filterButton ${styles.priorityButton} ${
-                      priorityIndex === index ? 'app-filterButtonActive' : ''
-                    }`}
-                    onClick={() => setPriorityIndex(index)}
-                    aria-pressed={priorityIndex === index}
-                  >
+                {PRIORITY_OPTIONS.map((option) => (
+                  <option key={option.label} value={option.value}>
                     {option.label}
-                  </button>
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
             <div className={styles.filterBlock}>
               <span className="app-headerLabel">RAG Status</span>

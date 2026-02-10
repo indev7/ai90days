@@ -33,6 +33,8 @@ export function useMainTree() {
     setSectionLoading,
     setSectionLoaded,
     setCalendar,
+    setInitiatives,
+    setInitiativesUnavailable,
     clearMainTree,
     currentUserId,
     setCurrentUserId
@@ -55,6 +57,7 @@ export function useMainTree() {
     }
 
     const loadMainTree = async () => {
+      const skipInitiativesRefresh = Boolean(lastUpdated);
       // If user changed (new login), reset cached tree
       if (user && currentUserId && currentUserId !== user.id) {
         clearMainTree();
@@ -100,18 +103,25 @@ export function useMainTree() {
         globalFetchInProgress = true;
         setLoading(true);
         
-        // Mark all sections as loading
+        // Mark all sections as loading (skip initiatives on background refresh)
         setSectionLoading('myOKRTs', true);
         setSectionLoading('timeBlocks', true);
         setSectionLoading('notifications', true);
         setSectionLoading('sharedOKRTs', true);
         setSectionLoading('groups', true);
         setSectionLoading('preferences', true);
+        if (!skipInitiativesRefresh) {
+          setSectionLoading('initiatives', true);
+        }
         
         console.log('Loading mainTree data progressively...');
 
         const fetchPromise = (async () => {
-          const response = await fetch('/api/main-tree/progressive');
+          const response = await fetch(
+            skipInitiativesRefresh
+              ? '/api/main-tree/progressive?skipInitiatives=true'
+              : '/api/main-tree/progressive'
+          );
           
           if (!response.ok) {
             if (response.status === 401) {
@@ -147,7 +157,7 @@ export function useMainTree() {
                   continue;
                 }
                 
-                if (message.section && message.data) {
+                if (message.section && Object.prototype.hasOwnProperty.call(message, 'data')) {
                   const { section, data } = message;
                   console.log(`✅ Received ${section}:`, Array.isArray(data) ? data.length : 'object');
                   
@@ -171,6 +181,13 @@ export function useMainTree() {
                       break;
                     case 'groups':
                       store.setGroups(data);
+                      break;
+                    case 'initiatives':
+                      if (message.meta?.unavailable) {
+                        store.setInitiativesUnavailable();
+                      } else {
+                        store.setInitiatives(data);
+                      }
                       break;
                   }
                 }
@@ -204,12 +221,9 @@ export function useMainTree() {
       }
 
       const calendarState = useMainTreeStore.getState().sectionStates?.calendar;
-      const isCalendarFresh = calendarState?.lastUpdated
-        ? (Date.now() - new Date(calendarState.lastUpdated).getTime()) < FRESHNESS_WINDOW
-        : false;
 
-      // Skip reload if we already have fresh calendar data
-      if (calendarState?.loaded && isCalendarFresh) {
+      // Skip reload if we already have calendar data
+      if (calendarState?.loaded) {
         hasLoadedCalendarRef.current = true;
         return;
       }

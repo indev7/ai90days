@@ -55,6 +55,7 @@ const useMainTreeStore = create(
     notifications: [],
     timeBlocks: [],
     groups: [],
+    initiatives: [],
     calendar: {
       events: [],
       quarter: null
@@ -69,6 +70,7 @@ const useMainTreeStore = create(
     notifications: { loading: false, loaded: false, lastUpdated: null },
     timeBlocks: { loading: false, loaded: false, lastUpdated: null },
     groups: { loading: false, loaded: false, lastUpdated: null },
+    initiatives: { loading: false, loaded: false, lastUpdated: null },
     calendar: { loading: false, loaded: false, lastUpdated: null }
   },
   
@@ -90,6 +92,7 @@ const useMainTreeStore = create(
       notifications: { loading: false, loaded: true, lastUpdated: now },
       timeBlocks: { loading: false, loaded: true, lastUpdated: now },
       groups: { loading: false, loaded: true, lastUpdated: now },
+      initiatives: { loading: false, loaded: true, lastUpdated: now },
       calendar: { loading: false, loaded: true, lastUpdated: now }
     };
     return {
@@ -212,6 +215,32 @@ const useMainTreeStore = create(
       }
     };
   }),
+
+  setInitiatives: (initiatives) => set((state) => {
+    const now = new Date().toISOString();
+    return {
+      mainTree: {
+        ...state.mainTree,
+        initiatives: initiatives
+      },
+      lastUpdated: now,
+      sectionStates: {
+        ...state.sectionStates,
+        initiatives: { loading: false, loaded: true, lastUpdated: now }
+      }
+    };
+  }),
+
+  setInitiativesUnavailable: () => set((state) => ({
+    mainTree: {
+      ...state.mainTree,
+      initiatives: []
+    },
+    sectionStates: {
+      ...state.sectionStates,
+      initiatives: { loading: false, loaded: false, lastUpdated: null }
+    }
+  })),
   
   // Set calendar events
   setCalendar: (calendar) => set((state) => {
@@ -350,6 +379,7 @@ const useMainTreeStore = create(
       notifications: [],
       timeBlocks: [],
       groups: [],
+      initiatives: [],
       calendar: {
         events: [],
         quarter: null
@@ -362,6 +392,7 @@ const useMainTreeStore = create(
       notifications: { loading: false, loaded: false, lastUpdated: null },
       timeBlocks: { loading: false, loaded: false, lastUpdated: null },
       groups: { loading: false, loaded: false, lastUpdated: null },
+      initiatives: { loading: false, loaded: false, lastUpdated: null },
       calendar: { loading: false, loaded: false, lastUpdated: null }
     },
     lastUpdated: null,

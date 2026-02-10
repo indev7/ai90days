@@ -1,0 +1,14 @@
+Phase22 (Initiatives).
+There is a new requirement to be able to link Initiatives (Which are tickects of type "Initiative") living in JIRA with Objectives in AIME app.
+To support this we need to create a new mapping table in our database which will map primary key from 
+okrt table with JIRA ticket ID (PM-929). The mapping table will be named "jira_link". In theory we will give teh ability to link any okrt table records irrespective of their typewith any ticket from JIRA
+
+
+On top of that we need a API to perform linking and unlinking.
+
+Then we need to update the UI in My OKRs section to show the linked Initiatives under the Objective header. We will reuse the 
+Initiative card alrady developed for Business>Initiatives.
+
+Then we need to update the Basic prompt to tell AIME about this new arrangement.
+
+When AIME is asked to perform linking/unlinking, that detail must come in an addition KB file and tool schema

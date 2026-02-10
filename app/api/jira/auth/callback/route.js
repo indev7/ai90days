@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import {
   clearJiraStateCookie,
+  clearJiraReturnToCookie,
   exchangeJiraCodeForToken,
   getAccessibleResources,
   setJiraSessionCookies,
@@ -50,7 +51,15 @@ export async function GET(request) {
       siteUrl,
     });
 
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/jira?success=true`);
+    const returnTo = cookieStore.get('jira_oauth_return_to')?.value;
+    const safeReturnTo =
+      returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+        ? returnTo
+        : '/jira';
+    const redirectUrl = `${process.env.NEXTAUTH_URL}${safeReturnTo}${
+      safeReturnTo.includes('?') ? '&' : '?'
+    }success=true`;
+    return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('Error in Jira OAuth callback:', error);
     if (error.message === 'TOKEN_EXCHANGE_FAILED') {
@@ -59,5 +68,6 @@ export async function GET(request) {
     return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/jira?error=callback_failed`);
   } finally {
     clearJiraStateCookie(cookieStore);
+    clearJiraReturnToCookie(cookieStore);
   }
 }
