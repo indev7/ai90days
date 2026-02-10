@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RiArchiveLine } from 'react-icons/ri';
 import styles from './OKRTModal.module.css';
 import { Calendar } from 'primereact/calendar';
 import 'primereact/resources/primereact.min.css';
+import useMainTreeStore from '@/store/mainTreeStore';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 
 const AREAS = ['Life', 'Work', 'Health', 'Finance', 'Education', 'Relationships'];
 const KR_UNITS = ['%', '$', 'count', 'hrs', 'days', 'points', 'users'];
@@ -54,6 +56,22 @@ const normalizeDateInput = (value) => {
   }
 };
 
+const normalizeJiraKey = (value) => {
+  if (!value) return '';
+  return String(value).trim().toUpperCase();
+};
+
+const normalizeJiraLinks = (links) => {
+  const normalized = (Array.isArray(links) ? links : [])
+    .map((link) => normalizeJiraKey(link))
+    .filter(Boolean);
+  return Array.from(new Set(normalized));
+};
+
+const getInitiativeTitle = (initiative) => {
+  return initiative?.summary || initiative?.title || initiative?.name || initiative?.key || 'Untitled initiative';
+};
+
 export default function OKRTModal({
   isOpen,
   onClose,
@@ -87,6 +105,13 @@ export default function OKRTModal({
   const [unarchiving, setUnarchiving] = useState(false);
   const [childRecords, setChildRecords] = useState([]);
   const [availableObjectives, setAvailableObjectives] = useState([]);
+  const initiatives = useMainTreeStore((state) => state.mainTree.initiatives) || [];
+  const initiativesLoaded = useMainTreeStore((state) => state.sectionStates?.initiatives?.loaded);
+  const [initiativeLinks, setInitiativeLinks] = useState([]);
+  const [initialInitiativeLinks, setInitialInitiativeLinks] = useState([]);
+  const [selectedAvailableInitiatives, setSelectedAvailableInitiatives] = useState([]);
+  const [selectedLinkedInitiatives, setSelectedLinkedInitiatives] = useState([]);
+  const [linkSaving, setLinkSaving] = useState(false);
 
   const quarterOptions = generateQuarterOptions();
 
@@ -101,6 +126,7 @@ export default function OKRTModal({
   useEffect(() => {
     if (isOpen) {
       if (mode === 'edit' && okrt) {
+        const existingLinks = normalizeJiraLinks(okrt.jira_links || okrt.jiraLinks || []);
         setFormData({
           type: okrt.type,
           title: okrt.title || '',
@@ -118,6 +144,8 @@ export default function OKRTModal({
           progress: okrt.progress === 0 || okrt.progress ? okrt.progress : '',
           parent_objective_id: okrt.parent_id || ''
         });
+        setInitiativeLinks(existingLinks);
+        setInitialInitiativeLinks(existingLinks);
       } else {
         // Create mode - reset form and set parent if provided
         const defaultType = parentOkrt ? 
@@ -140,7 +168,11 @@ export default function OKRTModal({
           progress: '',
           parent_objective_id: parentOkrt?.id || ''
         });
+        setInitiativeLinks([]);
+        setInitialInitiativeLinks([]);
       }
+      setSelectedAvailableInitiatives([]);
+      setSelectedLinkedInitiatives([]);
       setErrors({});
     }
   }, [isOpen, mode, okrt, parentOkrt]);
@@ -324,7 +356,62 @@ export default function OKRTModal({
         saveData.parent_id = parentOkrt.id;
       }
       
-      await onSave(saveData);
+      const savedOkrt = await onSave(saveData);
+
+      if (formData.type === 'O') {
+        const targetOkrtId = mode === 'edit' ? okrt?.id : savedOkrt?.id;
+        const nextLinks = normalizeJiraLinks(initiativeLinks);
+        const prevLinks = normalizeJiraLinks(initialInitiativeLinks);
+        const toAdd = nextLinks.filter((key) => !prevLinks.includes(key));
+        const toRemove = prevLinks.filter((key) => !nextLinks.includes(key));
+
+        if (!targetOkrtId && nextLinks.length > 0) {
+          setErrors({ general: 'Objective saved, but initiative links could not be saved yet. Please reopen and try again.' });
+          setSaving(false);
+          return;
+        }
+
+        if (targetOkrtId && (toAdd.length > 0 || toRemove.length > 0)) {
+          setLinkSaving(true);
+          try {
+            const requests = [
+              ...toAdd.map((jiraKey) =>
+                fetch(`/api/okrt/${targetOkrtId}/jira-link`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ jira_ticket_id: jiraKey })
+                })
+              ),
+              ...toRemove.map((jiraKey) =>
+                fetch(`/api/okrt/${targetOkrtId}/jira-link`, {
+                  method: 'DELETE',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ jira_ticket_id: jiraKey })
+                })
+              )
+            ];
+
+            const responses = await Promise.all(requests);
+            for (const response of responses) {
+              if (!response.ok) {
+                throw new Error('Failed to update initiative links');
+              }
+              const data = await response.json();
+              processCacheUpdateFromData(data);
+            }
+            setInitialInitiativeLinks(nextLinks);
+          } catch (error) {
+            console.error('Error updating initiative links:', error);
+            setErrors({ general: 'Objective saved, but initiative links failed to update. Please try again.' });
+            setLinkSaving(false);
+            setSaving(false);
+            return;
+          } finally {
+            setLinkSaving(false);
+          }
+        }
+      }
+
       onClose();
     } catch (error) {
       console.error('Error saving OKRT:', error);
@@ -439,9 +526,55 @@ export default function OKRTModal({
     }
   };
 
-  if (!isOpen) return null;
+  const initiativeOptions = useMemo(() => {
+    const seen = new Set();
+    const options = [];
+    initiatives.forEach((initiative) => {
+      const key = normalizeJiraKey(initiative?.key);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      options.push({
+        key,
+        title: getInitiativeTitle(initiative),
+        status: initiative?.status || ''
+      });
+    });
+    options.sort((a, b) => a.title.localeCompare(b.title));
+    return options;
+  }, [initiatives]);
+
+  const availableInitiatives = useMemo(() => {
+    return initiativeOptions.filter((initiative) => !initiativeLinks.includes(initiative.key));
+  }, [initiativeOptions, initiativeLinks]);
+
+  const selectedInitiatives = useMemo(() => {
+    const map = new Map(initiativeOptions.map((initiative) => [initiative.key, initiative]));
+    return initiativeLinks.map((key) => {
+      if (map.has(key)) return map.get(key);
+      return { key, title: key, status: '' };
+    });
+  }, [initiativeOptions, initiativeLinks]);
+
+  const handleAddInitiatives = () => {
+    if (selectedAvailableInitiatives.length === 0) return;
+    setInitiativeLinks((prev) => {
+      const next = new Set(prev);
+      selectedAvailableInitiatives.forEach((key) => next.add(key));
+      return Array.from(next);
+    });
+    setSelectedAvailableInitiatives([]);
+  };
+
+  const handleRemoveInitiatives = () => {
+    if (selectedLinkedInitiatives.length === 0) return;
+    setInitiativeLinks((prev) => prev.filter((key) => !selectedLinkedInitiatives.includes(key)));
+    setSelectedLinkedInitiatives([]);
+  };
 
   const calendarAppendTarget = typeof window !== 'undefined' ? document.body : undefined;
+  const isBusy = saving || deleting || archiving || unarchiving || linkSaving;
+
+  if (!isOpen) return null;
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -453,7 +586,7 @@ export default function OKRTModal({
           <button 
             className={styles.closeButton}
             onClick={onClose}
-            disabled={saving}
+            disabled={isBusy}
           >
             ×
           </button>
@@ -628,6 +761,87 @@ export default function OKRTModal({
             </div>
           )}
 
+          {formData.type === 'O' && (
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+              <label className={styles.label}>Link Initiatives</label>
+              <div className={styles.dualList}>
+                <div className={styles.listBox}>
+                  <div className={styles.listHeader}>Available Initiatives</div>
+                  <select
+                    multiple
+                    className={styles.listSelect}
+                    value={selectedAvailableInitiatives}
+                    onChange={(e) =>
+                      setSelectedAvailableInitiatives(
+                        Array.from(e.target.selectedOptions, (option) => option.value)
+                      )
+                    }
+                  >
+                    {availableInitiatives.length === 0 ? (
+                      <option disabled>
+                        {initiativesLoaded ? 'No initiatives available' : 'Loading initiatives...'}
+                      </option>
+                    ) : (
+                      availableInitiatives.map((initiative) => (
+                        <option key={initiative.key} value={initiative.key}>
+                          {initiative.key} — {initiative.title}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div className={styles.listControls}>
+                  <button
+                    type="button"
+                    className={styles.listButton}
+                    onClick={handleAddInitiatives}
+                    disabled={selectedAvailableInitiatives.length === 0}
+                  >
+                    Add →
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.listButton}
+                    onClick={handleRemoveInitiatives}
+                    disabled={selectedLinkedInitiatives.length === 0}
+                  >
+                    ← Remove
+                  </button>
+                </div>
+
+                <div className={styles.listBox}>
+                  <div className={styles.listHeader}>
+                    Linked Initiatives ({initiativeLinks.length})
+                  </div>
+                  <select
+                    multiple
+                    className={styles.listSelect}
+                    value={selectedLinkedInitiatives}
+                    onChange={(e) =>
+                      setSelectedLinkedInitiatives(
+                        Array.from(e.target.selectedOptions, (option) => option.value)
+                      )
+                    }
+                  >
+                    {selectedInitiatives.length === 0 ? (
+                      <option disabled>No initiatives linked</option>
+                    ) : (
+                      selectedInitiatives.map((initiative) => (
+                        <option key={initiative.key} value={initiative.key}>
+                          {initiative.key} — {initiative.title}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div className={styles.listHint}>
+                Select initiatives from the left list and click "Add" to link them to this objective.
+              </div>
+            </div>
+          )}
+
           {/* Key Result-specific fields */}
           {formData.type === 'K' && (
             <>
@@ -736,7 +950,7 @@ export default function OKRTModal({
                   <button
                     className={styles.archiveButton}
                     onClick={handleUnarchive}
-                    disabled={saving || deleting || archiving || unarchiving}
+                    disabled={isBusy}
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                       <RiArchiveLine />
@@ -747,7 +961,7 @@ export default function OKRTModal({
                   <button
                     className={styles.archiveButton}
                     onClick={handleArchive}
-                    disabled={saving || deleting || archiving || unarchiving}
+                    disabled={isBusy}
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                       <RiArchiveLine />
@@ -759,7 +973,7 @@ export default function OKRTModal({
               <button
                 className={styles.deleteButton}
                 onClick={handleDelete}
-                disabled={saving || deleting || archiving || unarchiving}
+                disabled={isBusy}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -776,16 +990,16 @@ export default function OKRTModal({
           <button
             className={styles.cancelButton}
             onClick={onClose}
-            disabled={saving || deleting || archiving || unarchiving}
+            disabled={isBusy}
           >
             Cancel
           </button>
           <button
             className={styles.saveButton}
             onClick={handleSave}
-            disabled={saving || deleting || archiving || unarchiving}
+            disabled={isBusy}
           >
-            {saving ? 'Saving...' : 'Save'}
+            {saving || linkSaving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

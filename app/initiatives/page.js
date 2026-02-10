@@ -58,6 +58,7 @@ export default function InitiativesPage() {
   const [loading, setLoading] = useState(false);
   const [loadingFacets, setLoadingFacets] = useState(false);
   const [error, setError] = useState('');
+  const [forceInitiativesRefresh, setForceInitiativesRefresh] = useState(false);
   const setInitiativesInStore = useMainTreeStore((state) => state.setInitiatives);
   const storedInitiatives = useMainTreeStore((state) => state.mainTree.initiatives) || [];
   const initiativesLoaded = useMainTreeStore((state) => state.sectionStates?.initiatives?.loaded);
@@ -96,6 +97,19 @@ export default function InitiativesPage() {
 
   const loadStatuses = useCallback(async () => {
     if (!authChecked || !isAuthenticated) return;
+    if (initiativesLoaded && storedInitiatives.length > 0) {
+      const counts = new Map();
+      storedInitiatives.forEach((initiative) => {
+        const name = initiative?.status;
+        if (!name) return;
+        counts.set(name, (counts.get(name) || 0) + 1);
+      });
+      const derivedStatuses = Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setStatuses(derivedStatuses);
+      return;
+    }
     setLoadingFacets(true);
     setError('');
     try {
@@ -184,9 +198,21 @@ export default function InitiativesPage() {
       }
 
       const trimmed = aggregated.slice(0, MAX_INITIATIVES);
-      setInitiatives(trimmed);
+      const deduped = [];
+      const seenKeys = new Set();
+      for (const issue of trimmed) {
+        const key = issue?.key;
+        if (!key || seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        deduped.push(issue);
+      }
+      setInitiatives(deduped);
       if (!selectedStatus && !priorityValue && !ragValue) {
-        setInitiativesInStore(trimmed);
+        setInitiativesInStore(deduped);
+      }
+      if (forceInitiativesRefresh) {
+        setForceInitiativesRefresh(false);
+        window.history.replaceState({}, '', '/initiatives');
       }
     } catch (err) {
       setInitiatives([]);
@@ -194,20 +220,50 @@ export default function InitiativesPage() {
     } finally {
       setLoading(false);
     }
-  }, [authChecked, isAuthenticated, selectedStatus, ragValue, priorityValue, redirectToLogin, setInitiativesInStore]);
+  }, [
+    authChecked,
+    isAuthenticated,
+    selectedStatus,
+    ragValue,
+    priorityValue,
+    redirectToLogin,
+    setInitiativesInStore,
+    forceInitiativesRefresh
+  ]);
 
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
   useEffect(() => {
+    if (initiativesLoaded && storedInitiatives.length > 0) {
+      const counts = new Map();
+      storedInitiatives.forEach((initiative) => {
+        const name = initiative?.status;
+        if (!name) return;
+        counts.set(name, (counts.get(name) || 0) + 1);
+      });
+      const derivedStatuses = Array.from(counts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setStatuses(derivedStatuses);
+      return;
+    }
     loadStatuses();
-  }, [loadStatuses]);
+  }, [loadStatuses, initiativesLoaded, storedInitiatives]);
 
   useEffect(() => {
-    if (initiativesLoaded) return;
+    if (initiativesLoaded && !forceInitiativesRefresh) return;
     loadInitiatives();
-  }, [loadInitiatives, initiativesLoaded]);
+  }, [loadInitiatives, initiativesLoaded, forceInitiativesRefresh]);
+
+  useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+      setForceInitiativesRefresh(true);
+    }
+  }, [authChecked, isAuthenticated]);
 
   useEffect(() => {
     if (!initiativesLoaded || storedInitiatives.length === 0) return;
@@ -228,7 +284,15 @@ export default function InitiativesPage() {
       }
       return true;
     });
-    setInitiatives(filtered);
+    const deduped = [];
+    const seenKeys = new Set();
+    for (const issue of filtered) {
+      const key = issue?.key;
+      if (!key || seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      deduped.push(issue);
+    }
+    setInitiatives(deduped);
   }, [storedInitiatives, initiativesLoaded, selectedStatus, priorityValue, ragValue]);
 
   const statusOptions = useMemo(

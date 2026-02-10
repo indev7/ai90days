@@ -7,7 +7,6 @@ import styles from './page.module.css';
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
 import CommentsSection from '../../components/CommentsSection';
-import InitiativeCard from '@/components/InitiativeCard';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
 import useMainTreeStore from '@/store/mainTreeStore';
@@ -17,7 +16,8 @@ import { getThemeColorPalette } from '@/lib/clockUtils';
 import {
   ObjectiveHeader,
   KeyResultCard,
-  AddKeyResultCard
+  AddKeyResultCard,
+  ObjectiveInsights
 } from '@/components/OKRTCards';
 
 /* =========================
@@ -526,6 +526,7 @@ export default function OKRTPage() {
       setObjectives(objs);
       setKeyResults(krs);
       setTasks(tsks);
+      return data.okrt;
     } catch (error) {
       console.error('Error saving OKRT:', error);
       throw error;
@@ -835,55 +836,15 @@ export default function OKRTPage() {
                         comments={objective.comments || []}
                       />
 
-                      {(() => {
-                        const rawLinks = objective.jira_links || objective.jiraLinks || [];
-                        const normalizeKey = (value) => String(value || '').trim().toUpperCase();
-                        const isValidKey = (value) => /^[A-Z][A-Z0-9]+-\d+$/.test(value);
-                        const jiraKeys = rawLinks
-                          .map((link) => (typeof link === 'string' ? link : link?.jira_ticket_id))
-                          .map(normalizeKey)
-                          .filter((key) => isValidKey(key));
-                        const linkedInitiatives = jiraKeys
-                          .map((key) => jiraIssueByKey[key])
-                          .filter(Boolean);
-
-                        if (linkedInitiatives.length === 0 && jiraKeys.length === 0) {
-                          return null;
-                        }
-
-                        return (
-                          <div className={styles.objectiveInitiatives}>
-                            <div className={styles.objectiveInitiativesHeader}>
-                              <span>Linked Initiatives</span>
-                              <span className={styles.objectiveInitiativesCount}>
-                                {linkedInitiatives.length || jiraKeys.length}
-                              </span>
-                            </div>
-                            {linkedInitiatives.length === 0 && jiraAuth.checked && !jiraAuth.authenticated ? (
-                              <div className={styles.objectiveInitiativesEmpty}>
-                                Connect Jira to view linked initiatives.
-                                <a className={styles.objectiveInitiativesLink} href="/api/jira/auth/login">
-                                  Connect Jira
-                                </a>
-                              </div>
-                            ) : (
-                              <div className={styles.objectiveInitiativesGrid}>
-                                {linkedInitiatives.map((initiative) => (
-                                  <InitiativeCard
-                                    key={initiative.key}
-                                    initiative={initiative}
-                                    jiraSiteUrl={jiraAuth.siteUrl}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
                       {/* Key Results Grid for this objective - only show when expanded */}
                       {expandedObjectives.has(objective.id) && (
                         <>
+                          <ObjectiveInsights
+                            objective={objective}
+                            jiraAuth={jiraAuth}
+                            jiraIssueByKey={jiraIssueByKey}
+                          />
+
                           <div className={styles.keyResultsGrid}>
                             {objectiveKRs.map((kr) => (
                               <KeyResultCard

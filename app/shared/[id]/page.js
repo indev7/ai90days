@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useRouter } from 'next/navigation';
 import styles from '../../okrt/page.module.css';
 import CommentsSection from '../../../components/CommentsSection';
-import { ObjectiveHeader, KeyResultCard } from '@/components/OKRTCards';
+import { ObjectiveHeader, KeyResultCard, ObjectiveInsights } from '@/components/OKRTCards';
 import { useMainTree } from '@/hooks/useMainTree';
 import { useUser } from '@/hooks/useUser';
 import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
@@ -25,6 +25,12 @@ export default function SharedOKRTDetailPage() {
   const [focusedObjectiveId, setFocusedObjectiveId] = useState(null);
   const [krExpansionState, setKrExpansionState] = useState({});
   const [commentsExpanded, setCommentsExpanded] = useState(false);
+  const [jiraAuth, setJiraAuth] = useState({
+    checked: false,
+    authenticated: false,
+    siteUrl: ''
+  });
+  const [jiraIssueByKey, setJiraIssueByKey] = useState({});
 
   // Use mainTree and user from hooks
   const { mainTree, isLoading: mainTreeLoading } = useMainTree();
@@ -106,6 +112,99 @@ export default function SharedOKRTDetailPage() {
   const getTasksForKeyResult = (krId) => {
     return tasks.filter(task => task.parent_id === krId);
   };
+
+  const linkedTicketKeys = useMemo(() => {
+    if (!objective) return [];
+    const rawLinks = objective.jira_links || objective.jiraLinks || [];
+    const normalizeKey = (value) => String(value || '').trim().toUpperCase();
+    const isValidKey = (value) => /^[A-Z][A-Z0-9]+-\d+$/.test(value);
+    return rawLinks
+      .map((link) => (typeof link === 'string' ? link : link?.jira_ticket_id))
+      .map(normalizeKey)
+      .filter((key) => isValidKey(key));
+  }, [objective]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkJiraAuth = async () => {
+      if (linkedTicketKeys.length === 0) {
+        setJiraAuth({ checked: true, authenticated: false, siteUrl: '' });
+        return;
+      }
+      try {
+        const response = await fetch('/api/jira/auth/status');
+        const data = response.ok ? await response.json() : null;
+        if (!cancelled) {
+          setJiraAuth({
+            checked: true,
+            authenticated: Boolean(data?.authenticated),
+            siteUrl: data?.siteUrl || ''
+          });
+        }
+      } catch (_error) {
+        if (!cancelled) {
+          setJiraAuth({ checked: true, authenticated: false, siteUrl: '' });
+        }
+      }
+    };
+    checkJiraAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedTicketKeys.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchLinkedInitiatives = async () => {
+      if (!jiraAuth.authenticated || linkedTicketKeys.length === 0) {
+        setJiraIssueByKey({});
+        return;
+      }
+
+      const uniqueKeys = Array.from(new Set(linkedTicketKeys)).slice(0, 200);
+      const batches = [];
+      for (let i = 0; i < uniqueKeys.length; i += 50) {
+        batches.push(uniqueKeys.slice(i, i + 50));
+      }
+
+      const nextIssueMap = {};
+
+      for (const batch of batches) {
+        const jql = `key in (${batch.join(',')})`;
+        const params = new URLSearchParams({
+          jql,
+          fields: 'summary,status,priority,duedate,project,issuetype,customfield_11331',
+          maxResults: String(batch.length)
+        });
+
+        const response = await fetch(`/api/jira/query?${params.toString()}`);
+        if (!response.ok) {
+          if (response.status === 401 && !cancelled) {
+            setJiraAuth({ checked: true, authenticated: false, siteUrl: '' });
+          }
+          continue;
+        }
+        const data = await response.json();
+        const issues = Array.isArray(data?.issues) ? data.issues : [];
+        issues.forEach((issue) => {
+          if (issue?.key) {
+            nextIssueMap[issue.key.toUpperCase()] = issue;
+          }
+        });
+      }
+
+      if (!cancelled) {
+        setJiraIssueByKey(nextIssueMap);
+      }
+    };
+
+    fetchLinkedInitiatives();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jiraAuth.authenticated, linkedTicketKeys.join('|')]);
 
   const objectiveWithConfidence = useMemo(() => {
     if (!objective) return null;
@@ -207,6 +306,11 @@ export default function SharedOKRTDetailPage() {
           {/* Key Results Grid - only show when expanded */}
           {isExpanded && (
             <>
+              <ObjectiveInsights
+                objective={objectiveWithConfidence}
+                jiraAuth={jiraAuth}
+                jiraIssueByKey={jiraIssueByKey}
+              />
               <div className={styles.keyResultsGrid}>
                 {keyResults.map((kr) => (
                   <KeyResultCard

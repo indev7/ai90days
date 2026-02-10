@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TwelveWeekClock from '@/components/TwelveWeekClock';
 import TodayWidget from '@/components/TodayWidget';
 import OKRTModal from '@/components/OKRTModal';
+import { processCacheUpdateFromData } from '@/lib/apiClient';
 import NotificationsWidget from '@/components/NotificationsWidget';
 import DailyInspirationCard from '@/components/DailyInspirationCard';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -391,11 +392,12 @@ export default function Dashboard() {
         throw new Error('Failed to save OKRT');
       }
 
+      const data = await response.json();
+      processCacheUpdateFromData(data);
+
       // Refresh the dashboard data
       await fetchData();
-      
-      // Close the modal
-      handleCloseModal();
+      return data.okrt;
     } catch (error) {
       console.error('Error saving OKRT:', error);
       // You might want to show an error message to the user here
