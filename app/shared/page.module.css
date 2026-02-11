@@ -520,40 +520,132 @@
 }
 
 .chartNode {
-  width: 220px;
-  height: 120px;
+  width: 258px;
+  min-height: 176px;
   border: 1.5px solid var(--family-color, var(--border-light, rgba(126, 88, 255, 0.35)));
   border-radius: 12px;
   background: var(--surface);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
   display: inline-flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
   padding: 12px 16px;
   box-sizing: border-box;
   cursor: pointer;
+  text-align: left;
+  aspect-ratio: 1.618 / 1;
 }
 
-.chartFlag {
-  width: 36px;
-  height: 24px;
-  object-fit: cover;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.chartLabel {
-  font-size: 16px;
+.chartTitle {
+  font-size: 0.98rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.2;
+  line-height: 1.3;
+  padding-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.chartOwner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ownerAvatar,
+.ownerInitials {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.ownerAvatar {
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.ownerInitials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--brand-primary-rgb, 59, 130, 246), 0.16);
+  color: var(--brand-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.ownerName {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chartProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--family-color, var(--brand-primary));
+  border-radius: inherit;
+}
+
+.progressText {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.chartCounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+
+.countItem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.countInline {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
+  }
+
+  .chartNode {
+    width: 220px;
   }
 
   .filtersRow {

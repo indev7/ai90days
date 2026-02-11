@@ -9,6 +9,46 @@ import { useMainTree } from '@/hooks/useMainTree';
 import { getThemeColorPalette } from '@/lib/clockUtils';
 import { useRouter } from 'next/navigation';
 
+const getOwnerName = (okrt) => {
+  if (okrt?.owner_name) return okrt.owner_name;
+  const fullName = [okrt?.owner_first_name, okrt?.owner_last_name].filter(Boolean).join(' ');
+  return fullName || 'Unknown owner';
+};
+
+const getOwnerAvatar = (okrt) =>
+  okrt?.owner_avatar || okrt?.ownerAvatar || okrt?.owner_profile_picture_url || '';
+
+const getInitials = (name = '') =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || '??';
+
+const getInitiativeCount = (okrt) => {
+  const links = okrt?.jira_links || okrt?.jiraLinks || [];
+  if (Array.isArray(links)) return links.length;
+  return typeof links === 'string' && links ? 1 : 0;
+};
+
+const getKpiCount = (okrt) => {
+  if (Array.isArray(okrt?.kpis)) return okrt.kpis.length;
+  if (Array.isArray(okrt?.kpi_list)) return okrt.kpi_list.length;
+  if (Array.isArray(okrt?.kpiList)) return okrt.kpiList.length;
+  if (typeof okrt?.kpi_count === 'number') return okrt.kpi_count;
+  if (typeof okrt?.kpis_count === 'number') return okrt.kpis_count;
+  if (typeof okrt?.kpiCount === 'number') return okrt.kpiCount;
+  return 0;
+};
+
+const getKrCount = (okrt) => {
+  if (Array.isArray(okrt?.keyResults)) return okrt.keyResults.length;
+  if (typeof okrt?.kr_count === 'number') return okrt.kr_count;
+  if (typeof okrt?.keyResultsCount === 'number') return okrt.keyResultsCount;
+  return 0;
+};
+
 function buildFamilies(sharedOKRTs = []) {
   if (!sharedOKRTs.length) return [];
 
@@ -61,11 +101,27 @@ function buildFamilies(sharedOKRTs = []) {
 
     const nodeMap = new Map();
     ordered.forEach((okrt) => {
+      const ownerName = getOwnerName(okrt);
+      const ownerAvatar = getOwnerAvatar(okrt);
+      const progress = Math.round(okrt?.progress || 0);
+      const childObjectives = childrenMap.get(okrt.id) || [];
       nodeMap.set(okrt.id, {
         key: String(okrt.id),
         label: okrt.title || 'Untitled objective',
         expanded: true,
-        data: { id: okrt.id },
+        data: {
+          id: okrt.id,
+          title: okrt.title || 'Untitled objective',
+          ownerName,
+          ownerAvatar,
+          progress,
+          counts: {
+            initiatives: getInitiativeCount(okrt),
+            kpis: getKpiCount(okrt),
+            krs: getKrCount(okrt),
+            children: childObjectives.length
+          }
+        },
         children: [],
       });
     });
@@ -249,10 +305,56 @@ export default function SharedHierarchyView({ okrts = null }) {
       type="button"
       className={styles.chartNode}
       onClick={() => handleNodeClick(node)}
-      title={node.label}
+      title={node?.data?.title || node.label}
     >
-      <div className={styles.chartLabel}>
-        {node.label || 'Untitled objective'}
+      <div className={styles.chartTitle}>
+        {node?.data?.title || node.label || 'Untitled objective'}
+      </div>
+      <div className={styles.chartOwner}>
+        {node?.data?.ownerAvatar ? (
+          <img
+            src={node.data.ownerAvatar}
+            alt={node.data.ownerName}
+            className={styles.ownerAvatar}
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className={styles.ownerInitials}>
+            {getInitials(node?.data?.ownerName)}
+          </div>
+        )}
+        <span className={styles.ownerName}>{node?.data?.ownerName}</span>
+      </div>
+      <div className={styles.chartProgress}>
+        <div className={styles.progressBar}>
+          <div
+            className={styles.progressFill}
+            style={{ width: `${node?.data?.progress || 0}%` }}
+          />
+        </div>
+        <span className={styles.progressText}>{node?.data?.progress || 0}%</span>
+      </div>
+      <div className={styles.chartCounts}>
+        <div className={styles.countItem}>
+          <span className={styles.countInline}>
+            Inits:{node?.data?.counts?.initiatives ?? 0}
+          </span>
+        </div>
+        <div className={styles.countItem}>
+          <span className={styles.countInline}>
+            KPIs:{node?.data?.counts?.kpis ?? 0}
+          </span>
+        </div>
+        <div className={styles.countItem}>
+          <span className={styles.countInline}>
+            KRs:{node?.data?.counts?.krs ?? 0}
+          </span>
+        </div>
+        <div className={styles.countItem}>
+          <span className={styles.countInline}>
+            Children:{node?.data?.counts?.children ?? 0}
+          </span>
+        </div>
       </div>
     </button>
   );
