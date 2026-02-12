@@ -54,6 +54,9 @@ export default function HeaderBar({
   const unreadFromStore = useMainTreeStore(
     (state) => state.mainTree.notifications.filter((notification) => !notification.is_read).length
   );
+  const preferencesDisplayName = useMainTreeStore(
+    (state) => state.mainTree?.preferences?.user?.display_name || ''
+  );
   const [unreadCount, setUnreadCount] = useState(unreadFromStore);
   const [query, setQuery] = useState('');
   const [isFavouritePromptsOpen, setIsFavouritePromptsOpen] = useState(false);
@@ -161,6 +164,9 @@ export default function HeaderBar({
     router.push('/aime');
   };
 
+
+  const userDisplayName =
+    preferencesDisplayName || user?.displayName || user?.username || 'User';
 
   return (
     <>
@@ -283,7 +289,7 @@ export default function HeaderBar({
               </Link>
               <div className={styles.userInfo}>
                 <span className={styles.greeting}>
-                  Welcome, {user.displayName}
+                  Welcome, {userDisplayName}
                 </span>
                 <div className={styles.userIndicators}>
                   <LoadingIndicators compact />
