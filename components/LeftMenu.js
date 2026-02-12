@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { LuLayoutDashboard } from "react-icons/lu";
@@ -12,6 +12,7 @@ import { RiArchiveLine, RiOrganizationChart, RiUserSharedLine } from "react-icon
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { GiGreekTemple } from "react-icons/gi";
+import { SiJira } from "react-icons/si";
 
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { IoAdd } from 'react-icons/io5';
@@ -68,6 +69,7 @@ const getTopMenuItems = (userRole) => {
 };
 
 const bottomMenuItems = [
+  { href: '/jira', label: 'Jira Tickets', icon: 'jira', disabled: false },
   { href: '/aime', label: 'Chat', icon: 'coach', disabled: false },
 ];
 
@@ -85,6 +87,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     archive: <RiArchiveLine size={iconSize} />,
+    jira: <SiJira size={iconSize} />,
     coach: (
       <span
         className={styles.aimeIcon}
@@ -131,6 +134,7 @@ export default function LeftMenu({
   onMobileClose
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
@@ -741,7 +745,20 @@ export default function LeftMenu({
 
                         {/* Show original children (action buttons) */}
                         {item.children.map((child) => {
-                          const isChildActiveLink = pathname === child.href;
+                          // Check if child link is active
+                          // For links with query params (e.g., /organisation?view=groups)
+                          let isChildActiveLink = false;
+                          if (child.href.includes('?')) {
+                            const [childPath, childQuery] = child.href.split('?');
+                            const childParams = new URLSearchParams(childQuery);
+                            const currentView = searchParams.get('view');
+                            const childView = childParams.get('view');
+                            
+                            isChildActiveLink = pathname === childPath && currentView === childView;
+                          } else {
+                            isChildActiveLink = pathname === child.href;
+                          }
+                          
                           const isAddGroup = child.href === '/organisation/create';
                           const isAddOKR = child.isAction && child.label === 'Add OKR';
                           const isGroupsLink = child.href === '/organisation?view=groups';
