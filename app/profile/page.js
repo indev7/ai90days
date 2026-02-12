@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useMainTree } from '@/hooks/useMainTree';
+import { useUser } from '@/hooks/useUser';
 import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
 
@@ -23,7 +24,8 @@ export default function ProfilePage() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { isLoading: mainTreeLoading } = useMainTree();
+  const { isLoading: mainTreeLoading, refreshMainTree } = useMainTree();
+  const { refreshUser } = useUser();
   const { mainTree, setPreferences } = useMainTreeStore();
   const EyeIcon = ({ isVisible }) => (
     <svg
@@ -215,6 +217,10 @@ export default function ProfilePage() {
         };
 
         setPreferences(nextPreferences);
+
+        // Refresh user cache and mainTree to propagate display name changes app-wide
+        await refreshUser();
+        await refreshMainTree();
       } else {
         setError(data.error || 'Failed to update profile');
       }

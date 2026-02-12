@@ -14,6 +14,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
   const mainTree = useMainTreeStore((state) => state.mainTree);
   const router = useRouter();
   const [expandedTasks, setExpandedTasks] = useState(new Set());
+  const RAG_FIELD_ID = 'customfield_11331';
 
   const strategyData = useMemo(() => {
     const emptyState = {
@@ -49,6 +50,16 @@ export default function StrategyHouse({ toggleSlot = null }) {
     }, []);
 
     const normalizeType = (type) => (typeof type === 'string' ? type.toLowerCase() : '');
+    const normalizeKey = (value) => String(value || '').trim().toUpperCase();
+    const isValidKey = (value) => /^[A-Z][A-Z0-9]+-\d+$/.test(value);
+    const initiatives = Array.isArray(mainTree?.initiatives) ? mainTree.initiatives : [];
+    const initiativesByKey = initiatives.reduce((acc, initiative) => {
+      const key = normalizeKey(initiative?.key);
+      if (key) {
+        acc.set(key, initiative);
+      }
+      return acc;
+    }, new Map());
     const isKeyResult = (okrt) => {
       const type = normalizeType(okrt?.type);
       return type === 'k' || type === 'keyresult';
@@ -100,6 +111,17 @@ export default function StrategyHouse({ toggleSlot = null }) {
         }));
     };
 
+    const mapLinkedInitiatives = (okrt) => {
+      const rawLinks = okrt?.jira_links || okrt?.jiraLinks || [];
+      const jiraKeys = rawLinks
+        .map((link) => (typeof link === 'string' ? link : link?.jira_ticket_id))
+        .map(normalizeKey)
+        .filter((key) => isValidKey(key));
+      return jiraKeys
+        .map((key) => initiativesByKey.get(key))
+        .filter(Boolean);
+    };
+
     const mapChildObjectives = (objectiveId) =>
       allOKRTs
         .filter(
@@ -123,6 +145,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
             ownerName: childOwnerName,
             ownerAvatar: child.owner_avatar,
             keyResults: mapKeyResults(child),
+            linkedInitiatives: mapLinkedInitiatives(child),
           });
           return acc;
         }, []);
@@ -204,6 +227,30 @@ export default function StrategyHouse({ toggleSlot = null }) {
       return next;
     });
   };
+
+  const getRagClassName = (ragValue) => {
+    const normalized = (ragValue || '').toString().toLowerCase();
+    if (normalized.includes('green')) return styles.strategyInitiativeRagGreen;
+    if (normalized.includes('amber') || normalized.includes('yellow')) return styles.strategyInitiativeRagAmber;
+    if (normalized.includes('red')) return styles.strategyInitiativeRagRed;
+    return styles.strategyInitiativeRagUnknown;
+  };
+
+  const extractRagValue = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) {
+      const first = value.find(Boolean);
+      return extractRagValue(first);
+    }
+    if (typeof value === 'object') {
+      return value.value || value.name || value.label || value.status || '';
+    }
+    return String(value);
+  };
+
+  const getInitiativeTitle = (initiative) =>
+    initiative?.summary || initiative?.title || initiative?.name || initiative?.key || 'Untitled initiative';
 
   return (
     <div className={styles.strategyRoot}>
@@ -327,14 +374,55 @@ export default function StrategyHouse({ toggleSlot = null }) {
                         <div className={styles.strategyChildHeader}>
                           <div>
                             <div className={styles.strategyChildTitle}>{child.title}</div>
-                            <div className={styles.strategyChildMeta}>
-                              {child.keyResults.length} key result
-                              {child.keyResults.length === 1 ? '' : 's'} · {child.progress}% overall
+                            <div className={styles.strategyChildOwner}>
+                              {child.ownerAvatar ? (
+                                <img
+                                  src={child.ownerAvatar}
+                                  alt={child.ownerName || 'Owner'}
+                                  className={styles.strategyChildAvatar}
+                                />
+                              ) : (
+                                <div className={styles.strategyChildAvatar}>
+                                  {getInitials(child.ownerName)}
+                                </div>
+                              )}
+                              <span className={styles.strategyChildOwnerName}>
+                                {child.ownerName || 'Unassigned'}
+                              </span>
                             </div>
                           </div>
                           <span className={styles.strategyObjectiveProgressPill}>{child.progress}%</span>
                         </div>
                         <div className={styles.strategyChildKrList}>
+                          {child.linkedInitiatives?.length > 0 && (
+                            <div className={styles.strategyInitiativeList}>
+                              <div className={styles.strategyInitiativeTitleLabel}>Initiatives</div>
+                              {child.linkedInitiatives.map((initiative) => {
+                                const ragValue = extractRagValue(
+                                  initiative?.customFields?.[RAG_FIELD_ID]
+                                );
+                                return (
+                                  <div
+                                    key={initiative.key || initiative.id}
+                                    className={styles.strategyInitiativeRow}
+                                  >
+                                    <span
+                                      className={`${styles.strategyInitiativeDot} ${getRagClassName(ragValue)}`}
+                                      title={ragValue ? `RAG: ${ragValue}` : 'RAG: Unknown'}
+                                      aria-hidden="true"
+                                    />
+                                    <span className={styles.strategyInitiativeTitle}>
+                                      {getInitiativeTitle(initiative)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div className={styles.strategyChildMetaInline}>
+                            {child.keyResults.length} key result
+                            {child.keyResults.length === 1 ? '' : 's'}
+                          </div>
                           {child.keyResults.length === 0 ? (
                             <div className={styles.strategyEmptyInline}>No key results yet.</div>
                           ) : (
@@ -352,13 +440,7 @@ export default function StrategyHouse({ toggleSlot = null }) {
                                   <div>
                                     <div className={styles.strategyKrTitle}>{kr.title}</div>
                                     <div className={styles.strategyKrMeta}>
-                                      <span>{kr.progress}%</span>
-                                      <div
-                                        className={`${styles.strategyProgressBar} ${styles.strategyProgressBarSmall}`}
-                                        style={{ '--bar-value': `${kr.progress}%` }}
-                                      >
-                                        <div className={styles.strategyProgressBarFill} />
-                                      </div>
+                                      <span className={styles.strategyKrMetaLabel}>Key Result</span>
                                     </div>
                                   </div>
                                   {kr.tasks?.length > 0 && (

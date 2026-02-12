@@ -37,7 +37,8 @@ export function useMainTree() {
     setInitiativesUnavailable,
     clearMainTree,
     currentUserId,
-    setCurrentUserId
+    setCurrentUserId,
+    sectionStates
   } = useMainTreeStore();
   
   const hasFetchedRef = useRef(false);
@@ -57,7 +58,6 @@ export function useMainTree() {
     }
 
     const loadMainTree = async () => {
-      const skipInitiativesRefresh = Boolean(lastUpdated);
       // If user changed (new login), reset cached tree
       if (user && currentUserId && currentUserId !== user.id) {
         clearMainTree();
@@ -65,6 +65,8 @@ export function useMainTree() {
       if (user && currentUserId !== user.id) {
         setCurrentUserId(user.id);
       }
+      const storeState = useMainTreeStore.getState();
+      const skipInitiativesRefresh = Boolean(storeState.sectionStates?.initiatives?.loaded);
 
       // Check if we already have data and it's fresh (less than 5 minutes old)
       if (lastUpdated && mainTree?.preferences && currentUserId === user?.id) {
