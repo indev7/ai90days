@@ -45,10 +45,11 @@ const AUTO_READONLY_INTENTS = new Set([
   'JIRA_QUERY_ISSUES',
   'JIRA_LIST_PROJECTS',
   'JIRA_LIST_ISSUE_TYPES',
-  'JIRA_LIST_STATUSES'
+  'JIRA_LIST_STATUSES',
+  'CONFLUENCE_SEARCH_CONTENT'
 ]);
 
-const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/'];
+const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/', '/api/confluence/'];
 
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
 // PSEUDOCODE: for each incoming section/reason/id, validate and add to accumulator maps/sets.
@@ -370,6 +371,8 @@ function buildToolExchangeMessages(actions = [], autoResults = []) {
     const endpoint = String(action?.endpoint || '');
     const toolName = endpoint.startsWith('/api/jira/')
       ? 'emit_jira_query_actions'
+      : endpoint.startsWith('/api/confluence/')
+        ? 'emit_confluence_query_actions'
       : endpoint.startsWith('/api/ms/mail/')
         ? 'emit_ms_mail_actions'
         : null;
@@ -418,7 +421,7 @@ async function executeToolActionRequest(action, { allowWrite = false } = {}) {
 
   const payload = { ...(action?.body || {}) };
   const baseEndpoint = action?.endpoint || '';
-  if (baseEndpoint.startsWith('/api/jira/') && payload.toolMode == null) {
+  if ((baseEndpoint.startsWith('/api/jira/') || baseEndpoint.startsWith('/api/confluence/')) && payload.toolMode == null) {
     payload.toolMode = true;
   }
   const requestInit = {

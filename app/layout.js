@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { SessionProvider } from 'next-auth/react';
 import HeaderBar from '@/components/HeaderBar';
@@ -32,11 +32,23 @@ export default function RootLayout({ children }) {
   const isTabletPortrait = useMediaQuery('(min-width: 768px) and (max-width: 1023px)');
   const isMobile = useMediaQuery('(max-width: 767px)');
   const headerHeight = isMobile ? 128 : 72;
+  const jiraStatusCheckedRef = useRef(false);
 
   // Initialize theme system
   useEffect(() => {
     initializeTheme();
   }, []);
+
+  // Auto-refresh Jira auth on sign-in if a refresh token exists
+  useEffect(() => {
+    if (!user || jiraStatusCheckedRef.current) return;
+    jiraStatusCheckedRef.current = true;
+
+    fetch('/api/jira/auth/status')
+      .catch((error) => {
+        console.warn('Failed to preflight Jira auth status:', error);
+      });
+  }, [user]);
 
 
   // Listen for focus mode events from OKRT pages

@@ -13,7 +13,8 @@ export async function handleAnthropic({
     'emit_group_actions',
     'emit_ms_mail_actions',
     'emit_jira_query_actions',
-    'emit_jira_link_actions'
+    'emit_jira_link_actions',
+    'emit_confluence_query_actions'
   ]);
   const isActionToolName = (name) => ACTION_TOOL_NAMES.has(name);
 

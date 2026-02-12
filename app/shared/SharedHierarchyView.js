@@ -8,6 +8,14 @@ import styles from './page.module.css';
 import { useMainTree } from '@/hooks/useMainTree';
 import { getThemeColorPalette } from '@/lib/clockUtils';
 import { useRouter } from 'next/navigation';
+import SharedObjectiveCardSmall from '@/components/SharedObjectiveCardSmall';
+import {
+  getOwnerName,
+  getOwnerAvatar,
+  getInitiativeCount,
+  getKpiCount,
+  getKrCount
+} from '@/components/sharedObjectiveCardUtils';
 
 function buildFamilies(sharedOKRTs = []) {
   if (!sharedOKRTs.length) return [];
@@ -61,11 +69,27 @@ function buildFamilies(sharedOKRTs = []) {
 
     const nodeMap = new Map();
     ordered.forEach((okrt) => {
+      const ownerName = getOwnerName(okrt);
+      const ownerAvatar = getOwnerAvatar(okrt);
+      const progress = Math.round(okrt?.progress || 0);
+      const childObjectives = childrenMap.get(okrt.id) || [];
       nodeMap.set(okrt.id, {
         key: String(okrt.id),
         label: okrt.title || 'Untitled objective',
         expanded: true,
-        data: { id: okrt.id },
+        data: {
+          id: okrt.id,
+          title: okrt.title || 'Untitled objective',
+          ownerName,
+          ownerAvatar,
+          progress,
+          counts: {
+            initiatives: getInitiativeCount(okrt),
+            kpis: getKpiCount(okrt),
+            krs: getKrCount(okrt),
+            children: childObjectives.length
+          }
+        },
         children: [],
       });
     });
@@ -245,16 +269,14 @@ export default function SharedHierarchyView({ okrts = null }) {
   };
 
   const nodeTemplate = (node) => (
-    <button
-      type="button"
-      className={styles.chartNode}
+    <SharedObjectiveCardSmall
+      title={node?.data?.title || node.label || 'Untitled objective'}
+      ownerName={node?.data?.ownerName}
+      ownerAvatar={node?.data?.ownerAvatar}
+      progress={node?.data?.progress || 0}
+      counts={node?.data?.counts}
       onClick={() => handleNodeClick(node)}
-      title={node.label}
-    >
-      <div className={styles.chartLabel}>
-        {node.label || 'Untitled objective'}
-      </div>
-    </button>
+    />
   );
 
   if (!Array.isArray(okrts) && mainTreeLoading) {

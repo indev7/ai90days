@@ -54,23 +54,39 @@ export default function AddGroupModal({
       return [];
     }
 
-    return mainTree.sharedOKRTs
-      .filter(okrt => okrt.type === 'O') // Only objectives
-      .map(okrt => {
-        // Find which groups this objective is shared with
-        const sharedGroupNames = mainTree.groups
-          .filter(group => group.objectiveIds?.includes(okrt.id))
-          .map(group => group.name)
-          .join(', ') || 'No Group';
+    // When editing a group, only show objectives shared with that group
+    // When creating a new group, show all shared objectives
+    let objectivesToShow = mainTree.sharedOKRTs.filter(okrt => okrt.type === 'O');
+    
+    if (editingGroup) {
+      // Find the group being edited in mainTree
+      const currentGroup = mainTree.groups.find(g => g.id === editingGroup.id);
+      if (currentGroup && currentGroup.objectiveIds) {
+        // Only show objectives that are already shared with this group
+        objectivesToShow = objectivesToShow.filter(okrt =>
+          currentGroup.objectiveIds.includes(okrt.id)
+        );
+      } else {
+        // If group has no objectives, show empty list
+        objectivesToShow = [];
+      }
+    }
 
-        return {
-          id: okrt.id,
-          title: okrt.title,
-          owner_name: okrt.owner_name,
-          sharedGroups: sharedGroupNames
-        };
-      });
-  }, [mainTree]);
+    return objectivesToShow.map(okrt => {
+      // Find which groups this objective is shared with
+      const sharedGroupNames = mainTree.groups
+        .filter(group => group.objectiveIds?.includes(okrt.id))
+        .map(group => group.name)
+        .join(', ') || 'No Group';
+
+      return {
+        id: okrt.id,
+        title: okrt.title,
+        owner_name: okrt.owner_name,
+        sharedGroups: sharedGroupNames
+      };
+    });
+  }, [mainTree, editingGroup]);
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -476,7 +492,7 @@ export default function AddGroupModal({
                   ) : (
                     availableForSelection.map(obj => (
                       <option key={obj.id} value={obj.id}>
-                        {obj.sharedGroups} - {obj.owner_name} - {obj.title.length > 35 ? obj.title.substring(0, 35) + '...' : obj.title}
+                        {obj.title.length > 50 ? obj.title.substring(0, 50) + '...' : obj.title}
                       </option>
                     ))
                   )}
@@ -551,7 +567,7 @@ export default function AddGroupModal({
                   ) : (
                     selectedStrategicObjectives.map(obj => (
                       <option key={obj.id} value={obj.id}>
-                        {obj.sharedGroups} - {obj.owner_name} - {obj.title.length > 35 ? obj.title.substring(0, 35) + '...' : obj.title}
+                        {obj.title.length > 50 ? obj.title.substring(0, 50) + '...' : obj.title}
                       </option>
                     ))
                   )}

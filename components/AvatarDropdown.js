@@ -28,6 +28,11 @@ export default function AvatarDropdown({ user }) {
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const router = useRouter();
+  const preferencesDisplayName = useMainTreeStore(
+    (state) => state.mainTree?.preferences?.user?.display_name || ''
+  );
+  const displayName =
+    preferencesDisplayName || user?.displayName || user?.username || 'User';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -122,11 +127,11 @@ export default function AvatarDropdown({ user }) {
           {user.profilePictureUrl ? (
             <img
               src={user.profilePictureUrl}
-              alt={user.displayName}
+              alt={displayName}
               className={styles.avatarImage}
             />
           ) : (
-            user.displayName.charAt(0).toUpperCase()
+            displayName.charAt(0).toUpperCase()
           )}
         </div>
       </button>
@@ -135,7 +140,7 @@ export default function AvatarDropdown({ user }) {
         <div className={styles.menu} role="menu">
           <div className={styles.header}>
             <div className={styles.userInfo}>
-              <div className={styles.name}>{user.displayName}</div>
+              <div className={styles.name}>{displayName}</div>
               <div className={styles.email}>{user.username}</div>
             </div>
           </div>
