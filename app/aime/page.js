@@ -50,6 +50,7 @@ const AUTO_READONLY_INTENTS = new Set([
 ]);
 
 const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/', '/api/confluence/'];
+const DEFAULT_AIME_PERSONALITY_ID = 1;
 
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
 // PSEUDOCODE: for each incoming section/reason/id, validate and add to accumulator maps/sets.
@@ -684,7 +685,9 @@ export default function AimePage() {
     setLoading,
     pendingMessage,
     setPendingMessage,
-    clearMessages
+    clearMessages,
+    selectedPersonalityId,
+    setSelectedPersonalityId
   } = useAimeStore();
   const lastPendingIdRef = useRef(null);
   const [input, setInput] = useState('');
@@ -748,6 +751,17 @@ export default function AimePage() {
     sendMessage(pendingMessage.text);
     setPendingMessage(null);
   }, [pendingMessage, isLoading]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedPersonalityId = window.localStorage.getItem('aime-personality-id');
+    const parsedPersonalityId = Number(savedPersonalityId);
+    if (Number.isFinite(parsedPersonalityId)) {
+      setSelectedPersonalityId(parsedPersonalityId);
+      return;
+    }
+    setSelectedPersonalityId(DEFAULT_AIME_PERSONALITY_ID);
+  }, [setSelectedPersonalityId]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -836,7 +850,10 @@ export default function AimePage() {
       const requestPayload = {
         messages: (outboundMessages || []).slice(-10),
         systemPromptData,
-        displayName
+        displayName,
+        personalityId: Number.isFinite(selectedPersonalityId)
+          ? selectedPersonalityId
+          : DEFAULT_AIME_PERSONALITY_ID
       };
       console.log('[AIME] /api/aime payload:', requestPayload);
       const response = await fetch('/api/aime', {

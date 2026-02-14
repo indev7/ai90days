@@ -1,11 +1,13 @@
 'use client';
 
 import { create } from 'zustand';
+const DEFAULT_AIME_PERSONALITY_ID = 1;
 
 const useAimeStore = create((set) => ({
   messages: [],
   isLoading: false,
   pendingMessage: null,
+  selectedPersonalityId: DEFAULT_AIME_PERSONALITY_ID,
   addMessage: (message) => {
     set((state) => {
       const updated = [...state.messages, message];
@@ -21,7 +23,8 @@ const useAimeStore = create((set) => ({
   },
   clearMessages: () => set({ messages: [] }),
   setLoading: (loading) => set({ isLoading: loading }),
-  setPendingMessage: (message) => set({ pendingMessage: message })
+  setPendingMessage: (message) => set({ pendingMessage: message }),
+  setSelectedPersonalityId: (personalityId) => set({ selectedPersonalityId: personalityId })
 }));
 
 export default useAimeStore;

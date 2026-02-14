@@ -25,13 +25,32 @@ export default function useTextToSpeech(preferredVoice) {
     setIsTTSEnabled(nextEnabled);
     if (nextEnabled) {
       primeAudio();
-    } else if (audioRef.current) {
+    } else {
       // Stop any current playback when disabling
-      audioRef.current.pause();
-      audioRef.current = null;
+      if (audioRef.current) {
+        // Remove event listeners to prevent errors after cleanup
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
+        audioRef.current.oncanplaythrough = null;
+        
+        // Pause and clear the audio source
+        try {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+          audioRef.current.load(); // Reset the audio element
+        } catch (e) {
+          console.warn('[TTS] Error cleaning up audio:', e);
+        }
+        
+        audioRef.current = null;
+      }
+      
+      // Revoke all blob URLs in the queue
       audioQueueRef.current.forEach((item) => {
         try { URL.revokeObjectURL(item.url); } catch (_) {}
       });
+      
+      // Clear all queues and state
       audioQueueRef.current = [];
       textQueueRef.current = [];
       isPlayingRef.current = false;
@@ -112,6 +131,12 @@ export default function useTextToSpeech(preferredVoice) {
   /** Play the next audio blob in the queue and advance until the queue is empty. */
   // PSEUDOCODE: dequeue audio, play it, then recurse on end/error.
   const processQueue = () => {
+    // Don't process queue if TTS is disabled
+    if (!isTTSEnabled) {
+      setIsSpeaking(false);
+      return;
+    }
+    
     if (isPlayingRef.current) return;
     const next = audioQueueRef.current.shift();
     if (!next) {
@@ -126,26 +151,43 @@ export default function useTextToSpeech(preferredVoice) {
     audio.src = next.url;
 
     const handleDone = () => {
-      URL.revokeObjectURL(next.url);
+      try {
+        URL.revokeObjectURL(next.url);
+      } catch (e) {
+        // Ignore revoke errors
+      }
       isPlayingRef.current = false;
-      // Continue with the next item in the queue
-      processQueue();
+      // Continue with the next item in the queue only if TTS is still enabled
+      if (isTTSEnabled) {
+        processQueue();
+      } else {
+        setIsSpeaking(false);
+      }
     };
 
     audio.onended = handleDone;
-    audio.onerror = () => {
-      const mediaError = audio.error;
-      console.error('[TTS] Audio playback error:', {
-        code: mediaError?.code,
-        message: mediaError?.message,
-        src: audio.src,
-        readyState: audio.readyState,
-        networkState: audio.networkState
-      });
+    audio.onerror = (e) => {
+      // Only log errors if TTS is still enabled (not during cleanup)
+      if (isTTSEnabled && audioRef.current) {
+        const mediaError = audio.error;
+        console.error('[TTS] Audio playback error:', {
+          code: mediaError?.code,
+          message: mediaError?.message,
+          src: audio.src,
+          readyState: audio.readyState,
+          networkState: audio.networkState
+        });
+      }
       handleDone();
     };
 
     audio.oncanplaythrough = () => {
+      // Check if TTS is still enabled before playing
+      if (!isTTSEnabled) {
+        handleDone();
+        return;
+      }
+      
       audio.play().catch((err) => {
         console.error('[TTS] Audio play() failed:', err);
         if (err?.name === 'NotAllowedError') {
