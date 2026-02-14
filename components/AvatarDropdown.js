@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import useMainTreeStore from '@/store/mainTreeStore';
 import { clearGlobalUserCache } from '@/hooks/useUser';
@@ -27,7 +26,6 @@ export default function AvatarDropdown({ user }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
-  const router = useRouter();
   const preferencesDisplayName = useMainTreeStore(
     (state) => state.mainTree?.preferences?.user?.display_name || ''
   );
@@ -144,7 +142,7 @@ export default function AvatarDropdown({ user }) {
               <div className={styles.email}>{user.username}</div>
             </div>
           </div>
-          
+
           <div className={styles.menuItems}>
             <Link
               href="/profile"
