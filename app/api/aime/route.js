@@ -25,6 +25,82 @@ import { JIRA_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraQueryActions';
 import { JIRA_LINK_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraLinkActions';
 import { CONFLUENCE_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/confluenceQueryActions';
 
+const DEFAULT_AIME_PERSONALITY_ID = 1;
+const AIME_PERSONALITIES = [
+  {
+    id: 1,
+    label: 'Florence',
+    prompt:
+      [
+        'Adopt a calm, caring, steady coach tone inspired by Florence Nightingale (do not mention her or claim to be her).',
+        'Make care explicit but brief: start with a 1-line acknowledgement, then move straight into practical help.',
+        'Be structured and efficient: use short paragraphs + bullets; propose the next 2–5 steps; end with one focused question when needed.',
+        'Be reassuring without being verbose or overly sentimental.',
+        'If the user is stressed or stuck: reduce scope, suggest the smallest next step, and offer an option A/option B.'
+      ].join('\n')
+  },
+  {
+    id: 2,
+    label: 'Poetic',
+    prompt:
+      'Adopt an eloquent, poetic, reflective voice with a light Elizabethan flavour, weaving gentle metaphor and cadence through your words while remaining understandable and actionable. Do not mention Shakespeare or claim to be him.'
+  },
+  {
+    id: 3,
+    label: 'BBC',
+    prompt:
+      [
+        'Adopt a clear, neutral “BBC reporter/explainer” tone: calm, impartial, and precise.',
+        'Lead with the key point in one sentence.',
+        'Then give 3–6 short bullets with the essential facts, context, and implications.',
+        'Ask at most one clarifying question if it materially changes the answer.',
+        'Use plain UK English, avoid hype, avoid strong emotion, avoid jokes.',
+        'If information is uncertain, state what’s known vs unknown and what would confirm it.',
+        'Do not mention the BBC or claim to be a BBC journalist.'
+      ].join('\n')
+  },
+  {
+    id: 4,
+    label: 'Zen',
+    prompt:
+      [
+        'Adopt a calm, grounded Zen-like tone: spacious, kind, and steady. Keep it practical and concise.',
+        'Start with one brief centering line (max 12 words) when the user seems stressed, then move straight into action.',
+        'Use short paragraphs and 3–6 bullets. Prioritize what matters, simplify choices, and suggest the smallest next step.',
+        'Ask at most one gentle question when needed.',
+        'Avoid jokes, avoid mystical claims, avoid long spiritual lectures.',
+        'Do not reference Zen, Buddhism, or any real teacher; do not imply you are enlightened.'
+      ].join('\n')
+  },
+  {
+    id: 5,
+    label: 'Northern',
+    prompt:
+      [
+        'Adopt a friendly, practical rural Northern England (Yorkshire-leaning) helper vibe: warm, down-to-earth, can-do.',
+        'Manner: reassuring and upbeat, with gentle humour. Use plain language and short sentences.',
+        'Structure: 1 brief friendly line, then 3–7 bullets with steps/checks. End with one focused question if needed.',
+        'Problem-solving style: diagnose first, then fix. Offer simple options (Option A/Option B) and practical workarounds.',
+        "Dialect constraint: do not overdo slang. At most 1 mild regionalism occasionally (e.g., 'right then', 'aye', 'lass/lad'), only if clarity stays high.",
+        'Avoid sarcasm. If the user is stressed or the topic is serious (security/compliance/incidents), drop humour and be direct.'
+      ].join('\n')
+  }
+];
+
+const resolveAimePersonality = (personalityId) => {
+  const normalizedId = Number(personalityId);
+  const selected = AIME_PERSONALITIES.find((p) => p.id === normalizedId);
+  return selected || AIME_PERSONALITIES.find((p) => p.id === DEFAULT_AIME_PERSONALITY_ID);
+};
+
+const getPersonalityOptions = () =>
+  AIME_PERSONALITIES.map(({ id, label }) => ({ id, label }));
+
+const normalizePersonalityId = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_AIME_PERSONALITY_ID;
+};
+
 const knowledgeBaseMap = new Map([
   [
     'aime-overview',
@@ -420,7 +496,7 @@ function cleanObject(obj) {
 // IMPORTANT:IDs/UUIDs (id, parent_id, owner_id, gen-* tokens) must not appear in the text response.
 // If necessary address the user EXACTLY as "${displayName}".`;
 // }
-function getBasicSystemPrompt(displayName = "AIME user") {
+function getBasicSystemPrompt(displayName = "AIME user", personalityId) {
   // Escape quotes/backslashes/newlines so displayName can't accidentally break the prompt
   const safeName = String(displayName)
     .replace(/\\/g, "\\\\")
@@ -438,11 +514,13 @@ function getBasicSystemPrompt(displayName = "AIME user") {
   const dataList = bulletList(dataSectionMap);
   const knowledgeList = bulletList(knowledgeBaseMap);
   const toolList = bulletList(toolMap);
+  const selectedPersonality = resolveAimePersonality(personalityId);
 
   return [
     // Keep the “constitution” tight and high-signal
     `You are Aime, an OKRT coach inside the "Aime App".`,
-    `Adopt a calm, compassionate, practical tone inspired by Florence Nightingale. Do not mention Florence Nightingale or claim to be her.`,
+    `##Personality`,
+    selectedPersonality.prompt,
     ``,
     `## Scope`,
     `The app supports UI-based CRUD for: okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups, read from JIRA, read outlook email.`,
@@ -534,7 +612,7 @@ Number of Objectives: 0
 No OKRTs found for this user in the current quarter.`;
 }
 
-function buildSystemPrompt({ displayName, systemPromptData, knowledgeBlocks }) {
+function buildSystemPrompt({ displayName, personalityId, systemPromptData, knowledgeBlocks }) {
   const timeCtx = getTimeContext();
   const timeBlock = `
 TIME CONTEXT:
@@ -545,7 +623,7 @@ TIME CONTEXT:
 - Day in cycle: ${timeCtx.dayOfQuarter}/${timeCtx.totalQuarterDays}
 - Quarter months: ${timeCtx.quarterMonths}`;
 
-  const parts = [getBasicSystemPrompt(displayName), timeBlock];
+  const parts = [getBasicSystemPrompt(displayName, personalityId), timeBlock];
   if (systemPromptData?.trim()) {
     parts.push(systemPromptData.trim());
   }
@@ -722,6 +800,13 @@ async function loadKnowledgeBlocks(ids = [], emailAddress = '') {
 /* =========================
    Route handler
    ========================= */
+export async function GET() {
+  return NextResponse.json({
+    personalities: getPersonalityOptions(),
+    defaultPersonalityId: DEFAULT_AIME_PERSONALITY_ID
+  });
+}
+
 export async function POST(request) {
   try {
     // LLM step 3 (server): validate session and incoming payload from the client.
@@ -736,13 +821,15 @@ export async function POST(request) {
       messages,
       systemPromptData,
       displayName: clientDisplayName,
-      emailAddress: clientEmailAddress
+      emailAddress: clientEmailAddress,
+      personalityId: clientPersonalityId
     } = requestBody;
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array required' }, { status: 400 });
     }
 
     const displayName = clientDisplayName || 'User';
+    const personalityId = normalizePersonalityId(clientPersonalityId);
     const emailAddress = clientEmailAddress || '';
     const latestReqMoreInfo = getLatestReqMoreInfo(messages);
     const knowledgeIds = latestReqMoreInfo?.domainKnowledge?.ids || [];
@@ -763,6 +850,7 @@ export async function POST(request) {
 
     const systemPrompt = buildSystemPrompt({
       displayName,
+      personalityId,
       systemPromptData,
       knowledgeBlocks
     });

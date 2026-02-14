@@ -15,7 +15,9 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const userId = parseInt(params.id);
+    // Await params before accessing properties (Next.js 15+)
+    const resolvedParams = await params;
+    const userId = parseInt(resolvedParams.id);
     const body = await request.json();
 
     // Validate role if provided

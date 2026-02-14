@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { themes, loadTheme, getCurrentTheme, normalizeThemeId } from '@/lib/themeManager';
 import { useMainTree } from '@/hooks/useMainTree';
 import useMainTreeStore from '@/store/mainTreeStore';
+import useAimeStore from '@/store/aimeStore';
 import { useUser } from '@/hooks/useUser';
+import { RiSettings3Line } from 'react-icons/ri';
 import styles from './page.module.css';
+
+const DEFAULT_AIME_PERSONALITY_ID = 1;
 
 export default function SettingsPage() {
   const { user, isLoading: userLoading } = useUser();
@@ -16,15 +19,18 @@ export default function SettingsPage() {
   const [isLoadingTheme, setIsLoadingTheme] = useState(false);
   const [preferredVoice, setPreferredVoice] = useState('alloy');
   const [preferredHome, setPreferredHome] = useState('dashboard');
+  const [aimePersonality, setAimePersonality] = useState(DEFAULT_AIME_PERSONALITY_ID);
+  const [personalityOptions, setPersonalityOptions] = useState([]);
+  const [defaultPersonalityId, setDefaultPersonalityId] = useState(DEFAULT_AIME_PERSONALITY_ID);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [initialPreferences, setInitialPreferences] = useState({
     voice: 'alloy',
     home: 'dashboard',
     theme: 'coffee',
+    personality: DEFAULT_AIME_PERSONALITY_ID
   });
-  const router = useRouter();
-
+  const setSelectedPersonalityId = useAimeStore((state) => state.setSelectedPersonalityId);
   const normalizePreferredHome = (value) => {
     if (typeof value !== 'string') return 'dashboard';
     const normalized = value.trim().toLowerCase();
@@ -33,11 +39,12 @@ export default function SettingsPage() {
     return 'dashboard';
   };
 
-  const computeHasChanges = (voiceValue, homeValue, themeValue) => {
+  const computeHasChanges = (voiceValue, homeValue, themeValue, personalityValue) => {
     return (
       voiceValue !== initialPreferences.voice ||
       homeValue !== initialPreferences.home ||
-      themeValue !== initialPreferences.theme
+      themeValue !== initialPreferences.theme ||
+      personalityValue !== initialPreferences.personality
     );
   };
 
@@ -74,6 +81,30 @@ export default function SettingsPage() {
     loadTheme(nextTheme);
   }, [mainTree, user, hasChanges]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadPersonalityOptions = async () => {
+      try {
+        const response = await fetch('/api/aime');
+        if (!response.ok) throw new Error('Failed to load personality options');
+        const data = await response.json();
+        if (!isMounted) return;
+        const options = Array.isArray(data?.personalities) ? data.personalities : [];
+        const defaultId = Number.isFinite(Number(data?.defaultPersonalityId))
+          ? Number(data.defaultPersonalityId)
+          : DEFAULT_AIME_PERSONALITY_ID;
+        setPersonalityOptions(options);
+        setDefaultPersonalityId(defaultId);
+      } catch (error) {
+        console.error('Failed to load AIME personalities:', error);
+      }
+    };
+    loadPersonalityOptions();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleThemeChange = async (newTheme) => {
     setIsLoadingTheme(true);
     try {
@@ -81,7 +112,7 @@ export default function SettingsPage() {
       if (success) {
         const normalizedTheme = normalizeThemeId(newTheme);
         setTheme(normalizedTheme);
-        setHasChanges(computeHasChanges(preferredVoice, preferredHome, normalizedTheme));
+        setHasChanges(computeHasChanges(preferredVoice, preferredHome, normalizedTheme, aimePersonality));
       } else {
         console.error('Failed to load theme:', newTheme);
       }
@@ -94,18 +125,51 @@ export default function SettingsPage() {
 
   const handleVoiceChange = (newVoice) => {
     setPreferredVoice(newVoice);
-    setHasChanges(computeHasChanges(newVoice, preferredHome, theme));
+    setHasChanges(computeHasChanges(newVoice, preferredHome, theme, aimePersonality));
   };
 
   const handleHomeChange = (newHome) => {
     setPreferredHome(newHome);
-    setHasChanges(computeHasChanges(preferredVoice, newHome, theme));
+    setHasChanges(computeHasChanges(preferredVoice, newHome, theme, aimePersonality));
+  };
+
+  useEffect(() => {
+    const savedPersonalityId = window.localStorage.getItem('aime-personality-id');
+    const parsedPersonalityId = Number(savedPersonalityId);
+    const hasOption = (id) =>
+      personalityOptions.length === 0 || personalityOptions.some((option) => option.id === id);
+    const resolvedPersonalityId =
+      Number.isFinite(parsedPersonalityId) && hasOption(parsedPersonalityId)
+        ? parsedPersonalityId
+        : defaultPersonalityId;
+
+    setAimePersonality(resolvedPersonalityId);
+    setSelectedPersonalityId(resolvedPersonalityId);
+    setInitialPreferences((prev) => ({
+      ...prev,
+      personality: resolvedPersonalityId
+    }));
+  }, [defaultPersonalityId, personalityOptions, setSelectedPersonalityId]);
+
+  const handleAimePersonalityChange = (nextId) => {
+    const parsedPersonalityId = Number(nextId);
+    if (!Number.isFinite(parsedPersonalityId)) return;
+    setAimePersonality(parsedPersonalityId);
+    setSelectedPersonalityId(parsedPersonalityId);
+    window.localStorage.setItem('aime-personality-id', String(parsedPersonalityId));
+    setHasChanges(computeHasChanges(preferredVoice, preferredHome, theme, parsedPersonalityId));
   };
 
   if (userLoading || mainTreeLoading) {
     return (
       <div className={`app-page ${styles.container}`}>
         <div className="app-pageContent">
+          <div className="app-pageHeader">
+            <div className="app-titleSection">
+              <RiSettings3Line className="app-pageIcon" />
+              <h1 className="app-pageTitle">Settings</h1>
+            </div>
+          </div>
           <div className={styles.loading}>Loading...</div>
         </div>
       </div>
@@ -119,12 +183,13 @@ export default function SettingsPage() {
   return (
     <div className={`app-page ${styles.container}`}>
       <div className="app-pageContent">
-        <div className={styles.content}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Settings</h1>
-         
+        <div className="app-pageHeader">
+          <div className="app-titleSection">
+            <RiSettings3Line className="app-pageIcon" />
+            <h1 className="app-pageTitle">Settings</h1>
+          </div>
         </div>
-
+        <div className={styles.content}>
         <div className={styles.card}>
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Appearance</h2>
@@ -216,6 +281,32 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>AIME Style</h2>
+
+            <div className={styles.setting}>
+              <label className={styles.settingLabel}>Assistant personality style</label>
+
+              <div className={styles.radioGroup}>
+                {personalityOptions.map((option) => (
+                  <label
+                    key={option.id}
+                    className={`${styles.radioOption} ${aimePersonality === option.id ? styles.active : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="aimePersonality"
+                      value={option.id}
+                      checked={aimePersonality === option.id}
+                      onChange={() => handleAimePersonalityChange(option.id)}
+                    />
+                    <span className={styles.radioLabel}>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className={styles.saveBar}>
             <button
               type="button"
@@ -243,6 +334,7 @@ export default function SettingsPage() {
                       voice: preferredVoice,
                       home: preferredHome,
                       theme,
+                      personality: aimePersonality
                     });
                     setHasChanges(false);
                     setPreferences({

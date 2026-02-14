@@ -8,7 +8,7 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { GoClock } from "react-icons/go";
 
 import { MdOutlineSelfImprovement } from "react-icons/md";
-import { RiArchiveLine, RiFlag2Line, RiOrganizationChart, RiUserSharedLine } from "react-icons/ri";
+import { RiArchiveLine, RiFlag2Line, RiOrganizationChart, RiSettings3Line, RiUserSharedLine } from "react-icons/ri";
 import { TbBriefcase } from "react-icons/tb";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { GiGreekTemple } from "react-icons/gi";
@@ -70,6 +70,7 @@ const getTopMenuItems = (userRole) => {
 
 const bottomMenuItems = [
   { href: '/aime', label: 'Chat', icon: 'coach', disabled: false },
+  { href: '/settings', label: 'Settings', icon: 'settings', disabled: false },
 ];
 
 function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
@@ -87,6 +88,7 @@ function getIcon(iconName, isCollapsed = false, unreadCount = 0) {
     members: <HiOutlineUsers size={iconSize} />,
     new: <IoAdd size={iconSize} />,
     archive: <RiArchiveLine size={iconSize} />,
+    settings: <RiSettings3Line size={iconSize} />,
     coach: (
       <span
         className={styles.aimeIcon}
