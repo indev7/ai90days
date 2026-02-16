@@ -508,11 +508,16 @@ export default function OKRTModal({
                 onChange={e => handleInputChange('parent_objective_id', e.target.value)}
               >
                 <option value="">No parent objective (standalone)</option>
-                {availableObjectives.map(objective => (
-                  <option key={objective.id} value={objective.id}>
-                    {objective.owner_name} - {objective.title}
-                  </option>
-                ))}
+                {availableObjectives.map(objective => {
+                  const fullLabel = `${objective.owner_name} - ${objective.title}`;
+                  const maxLen = 80;
+                  const displayLabel = fullLabel.length > maxLen ? fullLabel.slice(0, maxLen - 3) + '...' : fullLabel;
+                  return (
+                    <option key={objective.id} value={objective.id} title={fullLabel}>
+                      {displayLabel}
+                    </option>
+                  );
+                })}
               </select>
               {errors.parent_objective_id && <span className={styles.errorText}>{errors.parent_objective_id}</span>}
             </div>
