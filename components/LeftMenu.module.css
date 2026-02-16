@@ -332,6 +332,7 @@
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -485,6 +486,25 @@
   padding-right: var(--space-4);
 }
 
+/* Improve child objective wrapping for mobile slide-in to avoid overlap */
+.leftMenu.mobileSlideIn .childMenuLink {
+  align-items: flex-start;
+  min-height: auto;
+  padding-top: calc(var(--space-2) - 2px);
+  padding-bottom: calc(var(--space-2) - 2px);
+  flex-wrap: wrap;
+}
+
+.leftMenu.mobileSlideIn .childMenuLink .label {
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+}
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -549,6 +569,7 @@
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   max-width: 100%;
   word-wrap: break-word;
