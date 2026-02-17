@@ -20,6 +20,7 @@ import {
   AddKeyResultCard,
   ObjectiveInsights
 } from '@/components/OKRTCards';
+import ObjectiveFamilyDiagram from '@/components/ObjectiveFamilyDiagram';
 
 /* =========================
    Demo Data (fallback)
@@ -885,6 +886,8 @@ export default function OKRTPage() {
                             ))}
                             <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
                           </div>
+
+                          <ObjectiveFamilyDiagram objectiveId={objective.id} />
                           
                           {/* Single Comments Section for the entire Objective */}
                           {user?.id && (

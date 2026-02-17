@@ -22,7 +22,7 @@ import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
 import AimeChart from '../../components/AimeChart';
 import ContextUsageIndicator from '../../components/ContextUsageIndicator';
-import { buildMemberDirectory } from '@/lib/aime/contextBuilders';
+import { buildMemberDirectory, buildObjectiveContextBlock } from '@/lib/aime/contextBuilders';
 import { TiMicrophoneOutline } from "react-icons/ti";
 import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
 import { SlArrowUpCircle } from "react-icons/sl";
@@ -36,7 +36,8 @@ const DATA_SECTION_IDS = new Set([
   'notifications',
   'preferences',
   'calendar',
-  'initiatives'
+  'initiatives',
+  'objectiveFocus'
 ]);
 
 const AUTO_READONLY_INTENTS = new Set([
@@ -53,6 +54,16 @@ const AUTO_READONLY_INTENTS = new Set([
 
 const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/', '/api/confluence/'];
 const DEFAULT_AIME_PERSONALITY_ID = 1;
+const AIME_CONTEXT_DRAFT_KEY = 'aime-objective-context-draft';
+
+const formatObjectiveContextDraft = (context) => {
+  if (!context) return '';
+  const payload = { objectiveFocus: context };
+  return [
+    'CONTEXT - Objective Focus (user-supplied)',
+    `<DATA:objective_focus>\n${JSON.stringify(payload)}\n</DATA:objective_focus>`
+  ].join('\n');
+};
 
 /** Merge incoming req_more_info payloads into accumulator maps/sets for later consolidation; called in sendMessage after streaming req_more_info. */
 // PSEUDOCODE: for each incoming section/reason/id, validate and add to accumulator maps/sets.
@@ -69,6 +80,9 @@ const mergeReqMoreInfo = (accumulator, incoming) => {
     };
     if (typeof section?.reason === 'string' && section.reason.trim()) {
       existing.reasons.add(section.reason.trim());
+    }
+    if (section?.objectiveId !== null && section?.objectiveId !== undefined && section?.objectiveId !== '') {
+      existing.objectiveId = section.objectiveId;
     }
     accumulator.sections.set(sectionId, existing);
   }
@@ -93,8 +107,9 @@ const mergeReqMoreInfo = (accumulator, incoming) => {
 // PSEUDOCODE: serialize sections/reasons and id sets into a compact object, omitting empties.
 const buildMergedReqMoreInfo = (accumulator) => {
   const merged = {};
-  const sections = Array.from(accumulator.sections.values()).map(({ sectionId, reasons }) => ({
+  const sections = Array.from(accumulator.sections.values()).map(({ sectionId, reasons, objectiveId }) => ({
     sectionId,
+    ...(objectiveId != null ? { objectiveId } : {}),
     ...(reasons?.size ? { reason: Array.from(reasons).join(' | ') } : {})
   }));
   if (sections.length > 0) {
@@ -209,10 +224,14 @@ const buildSystemPromptPayload = (reqMoreInfo, mainTree, displayName) => {
     if (!sectionId || !DATA_SECTION_IDS.has(sectionId)) continue;
     const entry = merged.get(sectionId) || {
       sectionId,
-      reasons: []
+      reasons: [],
+      objectiveId: section?.objectiveId
     };
     if (typeof section?.reason === 'string' && section.reason.trim()) {
       entry.reasons.push(section.reason.trim());
+    }
+    if (section?.objectiveId != null) {
+      entry.objectiveId = section.objectiveId;
     }
     merged.set(sectionId, entry);
   }
@@ -237,7 +256,9 @@ const buildSystemPromptPayload = (reqMoreInfo, mainTree, displayName) => {
     const rawData =
       entry.sectionId === 'memberDirectory'
         ? buildMemberDirectory(mainTree)
-        : (mainTree || {})[entry.sectionId];
+        : entry.sectionId === 'objectiveFocus'
+          ? buildObjectiveContextBlock(mainTree, entry.objectiveId)
+          : (mainTree || {})[entry.sectionId];
     let data = rawData === null || rawData === undefined ? rawData : pruneNullish(rawData);
     data = normalizeDatesForLLM(entry.sectionId, data);
     if (hasMeaningfulValue(data)) hasData = true;
@@ -629,6 +650,7 @@ function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickR
   const textOnly = message.content;
   const charts = Array.isArray(message.charts) ? message.charts : [];
   const hasCharts = !isUser && charts.length > 0;
+  const contextPreview = isUser && message.contextPreview ? message.contextPreview : '';
 
   return (
     <div className={`${styles.message} ${isUser ? styles.userMessage : styles.assistantMessage}`}>
@@ -642,6 +664,14 @@ function Message({ message, okrtById, onActionClick, onRunAll, onRetry, onQuickR
         ) : (
           <>
             {/* Render Markdown nicely */}
+            {contextPreview && (
+              <div className={styles.userContextPreviewRow}>
+                <div className={styles.objectiveDraftChip}>
+                  <span className={styles.objectiveDraftIcon} aria-hidden="true" />
+                  <span className={styles.objectiveDraftTitle}>{contextPreview}</span>
+                </div>
+              </div>
+            )}
             <MessageMarkdown>{textOnly}</MessageMarkdown>
 
             {!isUser && charts.length > 0 && (
@@ -710,6 +740,7 @@ export default function AimePage() {
   const [chatWidth, setChatWidth] = useState(null);
   const inputRef = useRef(null);
   const [usageStats, setUsageStats] = useState({ inputTokens: 0, outputTokens: 0 });
+  const [objectiveDraft, setObjectiveDraft] = useState(null);
   
   // Use cached user data
   const { user, isLoading: userLoading } = useUser();
@@ -777,6 +808,27 @@ export default function AimePage() {
     setSelectedPersonalityId(DEFAULT_AIME_PERSONALITY_ID);
   }, [setSelectedPersonalityId]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const rawDraft = window.localStorage.getItem(AIME_CONTEXT_DRAFT_KEY);
+    if (!rawDraft) return;
+    window.localStorage.removeItem(AIME_CONTEXT_DRAFT_KEY);
+    try {
+      const draft = JSON.parse(rawDraft);
+      const contextText = formatObjectiveContextDraft(draft?.context);
+      if (!contextText) return;
+      setObjectiveDraft({
+        title: draft?.context?.objective?.title || 'Objective',
+        context: draft?.context || null
+      });
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+    } catch (error) {
+      console.warn('Failed to read Aime context draft:', error);
+    }
+  }, []);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!userLoading && !user) {
@@ -806,31 +858,60 @@ export default function AimePage() {
   const INVALID_REQ_MORE_INFO_MESSAGE =
     'Sorry, I could not process the req_more_info tool call because its arguments were invalid. Please retry.';
 
+  const handleRemoveObjectiveDraft = () => {
+    setObjectiveDraft(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(AIME_CONTEXT_DRAFT_KEY);
+    }
+  };
+
   /** Send a user message to the backend, stream responses, and handle retries/actions; called by submit/key/quick-reply/retry flows. */
   // PSEUDOCODE: push user message, POST to API, stream response, handle actions and retries.
   const sendMessage = async (messageContent = input, options = {}) => {
     const trimmedContent = messageContent.trim();
+    const contextText = objectiveDraft?.context
+      ? formatObjectiveContextDraft(objectiveDraft.context)
+      : '';
     const {
       skipAddUserMessage = false,
       messageHistoryOverride = null,
       systemPromptData = '',
       forceSend = false
     } = options;
-    if (!trimmedContent || (isLoading && !forceSend)) return;
+    if ((!trimmedContent && !contextText) || (isLoading && !forceSend)) return;
     stopRequestedRef.current = false;
 
     const useOverride = Array.isArray(messageHistoryOverride);
     let outboundMessages = messageHistoryOverride;
     let userMessage = null;
+    let usedObjectiveDraft = false;
 
     if (!useOverride && !skipAddUserMessage) {
-      userMessage = {
-        id: Date.now(),
-        role: 'user',
-        content: trimmedContent,
-        timestamp: new Date(),
-      };
-      addMessage(userMessage);
+      const hiddenContextMessage = contextText
+        ? {
+            id: Date.now() - 1,
+            role: 'user',
+            content: contextText,
+            hidden: true,
+            timestamp: new Date()
+          }
+        : null;
+
+      if (hiddenContextMessage) {
+        addMessage(hiddenContextMessage);
+        usedObjectiveDraft = true;
+      }
+
+      if (trimmedContent) {
+        userMessage = {
+          id: Date.now(),
+          role: 'user',
+          content: trimmedContent,
+          contextPreview: objectiveDraft?.title || null,
+          timestamp: new Date(),
+        };
+        addMessage(userMessage);
+      }
       lastPromptFingerprintRef.current = '';
       autoRetryCountRef.current = 0;
       duplicateReqMoreInfoRef.current = 0;
@@ -842,7 +923,11 @@ export default function AimePage() {
       lastJiraQueryFingerprintRef.current = '';
       lastJiraQueryTimeRef.current = 0;
       jiraPageCounterRef.current = 1;
-      outboundMessages = [...messages, userMessage];
+      outboundMessages = [
+        ...messages,
+        ...(hiddenContextMessage ? [hiddenContextMessage] : []),
+        ...(userMessage ? [userMessage] : [])
+      ];
     }
 
     if (!useOverride && skipAddUserMessage) {
@@ -851,6 +936,10 @@ export default function AimePage() {
 
     if (!skipAddUserMessage && !useOverride) {
       setInput('');
+    }
+
+    if (usedObjectiveDraft) {
+      handleRemoveObjectiveDraft();
     }
 
     setLoading(true);
@@ -1523,6 +1612,10 @@ export default function AimePage() {
     setLoading(false);
     setLLMActivity(false);
     setInput('');
+    setObjectiveDraft(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(AIME_CONTEXT_DRAFT_KEY);
+    }
     setUsageStats({ inputTokens: 0, outputTokens: 0 });
     lastPendingIdRef.current = null;
     lastPromptFingerprintRef.current = '';
@@ -1584,6 +1677,22 @@ export default function AimePage() {
       </div>
 
       <form onSubmit={handleSubmit} className={styles.inputForm}>
+        {objectiveDraft && (
+          <div className={styles.objectiveDraftRow}>
+            <div className={styles.objectiveDraftChip}>
+              <span className={styles.objectiveDraftIcon} aria-hidden="true" />
+              <span className={styles.objectiveDraftTitle}>{objectiveDraft.title}</span>
+              <button
+                type="button"
+                className={styles.objectiveDraftRemove}
+                onClick={handleRemoveObjectiveDraft}
+                aria-label="Remove objective context"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
         <div className={styles.inputContainer}>
           <button
             type="button"

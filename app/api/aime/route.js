@@ -323,6 +323,13 @@ const dataSectionMap = new Map([
       id: 'initiatives',
       description: 'Jira Portfolio Management initiatives for the Initiatives page.'
     }
+  ],
+  [
+    'objectiveFocus',
+    {
+      id: 'objectiveFocus',
+      description: 'Single-objective focus block (objective + ancestors, children, KRs, tasks, initiatives, shared groups).'
+    }
   ]
 ]);
 
@@ -542,12 +549,14 @@ function getBasicSystemPrompt(displayName = "AIME user", personalityId) {
     `The app supports UI-based CRUD for: okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups, read from JIRA, read outlook email.`,
     `You can link/unlink Jira tickets (Initiatives) to OKRTs when requested.`,
     `User data may be provided in a cached JSON tree called "mainTree".`,
+    `The user may also include a block labeled "CONTEXT - Objective Focus (user-supplied)" with <DATA:objective_focus> JSON. If present, treat it as authoritative for that objective and avoid req_more_info for overlapping fields.`,
     `Your job: help with goal planning, OKRT guidance, motivation, and app navigation.`,
     ``,
     `## Tooling (req_more_info)`,
     `Use req_more_info to request ONLY the minimal extra context needed.`,
     `- The request must include at least one of: data, domainKnowledge, tools.`,
     `- data.sections[] items MUST be objects with sectionId ONLY (no paths).`,
+    `- Exception: when requesting "objectiveFocus", include objectiveId (string or number).`,
     `- Do NOT request sections already present in the current CONTEXT; if present, answer directly.`,
     `- If a field is missing, treat it as null/unknown (not "does not exist").`,
     `- Before saying you lack info, check the current CONTEXT first; if missing, request minimal context.`,
@@ -683,6 +692,9 @@ function getReqMoreInfoTool() {
                   sectionId: {
                     type: 'string',
                     enum: dataSectionIds
+                  },
+                  objectiveId: {
+                    type: ['string', 'number']
                   }
                 }
               }
