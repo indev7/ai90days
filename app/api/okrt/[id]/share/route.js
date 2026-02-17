@@ -69,17 +69,44 @@ export async function POST(request, { params }) {
     await updateOKRT(id, { visibility });
 
     if (visibility === 'shared') {
-      // Share with groups
-      for (const groupId of groups) {
+      // Reconcile shares: add new shares and remove unchecked ones
+      const existingShares = await getOKRTShares(id);
+      const existingGroupIds = existingShares.filter(s => s.share_type === 'G').map(s => String(s.group_or_user_id));
+      const existingUserIds = existingShares.filter(s => s.share_type === 'U').map(s => String(s.group_or_user_id));
+
+      // Normalize requested group ids to strings
+      const requestedGroupIds = (groups || []).map(g => String(g));
+
+      // Groups to add
+      const groupsToAdd = requestedGroupIds.filter(g => !existingGroupIds.includes(g));
+      for (const groupId of groupsToAdd) {
         await shareOKRTWithGroup(id, groupId);
       }
 
-      // Share with users (by email)
-      for (const email of users) {
+      // Groups to remove
+      const groupsToRemove = existingGroupIds.filter(g => !requestedGroupIds.includes(g));
+      for (const groupId of groupsToRemove) {
+        await unshareOKRT(id, groupId, 'G');
+      }
+
+      // Users: resolve provided emails to user ids
+      const requestedUserEmails = users || [];
+      const requestedUserIds = [];
+      for (const email of requestedUserEmails) {
         const targetUser = await getUserByEmail(email);
-        if (targetUser) {
-          await shareOKRTWithUser(id, targetUser.id);
-        }
+        if (targetUser) requestedUserIds.push(String(targetUser.id));
+      }
+
+      // Users to add
+      const usersToAdd = requestedUserIds.filter(u => !existingUserIds.includes(u));
+      for (const userId of usersToAdd) {
+        await shareOKRTWithUser(id, userId);
+      }
+
+      // Users to remove
+      const usersToRemove = existingUserIds.filter(u => !requestedUserIds.includes(u));
+      for (const userId of usersToRemove) {
+        await unshareOKRT(id, userId, 'U');
       }
     } else {
       // If setting to private, remove all shares
