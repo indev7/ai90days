@@ -18,6 +18,7 @@ import { JIRA_LINK_DOMAIN } from '@/lib/knowledgeBase/jiraLinkDomain';
 import { CONFLUENCE_DOMAIN } from '@/lib/knowledgeBase/confluenceDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
+import { OKRT_TRANSFER_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtTransferActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
 import { GROUP_ACTIONS_SCHEMA } from '@/lib/toolSchemas/groupActions';
 import { MS_MAIL_ACTIONS_SCHEMA } from '@/lib/toolSchemas/msMailActions';
@@ -202,6 +203,14 @@ const toolMap = new Map([
     }
   ],
   [
+    'emit_okrt_transfer_actions',
+    {
+      id: 'emit_okrt_transfer_actions',
+      description: 'OKRT transfer actions tool schema for ownership transfer.',
+      schema: OKRT_TRANSFER_ACTIONS_SCHEMA
+    }
+  ],
+  [
     'render_chart',
     {
       id: 'render_chart',
@@ -271,6 +280,13 @@ const dataSectionMap = new Map([
     {
       id: 'groups',
       description: 'Group membership, hierarchy, and group objectives.'
+    }
+  ],
+  [
+    'memberDirectory',
+    {
+      id: 'memberDirectory',
+      description: 'Directory of group members (id, first name, last name, email).'
     }
   ],
   [
@@ -589,7 +605,7 @@ CONTEXT - Selected mainTree Sections:
 User Display Name: ${displayName}
 Sections Included: ${sectionNames}
 Section Counts: ${counts.join(', ')}
-Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, or emit_jira_link_actions tool calls:
+Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, emit_okrt_transfer_actions, or emit_jira_link_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
   }
@@ -602,7 +618,7 @@ Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
 CONTEXT - Current User's Information and OKRTs:
 User Display Name: ${displayName}
 Number of Objectives: ${objectives.length}
-Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, or emit_jira_link_actions tool calls:
+Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, emit_okrt_transfer_actions, or emit_jira_link_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has ${objectives.length} objective(s) with ${krCount} key result(s).`
     : `

@@ -22,6 +22,7 @@ import OkrtPreview from '../../components/OkrtPreview';
 import MessageMarkdown from '../../components/MessageMarkdown';
 import AimeChart from '../../components/AimeChart';
 import ContextUsageIndicator from '../../components/ContextUsageIndicator';
+import { buildMemberDirectory } from '@/lib/aime/contextBuilders';
 import { TiMicrophoneOutline } from "react-icons/ti";
 import { PiSpeakerSlash, PiSpeakerHighBold } from "react-icons/pi";
 import { SlArrowUpCircle } from "react-icons/sl";
@@ -30,6 +31,7 @@ const DATA_SECTION_IDS = new Set([
   'myOKRTs',
   'sharedOKRTs',
   'groups',
+  'memberDirectory',
   'timeBlocks',
   'notifications',
   'preferences',
@@ -232,7 +234,10 @@ const buildSystemPromptPayload = (reqMoreInfo, mainTree, displayName) => {
   const fingerprintEntries = [];
   let hasData = false;
   for (const entry of merged.values()) {
-    const rawData = (mainTree || {})[entry.sectionId];
+    const rawData =
+      entry.sectionId === 'memberDirectory'
+        ? buildMemberDirectory(mainTree)
+        : (mainTree || {})[entry.sectionId];
     let data = rawData === null || rawData === undefined ? rawData : pruneNullish(rawData);
     data = normalizeDatesForLLM(entry.sectionId, data);
     if (hasMeaningfulValue(data)) hasData = true;
@@ -294,6 +299,15 @@ function labelForAction(action) {
   if (intent === 'DELETE_OKRT') return `Delete ${noun}`;
   if (intent === 'SHARE_OKRT') return 'Share Objective';
   if (intent === 'UNSHARE_OKRT') return 'Unshare Objective';
+  if (intent === 'TRANSFER_OKRT') {
+    const objectiveTitle = payload?.objective_title || payload?.title || 'Objective';
+    const memberLabel =
+      payload?.target_member_label ||
+      payload?.target_member_email ||
+      payload?.target_email ||
+      'Member';
+    return `Transfer Objective: ${objectiveTitle} to Member: ${memberLabel}`;
+  }
   if (intent === 'LIST_MESSAGES') return 'List Mail';
   if (intent === 'GET_MESSAGE_PREVIEW') return 'Message Preview';
   if (intent === 'GET_MESSAGE_BODY') return 'Read Message Body';
@@ -1588,7 +1602,7 @@ export default function AimePage() {
           </button>
           <button
             type="button"
-            className={`${styles.speakerButton} ${isTTSEnabled ? styles.speakerButtonEnabled : ''} ${isSpeaking ? styles.speakerButtonSpeaking : ''}`}
+            className={`${styles.speakerButton} ${isTTSEnabled ? styles.speakerButtonEnabled : ''} ${isTTSEnabled && isSpeaking ? styles.speakerButtonSpeaking : ''}`}
             onClick={toggleTTS}
             disabled={isLoading}
             title={
@@ -1599,7 +1613,7 @@ export default function AimePage() {
                   : 'Enable text-to-speech'
             }
           >
-            {isSpeaking ? (
+            {isTTSEnabled && isSpeaking ? (
               <PiSpeakerHighBold className={styles.speakerSpeaking} size={24} />
             ) : isTTSEnabled ? (
               <PiSpeakerHighBold className={styles.speakerEnabled} size={24} />

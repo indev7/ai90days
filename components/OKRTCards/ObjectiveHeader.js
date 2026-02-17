@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { GrTrophy } from 'react-icons/gr';
-import { MdFilterCenterFocus } from "react-icons/md";
+import { MdFilterCenterFocus, MdSwapHoriz } from "react-icons/md";
 import Chip from './Chip';
 import ProgressRing from './ProgressRing';
 import RewardsDisplay from '../RewardsDisplay';
@@ -13,6 +13,7 @@ export default function ObjectiveHeader({
   isExpanded,
   onToggleExpanded,
   onShareObjective,
+  onTransferObjective,
   onFocusObjective,
   isFocused,
   readOnly = false,
@@ -169,6 +170,16 @@ export default function ObjectiveHeader({
                     <line x1="12" y1="2" x2="12" y2="15"/>
                   </svg>
                   Share
+                </button>
+              )}
+              {!readOnly && onTransferObjective && (
+                <button
+                  className={styles.shareButton}
+                  onClick={() => onTransferObjective(objective)}
+                  title="Transfer ownership"
+                >
+                  <MdSwapHoriz size={16} />
+                  Transfer
                 </button>
               )}
               <button

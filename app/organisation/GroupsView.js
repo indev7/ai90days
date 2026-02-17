@@ -358,7 +358,12 @@ export default function GroupsView({
         chart
           .container(container)
           .initialZoom(0.75)
+          .setActiveNodeCentered(false)
           .duration(450)
+          .nodeButtonWidth(() => 56)
+          .nodeButtonHeight(() => 56)
+          .nodeButtonX(() => -28)
+          .nodeButtonY(() => -28)
           .nodeWidth(() => 340)
           .nodeHeight(() => 160)
           .nodeContent(renderNodeContent);
@@ -564,13 +569,15 @@ export default function GroupsView({
           fill: var(--pill-bg, #e7f0f0);
           stroke: var(--connector-accent, #7ba1a7);
           stroke-width: 2px;
+          transform: scale(1.35);
+          transform-origin: center;
         }
 
         .chartContainer .node-button-text {
           fill: var(--pill-text, #617b80);
           text-anchor: middle;
           dominant-baseline: central;
-          font-size: 20px;
+          font-size: 26px;
           transform: translateY(1px);
         }
 
@@ -579,6 +586,11 @@ export default function GroupsView({
           height: 1px;
           opacity: 0;
           pointer-events: none;
+        }
+
+        .chartContainer .node,
+        .chartContainer .org-card {
+          cursor: pointer;
         }
       `}</style>
     </>
