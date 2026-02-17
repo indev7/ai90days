@@ -91,6 +91,7 @@ export default function IntervestOrgChart() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState({});
   const closeGuardRef = useRef(null);
+  const _treeInitRef = useRef(false);
 
   // Use hooks for user and mainTree data
   const router = useRouter();
@@ -406,16 +407,22 @@ export default function IntervestOrgChart() {
   };
 
   useEffect(() => {
-    if (groupsViewMode !== 'tree') return;
+    // Initialize tree expansion only once when entering tree view
+    if (groupsViewMode !== 'tree') {
+      _treeInitRef.current = false;
+      return;
+    }
     if (!treeNodes.length) return;
-    if (Object.keys(expandedKeys || {}).length > 0) return;
+    if (_treeInitRef.current) return;
+
     const firstNode = treeNodes[0];
     if (!firstNode?.key) return;
     setExpandedKeys({ [firstNode.key]: true });
     if (firstNode.data?.id) {
       fetchGroupDetails(firstNode.data.id);
     }
-  }, [groupsViewMode, treeNodes, expandedKeys]);
+    _treeInitRef.current = true;
+  }, [groupsViewMode, treeNodes]);
 
   const renderGroupTreeNode = (node, options) => {
     const data = node?.data || {};
