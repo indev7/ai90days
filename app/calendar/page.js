@@ -849,8 +849,14 @@ export default function CalendarPage() {
                             >
                                 <option value="">Choose an objective</option>
                                 {taskHierarchy.map((objective) => (
-                                    <option key={objective.id} value={objective.id}>
-                                        {objective.title}
+                                    <option
+                                        key={objective.id}
+                                        value={objective.id}
+                                        title={objective.title}
+                                    >
+                                        {objective.title && objective.title.length > 80
+                                            ? objective.title.substring(0, 80) + '...'
+                                            : objective.title}
                                     </option>
                                 ))}
                             </select>
