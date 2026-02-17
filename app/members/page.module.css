@@ -33,12 +33,16 @@
 }
 
 .membersFilterSwitcher {
+  display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  min-width: 360px;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
 }
 
 .membersFilterThumb {
   width: calc(20% - 6px);
+  pointer-events: none;
 }
 
 .membersFilterButton {
@@ -369,5 +373,20 @@
     min-width: 0;
     width: 100%;
     max-width: 100%;
+  }
+}
+
+/* Ensure filter buttons remain visible and wrap cleanly on tablet / iPad sizes */
+@media (max-width: 1024px) {
+  .membersFilterSwitcher {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .membersFilterButton {
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
