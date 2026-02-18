@@ -5,6 +5,7 @@ import { X, Plus, Trash2 } from 'lucide-react';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './ShareModal.module.css';
+import { isValidEmail } from '@/lib/validators';
 
 export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility = 'private' }) {
   const [visibility, setVisibility] = useState(currentVisibility);
@@ -12,6 +13,7 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserEmailError, setNewUserEmailError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -84,8 +86,15 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
   };
 
   const handleAddUser = () => {
-    if (newUserEmail.trim() && !selectedUsers.includes(newUserEmail.trim())) {
-      setSelectedUsers(prev => [...prev, newUserEmail.trim()]);
+    const email = newUserEmail.trim();
+    setNewUserEmailError('');
+    if (!email) return;
+    if (!isValidEmail(email)) {
+      setNewUserEmailError('Please enter a valid email address');
+      return;
+    }
+    if (!selectedUsers.includes(email)) {
+      setSelectedUsers(prev => [...prev, email]);
       setNewUserEmail('');
     }
   };
@@ -301,6 +310,10 @@ export default function ShareModal({ isOpen, onClose, okrtId, currentVisibility 
                     Add
                   </button>
                 </div>
+
+                {newUserEmailError && (
+                  <div className={styles.fieldError} role="alert">{newUserEmailError}</div>
+                )}
 
                 {selectedUsers.length > 0 && (
                   <div className={styles.selectedUsers}>

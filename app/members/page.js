@@ -7,6 +7,7 @@ import { useUser } from '@/hooks/useUser';
 import { useMainTree } from '@/hooks/useMainTree';
 import useMainTreeStore from '@/store/mainTreeStore';
 import styles from './page.module.css';
+import { isValidEmail } from '@/lib/validators';
 
 export default function MembersPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
+  const [selectedUserEmailError, setSelectedUserEmailError] = useState('');
 
   // Check if user is Admin
   useEffect(() => {
@@ -74,6 +76,13 @@ export default function MembersPage() {
     if (!selectedUser) return;
 
     setSaving(true);
+    // Validate email (show inline error near field)
+    setSelectedUserEmailError('');
+    if (!isValidEmail(selectedUser.email)) {
+      setSelectedUserEmailError('Please enter a valid email address');
+      setSaving(false);
+      return;
+    }
     try {
       const response = await fetch(`/api/users/${selectedUser.id}`, {
         method: 'PUT',
@@ -326,9 +335,15 @@ export default function MembersPage() {
                   type="email"
                   className={styles.input}
                   value={selectedUser.email}
-                  onChange={e => handleInputChange('email', e.target.value)}
+                  onChange={e => {
+                    handleInputChange('email', e.target.value);
+                    setSelectedUserEmailError('');
+                  }}
                 />
               </div>
+              {selectedUserEmailError && (
+                <div className={styles.fieldError} role="alert">{selectedUserEmailError}</div>
+              )}
 
               <div className={styles.formGroup}>
                 <label className={styles.label}>Role</label>
