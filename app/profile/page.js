@@ -153,6 +153,11 @@ export default function ProfilePage() {
 
       // Only include password if provided
       if (formData.newPassword) {
+        // If user forgot to fill confirm password, show specific message
+        if (!formData.confirmPassword) {
+          setError('Please confirm the new password');
+          return;
+        }
         if (formData.newPassword !== formData.confirmPassword) {
           setError('New passwords do not match');
           return;
