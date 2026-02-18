@@ -6,6 +6,7 @@ import { MdOutlineSelfImprovement } from 'react-icons/md';
 import styles from './page.module.css';
 import OKRTModal from '../../components/OKRTModal';
 import ShareModal from '../../components/ShareModal';
+import TransferOwnershipModal from '../../components/TransferOwnershipModal';
 import CommentsSection from '../../components/CommentsSection';
 import { processCacheUpdateFromData } from '@/lib/apiClient';
 import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
@@ -19,6 +20,7 @@ import {
   AddKeyResultCard,
   ObjectiveInsights
 } from '@/components/OKRTCards';
+import ObjectiveFamilyDiagram from '@/components/ObjectiveFamilyDiagram';
 
 /* =========================
    Demo Data (fallback)
@@ -107,6 +109,10 @@ export default function OKRTPage() {
     console.log('Modal state changed:', modalState);
   }, [modalState]);
   const [shareModalState, setShareModalState] = useState({
+    isOpen: false,
+    objective: null
+  });
+  const [transferModalState, setTransferModalState] = useState({
     isOpen: false,
     objective: null
   });
@@ -594,6 +600,20 @@ export default function OKRTPage() {
     });
   };
 
+  const handleTransferObjective = (objective) => {
+    setTransferModalState({
+      isOpen: true,
+      objective
+    });
+  };
+
+  const handleCloseTransferModal = () => {
+    setTransferModalState({
+      isOpen: false,
+      objective: null
+    });
+  };
+
   const handleFocusObjective = (objectiveId) => {
     if (focusedObjectiveId === objectiveId) {
       // Exit focus mode
@@ -831,6 +851,11 @@ export default function OKRTPage() {
                         isExpanded={expandedObjectives.has(objective.id)}
                         onToggleExpanded={() => handleToggleObjective(objective.id)}
                         onShareObjective={handleShareObjective}
+                        onTransferObjective={
+                          objective.owner_id && user?.id && String(objective.owner_id) === String(user.id)
+                            ? handleTransferObjective
+                            : null
+                        }
                         onFocusObjective={handleFocusObjective}
                         isFocused={focusedObjectiveId === objective.id}
                         comments={objective.comments || []}
@@ -861,6 +886,8 @@ export default function OKRTPage() {
                             ))}
                             <AddKeyResultCard onAddKeyResult={() => handleAddKeyResult(objective)} />
                           </div>
+
+                          <ObjectiveFamilyDiagram objectiveId={objective.id} />
                           
                           {/* Single Comments Section for the entire Objective */}
                           {user?.id && (
@@ -907,6 +934,24 @@ export default function OKRTPage() {
         onClose={handleCloseShareModal}
         okrtId={shareModalState.objective?.id}
         currentVisibility={shareModalState.objective?.visibility}
+      />
+
+      {/* Transfer Ownership Modal */}
+      <TransferOwnershipModal
+        isOpen={transferModalState.isOpen}
+        onClose={handleCloseTransferModal}
+        objective={transferModalState.objective}
+        onTransferred={() => {
+          const { mainTree } = useMainTreeStore.getState();
+          const allItems = mainTree.myOKRTs || [];
+          const objs = allItems.filter(item => item.type === 'O');
+          const krs = allItems.filter(item => item.type === 'K');
+          const tsks = allItems.filter(item => item.type === 'T');
+
+          setObjectives(objs);
+          setKeyResults(krs);
+          setTasks(tsks);
+        }}
       />
     </div>
   );

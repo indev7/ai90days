@@ -13,20 +13,17 @@ export default function useTextToSpeech(preferredVoice) {
   const textQueueRef = useRef([]);
   const isPlayingRef = useRef(false);
   const isFetchingRef = useRef(false);
+  const isTTSEnabledRef = useRef(false);
 
   /** Toggle TTS on/off and clear queued audio when disabling playback. */
   // PSEUDOCODE: flip enabled, prime audio on enable, otherwise stop and clear queues.
   const toggleTTS = () => {
-    if (isTTSEnabled && needsUserGesture) {
-      primeAudio();
-      return;
-    }
-    const nextEnabled = !isTTSEnabled;
-    setIsTTSEnabled(nextEnabled);
-    if (nextEnabled) {
-      primeAudio();
-    } else {
-      // Stop any current playback when disabling
+    // If currently enabled, disable it (stop playback)
+    if (isTTSEnabled) {
+      setIsTTSEnabled(false);
+      isTTSEnabledRef.current = false;
+      
+      // Stop any current playback
       if (audioRef.current) {
         // Remove event listeners to prevent errors after cleanup
         audioRef.current.onended = null;
@@ -56,6 +53,11 @@ export default function useTextToSpeech(preferredVoice) {
       isPlayingRef.current = false;
       isFetchingRef.current = false;
       setIsSpeaking(false);
+    } else {
+      // If currently disabled, enable it
+      setIsTTSEnabled(true);
+      isTTSEnabledRef.current = true;
+      primeAudio();
     }
   };
 
@@ -132,7 +134,7 @@ export default function useTextToSpeech(preferredVoice) {
   // PSEUDOCODE: dequeue audio, play it, then recurse on end/error.
   const processQueue = () => {
     // Don't process queue if TTS is disabled
-    if (!isTTSEnabled) {
+    if (!isTTSEnabledRef.current) {
       setIsSpeaking(false);
       return;
     }
@@ -158,7 +160,7 @@ export default function useTextToSpeech(preferredVoice) {
       }
       isPlayingRef.current = false;
       // Continue with the next item in the queue only if TTS is still enabled
-      if (isTTSEnabled) {
+      if (isTTSEnabledRef.current) {
         processQueue();
       } else {
         setIsSpeaking(false);
@@ -168,7 +170,7 @@ export default function useTextToSpeech(preferredVoice) {
     audio.onended = handleDone;
     audio.onerror = (e) => {
       // Only log errors if TTS is still enabled (not during cleanup)
-      if (isTTSEnabled && audioRef.current) {
+      if (isTTSEnabledRef.current && audioRef.current) {
         const mediaError = audio.error;
         console.error('[TTS] Audio playback error:', {
           code: mediaError?.code,
@@ -183,7 +185,7 @@ export default function useTextToSpeech(preferredVoice) {
 
     audio.oncanplaythrough = () => {
       // Check if TTS is still enabled before playing
-      if (!isTTSEnabled) {
+      if (!isTTSEnabledRef.current) {
         handleDone();
         return;
       }
@@ -208,7 +210,7 @@ export default function useTextToSpeech(preferredVoice) {
   /** Enqueue text for TTS generation, fetch audio, and schedule playback. */
   // PSEUDOCODE: guard state, clean text, enqueue for fetch, then play when ready.
   const speak = async (text) => {
-    if (!isTTSEnabled) {
+    if (!isTTSEnabledRef.current) {
       return;
     }
     

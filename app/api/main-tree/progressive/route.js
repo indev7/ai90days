@@ -116,6 +116,44 @@ export async function GET(request) {
             });
           });
 
+          const parentById = new Map(allGroups.map((group) => [group.id, group.parent_group_id]));
+          const childrenById = new Map();
+          allGroups.forEach((group) => {
+            if (group.parent_group_id === null || group.parent_group_id === undefined) return;
+            if (!childrenById.has(group.parent_group_id)) {
+              childrenById.set(group.parent_group_id, []);
+            }
+            childrenById.get(group.parent_group_id).push(group.id);
+          });
+
+          const relatedGroupIds = new Set();
+          const addAncestors = (groupId) => {
+            let current = groupId;
+            const visited = new Set();
+            while (current !== null && current !== undefined && !visited.has(current)) {
+              visited.add(current);
+              relatedGroupIds.add(current);
+              current = parentById.get(current);
+            }
+          };
+          const addDescendants = (groupId) => {
+            const stack = [groupId];
+            const visited = new Set();
+            while (stack.length > 0) {
+              const current = stack.pop();
+              if (visited.has(current)) continue;
+              visited.add(current);
+              relatedGroupIds.add(current);
+              const children = childrenById.get(current) || [];
+              children.forEach((childId) => stack.push(childId));
+            }
+          };
+
+          userMemberships.forEach((membership) => {
+            addAncestors(membership.group_id);
+            addDescendants(membership.group_id);
+          });
+
           const groupsWithDetails = await Promise.all(
             allGroups.map(async (group) => {
               const membership = membershipMap.get(group.id) || { is_member: false, is_admin: false };
@@ -141,7 +179,9 @@ export async function GET(request) {
                   ORDER BY o.updated_at DESC
                 `, [group.id]);
                 objectiveIds = objectiveIdsResult.map(obj => obj.okrt_id);
-                
+              }
+
+              if (relatedGroupIds.has(group.id)) {
                 // Fetch strategic objectives for this group
                 const strategicObjectivesResult = await all(`
                   SELECT so.okrt_id
@@ -291,6 +331,34 @@ export async function GET(request) {
           // 4. Load SharedOKRTs - Only Objectives, with KRs nested inside
           console.log('[Progressive] Loading sharedOKRTs...');
           const sharedOKRTsRaw = await all(`
+            WITH RECURSIVE user_groups AS (
+              SELECT group_id
+              FROM user_group
+              WHERE user_id = ?
+            ),
+            ancestor_groups AS (
+              SELECT g.id, g.parent_group_id
+              FROM groups g
+              JOIN user_groups ug ON g.id = ug.group_id
+              UNION
+              SELECT g2.id, g2.parent_group_id
+              FROM groups g2
+              JOIN ancestor_groups ag ON g2.id = ag.parent_group_id
+            ),
+            descendant_groups AS (
+              SELECT g.id, g.parent_group_id
+              FROM groups g
+              JOIN user_groups ug ON g.id = ug.group_id
+              UNION
+              SELECT g2.id, g2.parent_group_id
+              FROM groups g2
+              JOIN descendant_groups dg ON g2.parent_group_id = dg.id
+            ),
+            related_groups AS (
+              SELECT id FROM ancestor_groups
+              UNION
+              SELECT id FROM descendant_groups
+            )
             SELECT DISTINCT ON (o.id)
               o.id, o.type, o.parent_id, o.title, o.description,
               o.progress, o.status, o.area, o.cycle_qtr, o.order_index, o.visibility,
@@ -308,7 +376,7 @@ export async function GET(request) {
             LEFT JOIN follows f ON o.id = f.objective_id AND f.user_id = ?
             WHERE ((s.share_type = 'U' AND s.group_or_user_id = ?)
                    OR (s.share_type = 'G' AND s.group_or_user_id IN (
-                     SELECT group_id FROM user_group WHERE user_id = ?
+                     SELECT id FROM related_groups
                    )))
               AND o.visibility = 'shared'
               AND o.type = 'O'

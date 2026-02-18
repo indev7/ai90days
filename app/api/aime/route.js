@@ -18,6 +18,7 @@ import { JIRA_LINK_DOMAIN } from '@/lib/knowledgeBase/jiraLinkDomain';
 import { CONFLUENCE_DOMAIN } from '@/lib/knowledgeBase/confluenceDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
+import { OKRT_TRANSFER_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtTransferActions';
 import { RENDER_CHART_SCHEMA } from '@/lib/toolSchemas/renderChart';
 import { GROUP_ACTIONS_SCHEMA } from '@/lib/toolSchemas/groupActions';
 import { MS_MAIL_ACTIONS_SCHEMA } from '@/lib/toolSchemas/msMailActions';
@@ -202,6 +203,14 @@ const toolMap = new Map([
     }
   ],
   [
+    'emit_okrt_transfer_actions',
+    {
+      id: 'emit_okrt_transfer_actions',
+      description: 'OKRT transfer actions tool schema for ownership transfer.',
+      schema: OKRT_TRANSFER_ACTIONS_SCHEMA
+    }
+  ],
+  [
     'render_chart',
     {
       id: 'render_chart',
@@ -274,6 +283,13 @@ const dataSectionMap = new Map([
     }
   ],
   [
+    'memberDirectory',
+    {
+      id: 'memberDirectory',
+      description: 'Directory of group members (id, first name, last name, email).'
+    }
+  ],
+  [
     'timeBlocks',
     {
       id: 'timeBlocks',
@@ -306,6 +322,13 @@ const dataSectionMap = new Map([
     {
       id: 'initiatives',
       description: 'Jira Portfolio Management initiatives for the Initiatives page.'
+    }
+  ],
+  [
+    'objectiveFocus',
+    {
+      id: 'objectiveFocus',
+      description: 'Single-objective focus block (objective + ancestors, children, KRs, tasks, initiatives, shared groups).'
     }
   ]
 ]);
@@ -526,12 +549,14 @@ function getBasicSystemPrompt(displayName = "AIME user", personalityId) {
     `The app supports UI-based CRUD for: okrt (myOKRTs, sharedOKRTs), timeBlocks, comments, groups, read from JIRA, read outlook email.`,
     `You can link/unlink Jira tickets (Initiatives) to OKRTs when requested.`,
     `User data may be provided in a cached JSON tree called "mainTree".`,
+    `The user may also include a block labeled "CONTEXT - Objective Focus (user-supplied)" with <DATA:objective_focus> JSON. If present, treat it as authoritative for that objective and avoid req_more_info for overlapping fields.`,
     `Your job: help with goal planning, OKRT guidance, motivation, and app navigation.`,
     ``,
     `## Tooling (req_more_info)`,
     `Use req_more_info to request ONLY the minimal extra context needed.`,
     `- The request must include at least one of: data, domainKnowledge, tools.`,
     `- data.sections[] items MUST be objects with sectionId ONLY (no paths).`,
+    `- Exception: when requesting "objectiveFocus", include objectiveId (string or number).`,
     `- Do NOT request sections already present in the current CONTEXT; if present, answer directly.`,
     `- If a field is missing, treat it as null/unknown (not "does not exist").`,
     `- Before saying you lack info, check the current CONTEXT first; if missing, request minimal context.`,
@@ -589,7 +614,7 @@ CONTEXT - Selected mainTree Sections:
 User Display Name: ${displayName}
 Sections Included: ${sectionNames}
 Section Counts: ${counts.join(', ')}
-Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, or emit_jira_link_actions tool calls:
+Full Context (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, emit_okrt_transfer_actions, or emit_jira_link_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
   }
@@ -602,7 +627,7 @@ Summary: ${displayName} has context for ${sectionEntries.length} section(s).`;
 CONTEXT - Current User's Information and OKRTs:
 User Display Name: ${displayName}
 Number of Objectives: ${objectives.length}
-Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, or emit_jira_link_actions tool calls:
+Full OKRT Data (JSON below is reliable and authoritative). Use titles/descriptions in user-facing text. Use IDs only in emit_okrt_actions, emit_okrt_share_actions, emit_okrt_transfer_actions, or emit_jira_link_actions tool calls:
 ${JSON.stringify(okrtContext)}
 Summary: ${displayName} has ${objectives.length} objective(s) with ${krCount} key result(s).`
     : `
@@ -667,6 +692,9 @@ function getReqMoreInfoTool() {
                   sectionId: {
                     type: 'string',
                     enum: dataSectionIds
+                  },
+                  objectiveId: {
+                    type: ['string', 'number']
                   }
                 }
               }

@@ -286,6 +286,18 @@ const useMainTreeStore = create(
     },
     lastUpdated: new Date().toISOString()
   })),
+
+  // Remove multiple OKRTs from myOKRTs
+  removeMyOKRTs: (ids = []) => set((state) => {
+    const idSet = new Set(ids);
+    return {
+      mainTree: {
+        ...state.mainTree,
+        myOKRTs: state.mainTree.myOKRTs.filter(okrt => !idSet.has(okrt.id))
+      },
+      lastUpdated: new Date().toISOString()
+    };
+  }),
   
   // Add a notification
   addNotification: (notification) => set((state) => ({

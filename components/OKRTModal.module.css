@@ -76,6 +76,10 @@
   gap: 1.25rem 1.25rem;
 }
 
+.modalBodySingle {
+  display: block;
+}
+
 .modalFooter {
   display: flex;
   justify-content: flex-end;
@@ -88,6 +92,15 @@
 .errorMessage {
   background: #fee2e2;
   color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.successMessage {
+  background: #dcfce7;
+  color: #15803d;
   padding: 0.75rem 1rem;
   border-radius: 6px;
   margin-bottom: 1.5rem;
@@ -201,6 +214,98 @@
 /* Utilities */
 .fullWidth {
   grid-column: 1 / -1;
+}
+
+.searchWrapper {
+  position: relative;
+}
+
+.searchResults {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface-0);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.searchItem {
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.searchItem:hover {
+  background: var(--surface-2);
+}
+
+.searchItemName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.searchItemEmail {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.selectedUser {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.selectedUserInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.selectedUserName {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.selectedUserEmail {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.clearSelectionButton {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.clearSelectionButton:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.helperText {
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
 }
 
 .errorText {

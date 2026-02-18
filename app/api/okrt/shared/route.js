@@ -22,25 +22,54 @@ export async function GET(request) {
     // Check if user has access to this shared objective
     // User has access if:
     // 1. The objective is shared with them directly (share_type = 'U')
-    // 2. The objective is shared with a group they belong to (share_type = 'G')
+    // 2. The objective is shared with a group in their ancestor/descendant chain (share_type = 'G')
     // 3. The objective visibility is not 'private'
     const accessQuery = `
+      WITH RECURSIVE user_groups AS (
+        SELECT group_id
+        FROM user_group
+        WHERE user_id = ?
+      ),
+      ancestor_groups AS (
+        SELECT g.id, g.parent_group_id
+        FROM groups g
+        JOIN user_groups ug ON g.id = ug.group_id
+        UNION
+        SELECT g2.id, g2.parent_group_id
+        FROM groups g2
+        JOIN ancestor_groups ag ON g2.id = ag.parent_group_id
+      ),
+      descendant_groups AS (
+        SELECT g.id, g.parent_group_id
+        FROM groups g
+        JOIN user_groups ug ON g.id = ug.group_id
+        UNION
+        SELECT g2.id, g2.parent_group_id
+        FROM groups g2
+        JOIN descendant_groups dg ON g2.parent_group_id = dg.id
+      ),
+      related_groups AS (
+        SELECT id FROM ancestor_groups
+        UNION
+        SELECT id FROM descendant_groups
+      )
       SELECT DISTINCT o.*
       FROM okrt o
       LEFT JOIN share s ON o.id = s.okrt_id
-      LEFT JOIN user_group ug ON s.group_or_user_id = ug.group_id AND s.share_type = 'G'
       WHERE o.id = ?
         AND o.visibility = 'shared'
         AND (
           -- Direct share to user
           (s.group_or_user_id = ? AND s.share_type = 'U')
           OR
-          -- Share to group where user is member
-          (s.share_type = 'G' AND ug.user_id = ?)
+          -- Share to group in user's ancestor/descendant chain
+          (s.share_type = 'G' AND s.group_or_user_id IN (
+            SELECT id FROM related_groups
+          ))
         )
     `;
 
-    const objective = await get(accessQuery, [objectiveId, userId.toString(), userId]);
+    const objective = await get(accessQuery, [userId, objectiveId, userId.toString()]);
     
     if (!objective) {
       return NextResponse.json({ error: 'Objective not found or access denied' }, { status: 404 });

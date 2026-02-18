@@ -12,6 +12,7 @@ export async function handleBedrock({
   const ACTION_TOOL_NAMES = new Set([
     'emit_okrt_actions',
     'emit_okrt_share_actions',
+    'emit_okrt_transfer_actions',
     'emit_group_actions',
     'emit_ms_mail_actions',
     'emit_jira_query_actions',

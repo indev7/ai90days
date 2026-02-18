@@ -30,7 +30,34 @@ export default function StrategyHouse({ toggleSlot = null }) {
       return emptyState;
     }
 
-    const orgGroup = mainTree.groups.find((g) => g.type === 'Organisation');
+    const groups = mainTree.groups || [];
+    const groupsById = new Map(groups.map((g) => [g.id, g]));
+    const findTopOrganisationForGroup = (groupId) => {
+      let currentId = groupId;
+      let topOrg = null;
+      const visited = new Set();
+      while (currentId !== null && currentId !== undefined && !visited.has(currentId)) {
+        visited.add(currentId);
+        const currentGroup = groupsById.get(currentId);
+        if (!currentGroup) return topOrg;
+        if (currentGroup.type === 'Organisation') {
+          topOrg = currentGroup;
+        }
+        currentId = currentGroup.parent_group_id;
+      }
+      return topOrg;
+    };
+
+    const memberGroups = groups.filter((g) => g.is_member);
+    let orgGroup = null;
+    for (const group of memberGroups) {
+      orgGroup = findTopOrganisationForGroup(group.id);
+      if (orgGroup) break;
+    }
+
+    if (!orgGroup) {
+      orgGroup = groups.find((g) => g.type === 'Organisation');
+    }
     if (!orgGroup) {
       return emptyState;
     }

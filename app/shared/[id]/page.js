@@ -8,6 +8,7 @@ import { ObjectiveHeader, KeyResultCard, ObjectiveInsights } from '@/components/
 import { useMainTree } from '@/hooks/useMainTree';
 import { useUser } from '@/hooks/useUser';
 import { computeObjectiveConfidence } from '@/lib/okrtConfidence';
+import ObjectiveFamilyDiagram from '@/components/ObjectiveFamilyDiagram';
 
 /* =========================
    Main Shared Detail Page Component
@@ -322,6 +323,8 @@ export default function SharedOKRTDetailPage() {
                   />
                 ))}
               </div>
+
+              <ObjectiveFamilyDiagram objectiveId={objectiveWithConfidence.id} />
               
               {/* Comments Section */}
               {user?.id && (
