@@ -28,6 +28,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+snowflake-token.json
 
 # vercel
 .vercel
@@ -42,3 +43,5 @@ Phase1/DB/app.db
 # Prisma
 /lib/generated/
 llm_api_req_res.txt
+SNOWFLAKE_INTEGRATION_FIX.md
+
