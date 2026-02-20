@@ -210,8 +210,8 @@ export default function HeaderBar({
             />
           )}
           
-          <Link href="/" className={styles.logoLink} aria-label="Aime" onClick={handleLogoClick}>
-            <span className={styles.logoIcon} role="img" aria-hidden="true" />
+          <Link href="/" className={styles.logoLink} aria-label="AIME" onClick={handleLogoClick}>
+            <span className={styles.logo}>AIME</span>
           </Link>
         </div>
 

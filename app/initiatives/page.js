@@ -15,9 +15,9 @@ const PAGE_SIZE = 100;
 
 const RAG_OPTIONS = [
   { value: '', label: 'All' },
-  { value: 'GREEN', label: 'Green' },
-  { value: 'AMBER', label: 'Amber' },
-  { value: 'RED', label: 'Red' },
+  { value: 'Green', label: 'Green' },
+  { value: 'Amber', label: 'Amber' },
+  { value: 'Red', label: 'Red' },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -37,13 +37,37 @@ function extractRagValue(value) {
     return extractRagValue(first);
   }
   if (typeof value === 'object') {
-    return value.value || value.name || value.label || value.status || '';
+    if (value.value !== undefined) return extractRagValue(value.value);
+    if (value.name !== undefined) return extractRagValue(value.name);
+    if (value.label !== undefined) return extractRagValue(value.label);
+    if (value.status !== undefined) return extractRagValue(value.status);
+    return '';
   }
   return String(value);
 }
 
 function escapeJqlValue(value) {
   return (value || '').replace(/["\\]/g, '').trim();
+}
+
+function normalizeRagValue(value) {
+  return (value || '').toString().trim().toLowerCase();
+}
+
+function matchesRagFilter(rawValue, selected) {
+  if (!selected) return true;
+  const normalized = normalizeRagValue(extractRagValue(rawValue));
+  if (!normalized) return false;
+  if (selected === 'amber') {
+    return normalized.includes('amber') || normalized.includes('yellow');
+  }
+  if (selected === 'green') {
+    return normalized.includes('green');
+  }
+  if (selected === 'red') {
+    return normalized.includes('red');
+  }
+  return normalized === selected;
 }
 
 export default function InitiativesPage() {
@@ -64,6 +88,7 @@ export default function InitiativesPage() {
   const initiativesLoaded = useMainTreeStore((state) => state.sectionStates?.initiatives?.loaded);
 
   const ragValue = RAG_OPTIONS[ragIndex]?.value ?? '';
+  const normalizedRagValue = normalizeRagValue(ragValue);
   const priorityValue = selectedPriority;
 
   const redirectToLogin = useCallback(() => {
@@ -274,11 +299,8 @@ export default function InitiativesPage() {
       if (priorityValue && initiative.priority !== priorityValue) {
         return false;
       }
-      if (ragValue) {
-        const ragValueText = extractRagValue(
-          initiative?.customFields?.[RAG_FIELD_ID]
-        );
-        if (ragValueText !== ragValue) {
+      if (normalizedRagValue) {
+        if (!matchesRagFilter(initiative?.customFields?.[RAG_FIELD_ID], normalizedRagValue)) {
           return false;
         }
       }
@@ -293,7 +315,7 @@ export default function InitiativesPage() {
       deduped.push(issue);
     }
     setInitiatives(deduped);
-  }, [storedInitiatives, initiativesLoaded, selectedStatus, priorityValue, ragValue]);
+  }, [storedInitiatives, initiativesLoaded, selectedStatus, priorityValue, normalizedRagValue]);
 
   const statusOptions = useMemo(
     () =>

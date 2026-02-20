@@ -10,7 +10,11 @@ const extractRagValue = (value) => {
     return extractRagValue(first);
   }
   if (typeof value === 'object') {
-    return value.value || value.name || value.label || value.status || '';
+    if (value.value !== undefined) return extractRagValue(value.value);
+    if (value.name !== undefined) return extractRagValue(value.name);
+    if (value.label !== undefined) return extractRagValue(value.label);
+    if (value.status !== undefined) return extractRagValue(value.status);
+    return '';
   }
   return String(value);
 };

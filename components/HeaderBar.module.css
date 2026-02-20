@@ -28,6 +28,7 @@
   gap: var(--space-3);
   justify-content: flex-start;
   flex: 0 0 auto;
+  padding-right: var(--space-3);
 }
 
 .menuToggle {
@@ -110,6 +111,16 @@
   }
 }
 
+@media (max-width: 1023px) {
+  .left {
+    gap: 10px;
+  }
+
+  .logo {
+    margin-left: 0;
+  }
+}
+
 .logoLink {
   display: flex;
   align-items: center;
@@ -130,26 +141,14 @@
   font-weight: 700;
   color: var(--header-logo, var(--brand-700));
   text-align: left;
-}
-
-.logoIcon {
-  background-image: url('/aime_header_logo.svg');
-  background-repeat: no-repeat;
-  background-size: contain;
-  width: 160px;
-  height: 44px;
   display: inline-block;
-  margin-left: 30px;
-}
-
-:global(html[data-theme="nature"]) .logoIcon {
-  background-image: url('/aime_header_logo.svg');
+  margin-left: 0px;
 }
 
 @media (max-width: 500px) {
-  .logoIcon {
-    width: 130px;
-    height: 38px;
+  .logo {
+    font-size: 1.25rem;
+    margin-left: 0px;
   }
   .logoLink {
     transform: none;
@@ -166,6 +165,7 @@
   align-items: center;
   justify-content: center;
   flex: 1;
+  padding-left: var(--space-3);
 }
 
 .centerActions {
@@ -178,6 +178,12 @@
 .searchForm {
   width: min(640px, 100%);
   margin-right: 0px;
+}
+
+@media (max-width: 999px) {
+  .searchForm {
+    display: none;
+  }
 }
 
 .searchBar {
@@ -255,7 +261,7 @@
 .userMenu {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .notificationLink {
@@ -294,8 +300,8 @@
 }
 
 .favoritePromptsIcon {
-  width: 30px;
-  height: 30px;
+  width: 25px;
+  height: 25px;
   border-radius: 0;
   background-color: transparent;
   background-image: url('/aime_app_icon.svg');

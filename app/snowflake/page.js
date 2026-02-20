@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from './snowflake.module.css';
 
-const DEFAULT_SQL = 'SELECT CURRENT_ACCOUNT(), CURRENT_USER(), CURRENT_ROLE();';
+const DEFAULT_SQL = 'SELECT COUNT(*) as RECORD_COUNT FROM RP_TRP_REVIEWS_TEST;';
 
 const deriveTable = (payload) => {
   const data = payload?.data;
