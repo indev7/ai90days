@@ -139,10 +139,17 @@
 .logo {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--header-logo, var(--brand-700));
   text-align: left;
   display: inline-block;
   margin-left: 0px;
+}
+
+.logoAIM {
+  color: var(--aime-logo-aim, var(--text));
+}
+
+.logoE {
+  color: var(--aime-logo-e, var(--brand-primary));
 }
 
 @media (max-width: 500px) {

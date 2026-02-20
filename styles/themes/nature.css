@@ -99,6 +99,10 @@ html[data-theme="nature"] {
   --menu-hover-text: #d9d2ff;
   --menu-disabled: rgba(200, 204, 222, 0.6);
 
+  /* AIME logo */
+  --aime-logo-aim: #ffffff;
+  --aime-logo-e: #5aa7ff;
+
   /* Strategy view overrides */
   --strategy-text-main: #e8eaf5;
   --strategy-text-subtle: #c2c6d4;

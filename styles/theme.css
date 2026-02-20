@@ -104,6 +104,10 @@
   --strategy-temple-stroke: var(--border-light);
   --strategy-temple-stroke-light: var(--border-light);
   --strategy-temple-text: var(--brand-500);
+
+  /* AIME logo */
+  --aime-logo-aim: #000000;
+  --aime-logo-e: #5aa7ff;
 }
 
 /* Selection & active states */
@@ -162,4 +166,8 @@ html[data-theme="dark"] {
   --strategy-temple-stroke: var(--border);
   --strategy-temple-stroke-light: var(--border-light);
   --strategy-temple-text: var(--brand-secondary);
+
+  /* AIME logo */
+  --aime-logo-aim: #ffffff;
+  --aime-logo-e: #5aa7ff;
 }

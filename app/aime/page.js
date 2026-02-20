@@ -49,10 +49,13 @@ const AUTO_READONLY_INTENTS = new Set([
   'JIRA_LIST_PROJECTS',
   'JIRA_LIST_ISSUE_TYPES',
   'JIRA_LIST_STATUSES',
-  'CONFLUENCE_SEARCH_CONTENT'
+  'CONFLUENCE_SEARCH_CONTENT',
+  'SNOWFLAKE_QUERY_DATA',
+  'SNOWFLAKE_AGGREGATE_DATA',
+  'SNOWFLAKE_ANALYZE_REVIEWS'
 ]);
 
-const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/', '/api/confluence/'];
+const AUTO_READONLY_ENDPOINT_PREFIXES = ['/api/ms/mail/', '/api/jira/', '/api/confluence/', '/api/snowflake/'];
 const DEFAULT_AIME_PERSONALITY_ID = 1;
 const AIME_CONTEXT_DRAFT_KEY = 'aime-objective-context-draft';
 
@@ -381,9 +384,11 @@ function normalizeActions(rawActions = []) {
 function isReadOnlyToolAction(action) {
   if (!action || typeof action !== 'object') return false;
   const method = (action.method || '').toUpperCase();
-  if (method !== 'GET') return false;
-  if (!AUTO_READONLY_INTENTS.has(action.intent)) return false;
   const endpoint = action.endpoint || '';
+  const isSnowflake = endpoint.startsWith('/api/snowflake/');
+  const isReadOnlyMethod = method === 'GET' || (isSnowflake && method === 'POST');
+  if (!isReadOnlyMethod) return false;
+  if (!AUTO_READONLY_INTENTS.has(action.intent)) return false;
   return AUTO_READONLY_ENDPOINT_PREFIXES.some((prefix) => endpoint.startsWith(prefix));
 }
 
@@ -411,7 +416,9 @@ function buildToolExchangeMessages(actions = [], autoResults = []) {
         ? 'emit_confluence_query_actions'
       : endpoint.startsWith('/api/ms/mail/')
         ? 'emit_ms_mail_actions'
-        : null;
+        : endpoint.startsWith('/api/snowflake/')
+          ? 'emit_snowflake_query_actions'
+          : null;
     if (!toolName) continue;
 
     const toolUseId = `auto_tool_${Date.now()}_${i}`;
@@ -1008,6 +1015,10 @@ export default function AimePage() {
             String(action?.endpoint || '').startsWith('/api/ms/mail/')
           );
           if (hasMailRead) return 'Checking your mailbox...';
+          const hasSnowflakeRead = pendingAutoReadActions.some((action) =>
+            String(action?.endpoint || '').startsWith('/api/snowflake/')
+          );
+          if (hasSnowflakeRead) return 'Querying Snowflake...';
           return 'Working on that...';
         }
         if (pendingActions.length > 0) return 'I prepared actions for your review.';
@@ -1190,7 +1201,7 @@ export default function AimePage() {
             addMessage({
               id: Date.now() + 5,
               role: 'assistant',
-              content: 'I stopped repeated Jira/Mail reads for the same request. Please refine the filter and try again.',
+              content: 'I stopped repeated Jira/Mail/Snowflake reads for the same request. Please refine the filter and try again.',
               error: true,
               timestamp: new Date(),
             });
@@ -1199,7 +1210,7 @@ export default function AimePage() {
 
           const duplicateNotice = [
             'SYSTEM NOTICE: Duplicate read-only tool query detected for the same request.',
-            'Do NOT call Jira/Mail read tools again in this turn.',
+            'Do NOT call Jira/Mail/Snowflake read tools again in this turn.',
             'Use existing tool results already returned in this conversation to answer directly.'
           ].join(' ');
           const nextSystemPromptData = systemPromptData

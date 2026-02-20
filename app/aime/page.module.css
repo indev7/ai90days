@@ -88,6 +88,8 @@
 
 .chartMessageContent {
   max-width: 92%;
+  width: 100%;
+  align-self: stretch;
 }
 
 .userMessage .messageContent {

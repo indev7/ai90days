@@ -16,6 +16,7 @@ import { JIRA_INITIATIVE_DOMAIN } from '@/lib/knowledgeBase/jira-initiative-doma
 import { JIRA_LEAVE_DOMAIN } from '@/lib/knowledgeBase/jira-leave-domain';
 import { JIRA_LINK_DOMAIN } from '@/lib/knowledgeBase/jiraLinkDomain';
 import { CONFLUENCE_DOMAIN } from '@/lib/knowledgeBase/confluenceDomain';
+import { SNOWFLAKE_DOMAIN } from '@/lib/knowledgeBase/snowflakeDomain';
 import { OKRT_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtActions';
 import { OKRT_SHARE_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtShareActions';
 import { OKRT_TRANSFER_ACTIONS_SCHEMA } from '@/lib/toolSchemas/okrtTransferActions';
@@ -25,6 +26,7 @@ import { MS_MAIL_ACTIONS_SCHEMA } from '@/lib/toolSchemas/msMailActions';
 import { JIRA_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraQueryActions';
 import { JIRA_LINK_ACTIONS_SCHEMA } from '@/lib/toolSchemas/jiraLinkActions';
 import { CONFLUENCE_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/confluenceQueryActions';
+import { SNOWFLAKE_QUERY_ACTIONS_SCHEMA } from '@/lib/toolSchemas/snowflakeQueryActions';
 
 const DEFAULT_AIME_PERSONALITY_ID = 1;
 const AIME_PERSONALITIES = [
@@ -182,6 +184,14 @@ const knowledgeBaseMap = new Map([
       description: 'Confluence integration overview and guidance for read-only CQL search.',
       content: CONFLUENCE_DOMAIN
     }
+  ],
+  [
+    'snowflake-domain',
+    {
+      id: 'snowflake-domain',
+      description: 'Snowflake data warehouse schema and SQL guidance for Trustpilot reviews and business analytics.',
+      content: SNOWFLAKE_DOMAIN
+    }
   ]
 ]);
 
@@ -256,6 +266,14 @@ const toolMap = new Map([
       id: 'emit_confluence_query_actions',
       description: 'Read-only Confluence search actions using CQL.',
       schema: CONFLUENCE_QUERY_ACTIONS_SCHEMA
+    }
+  ],
+  [
+    'emit_snowflake_query_actions',
+    {
+      id: 'emit_snowflake_query_actions',
+      description: 'Read-only Snowflake SQL query actions for business analytics data including Trustpilot reviews.',
+      schema: SNOWFLAKE_QUERY_ACTIONS_SCHEMA
     }
   ]
 ]);
